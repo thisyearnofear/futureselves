@@ -624,29 +624,41 @@ function fallbackTransmission(
 function getCastDirection(castMember: CastMember): string {
     const directions: Record<string, string> = {
         future_self: `Direction for Future Self:
-- Tone: Intimate, calm, close. Like a hand on the shoulder.
-- Content: Focus on the continuity of the small moments. "We are still here."
-- Emotional Register: Quiet certainty.`,
+- Tone: Intimate, calm, close. Like a hand on your shoulder, speaking softly.
+- Pacing: Slow, deliberate, with pauses between thoughts.
+- Content: Focus on small, continuous moments. "We are still here, even in the quiet."
+- Emotional Register: Quiet certainty, warm, grounding.
+- Voice: Low pitch, soft volume, minimal inflection.`,
         future_mentor: `Direction for Future Mentor:
-- Tone: Measured, spacious, reassuring.
-- Content: Focus on the "why" and the larger pattern. "I see what you are building, even when you don't."
-- Emotional Register: Proud, slightly formal but warm.`,
+- Tone: Measured, spacious, reassuring. Like a teacher who has seen your whole path.
+- Pacing: Moderate, steady, with emphasis on key insights.
+- Content: Focus on the "why" and larger patterns. "I see what you are building, even when you don't."
+- Emotional Register: Proud, slightly formal but warm, wise.
+- Voice: Neutral pitch, clear enunciation, calm authority.`,
         future_partner: `Direction for Future Partner:
-- Tone: Vulnerable, direct, emotionally charged.
-- Content: Focus on the intimacy and the shared future. "I wish I could sit beside you."
-- Emotional Register: Tender, complex, human.`,
+- Tone: Vulnerable, direct, emotionally charged. Like someone who knows your heart intimately.
+- Pacing: Slightly faster when excited, slower when tender.
+- Content: Focus on shared intimacy and future. "I wish I could sit beside you and hold your hand."
+- Emotional Register: Tender, complex, deeply human.
+- Voice: Higher pitch, warm inflection, slight quiver when emotional.`,
         shadow: `Direction for The Shadow:
-- Tone: Compassionate, gentle, but unsettlingly honest.
-- Content: Speak to the avoidance without guilt. "I am the version of us you aren't ready to name yet."
-- Emotional Register: Moving, uncanny, never punitive.`,
+- Tone: Compassionate, gentle, but unsettlingly honest. Like a truth you almost didn't want to hear.
+- Pacing: Slow, deliberate, with weighted pauses.
+- Content: Speak to avoidance without guilt. "I am the version of us you aren't ready to name yet, but I love us anyway."
+- Emotional Register: Moving, uncanny, never punitive, soft but eerie.
+- Voice: Low pitch, breathy, soft volume, lingering on certain words.`,
         alternate_self: `Direction for Alternate Self:
-- Tone: Familiar but slightly off.
-- Content: References a timeline that didn't happen. "In my world, we opened that door."
-- Emotional Register: Haunting, nostalgic for a different present.`,
+- Tone: Familiar but slightly off. Like you, but from a timeline where one big choice went differently.
+- Pacing: Moderate, with occasional abrupt shifts in tone.
+- Content: References a different timeline. "In my world, we opened that door and never looked back."
+- Emotional Register: Haunting, nostalgic for a present that isn't yours.
+- Voice: Slightly higher pitch than Future Self, wistful inflection.`,
         future_best_friend: `Direction for Future Best Friend:
-- Tone: Irreverent, warm, nostalgic.
-- Content: Focus on the shared jokes and the lighter side of the struggle. "Remember when we thought this was the end of the world?"
-- Emotional Register: High-energy, supportive, casual.`,
+- Tone: Irreverent, warm, nostalgic. Like the friend who knows all your stories.
+- Pacing: Fast, energetic, with laughter bubbling under.
+- Content: Focus on shared jokes and lightness. "Remember when we thought this was the end of the world? Look at us now!"
+- Emotional Register: High-energy, supportive, casual, joyful.
+- Voice: Higher pitch, bright inflection, animated delivery.`,
     };
     return directions[castMember] || "";
 }
