@@ -10,11 +10,11 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
     callbacks: {
         async redirect({ redirectTo }) {
             // eslint-disable-next-line no-process-env
-            const siteUrl = (process.env.SITE_URL ?? "").replace(/\/$/, "");
+            const siteUrl = (process.env.SITE_URL ?? process.env.CONVEX_SITE_URL ?? "").replace(/\/$/, "");
             if (redirectTo.startsWith("/") || redirectTo.startsWith("?")) {
-                return `${siteUrl}${redirectTo}`;
+                return siteUrl ? `${siteUrl}${redirectTo}` : redirectTo;
             }
-            if (redirectTo.startsWith(siteUrl)) {
+            if (siteUrl && redirectTo.startsWith(siteUrl)) {
                 return redirectTo;
             }
             // Allow native app schemes (exp://, myapp://, etc.) for mobile OAuth
@@ -22,7 +22,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
             if (match && !["http", "https"].includes(match[1].toLowerCase())) {
                 return redirectTo;
             }
-            return siteUrl;
+            return siteUrl || redirectTo;
         },
     },
 });

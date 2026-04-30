@@ -69,11 +69,6 @@ const chapterNudges = {
         "Being chosen without having to perform for it.",
         "Building something that makes me proud and free.",
     ],
-    draining: [
-        "Too many open loops and not enough quiet.",
-        "Saying yes before I check whether I mean it.",
-        "Waiting until I feel ready before I begin.",
-    ],
 };
 
 interface OnboardingFlowProps {
@@ -90,7 +85,6 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
     const chapters = useMemo(
         () => [
             "The knock",
-            "The wish",
             "The shadow",
             "The timeline",
             "The voice",
@@ -123,9 +117,15 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
     }
 
     function canContinue(): boolean {
-        if (chapter === 0) return Boolean(draft.name.trim() && draft.city.trim() && draft.currentChapter.trim());
-        if (chapter === 1) return Boolean(draft.miraculousYear.trim());
-        if (chapter === 2) return Boolean(draft.avoiding.trim() && draft.afraidWontHappen.trim() && draft.draining.trim());
+        if (chapter === 0) {
+            return Boolean(
+                draft.name.trim() &&
+                draft.city.trim() &&
+                draft.currentChapter.trim() &&
+                draft.miraculousYear.trim()
+            );
+        }
+        if (chapter === 1) return Boolean(draft.avoiding.trim() && draft.afraidWontHappen.trim());
         return true;
     }
 
@@ -208,74 +208,59 @@ function renderChapter(
         return (
             <View style={styles.formStack}>
                 <Field label="What name should the voice use?" value={draft.name} onChangeText={(value) => updateDraft("name", value)} placeholder="Your name" />
-                <Field label="Age, only if it helps the story" value={draft.age} onChangeText={(value) => updateDraft("age", value)} placeholder="Age" />
                 <Field label="Where is the signal finding you?" value={draft.city} onChangeText={(value) => updateDraft("city", value)} placeholder="City" />
-                <Field label="What scene are you living through right now?" multiline value={draft.currentChapter} onChangeText={(value) => updateDraft("currentChapter", value)} placeholder="A transition, a rebuild, a quiet beginning, a door you keep circling..." suggestions={chapterNudges.currentChapter} />
+                <Field label="What scene are you living through right now?" multiline value={draft.currentChapter} onChangeText={(value) => updateDraft("currentChapter", value)} placeholder="A transition, a rebuild, a quiet beginning..." suggestions={chapterNudges.currentChapter} />
+                <Text style={styles.optionLabel}>The gravitational pull</Text>
+                <ChipGrid values={Object.keys(arcLabels) as Array<Arc>} selected={draft.primaryArc} labels={arcLabels} onSelect={(value) => updateDraft("primaryArc", value)} />
+                <Field label="If a year from now worked, what would be different?" multiline value={draft.miraculousYear} onChangeText={(value) => updateDraft("miraculousYear", value)} placeholder="The sentence your future self would be proud to say." suggestions={chapterNudges.miraculousYear} />
             </View>
         );
     }
     if (chapter === 1) {
         return (
             <View style={styles.formStack}>
-                <Text style={styles.optionLabel}>The gravitational pull</Text>
-                <ChipGrid values={Object.keys(arcLabels) as Array<Arc>} selected={draft.primaryArc} labels={arcLabels} onSelect={(value) => updateDraft("primaryArc", value)} />
-                <Field label="If a year from now worked, what would be different?" multiline value={draft.miraculousYear} onChangeText={(value) => updateDraft("miraculousYear", value)} placeholder="The sentence your future self would be proud to say out loud." suggestions={chapterNudges.miraculousYear} />
-            </View>
-        );
-    }
-    if (chapter === 2) {
-        return (
-            <View style={styles.formStack}>
                 <Field label="What door are you not opening?" multiline value={draft.avoiding} onChangeText={(value) => updateDraft("avoiding", value)} placeholder="Name it gently. No confession booth energy." suggestions={chapterNudges.avoiding} />
                 <Field label="What future do you almost not let yourself want?" multiline value={draft.afraidWontHappen} onChangeText={(value) => updateDraft("afraidWontHappen", value)} placeholder="The hope under the practical answers." suggestions={chapterNudges.afraidWontHappen} />
-                <Field label="What is stealing signal from you?" multiline value={draft.draining} onChangeText={(value) => updateDraft("draining", value)} placeholder="A pattern, obligation, person, silence, or loop." suggestions={chapterNudges.draining} />
-            </View>
-        );
-    }
-    if (chapter === 3) {
-        return (
-            <View style={styles.formStack}>
-                <Text style={styles.optionLabel}>Choose your timeline</Text>
-                <ChipGrid values={Object.keys(timelineLabels) as Array<Timeline>} selected={draft.timeline} labels={timelineLabels} onSelect={(value) => updateDraft("timeline", value)} />
-                <Text style={styles.optionLabel}>Choose your archetype</Text>
-                <ChipGrid values={Object.keys(archetypeLabels) as Array<Archetype>} selected={draft.archetype} labels={archetypeLabels} onSelect={(value) => updateDraft("archetype", value)} />
-                <Text style={styles.optionLabel}>First voice</Text>
-                <ChipGrid
-                    values={firstVoiceValues}
-                    selected={draft.firstVoice}
-                    labels={firstVoiceLabels}
-                    onSelect={(value) => updateDraft("firstVoice", value)}
-                />
-                <View style={styles.switchRow}>
-                    <View style={styles.switchCopy}>
-                        <Text style={styles.switchTitle}>Let Future Child exist someday</Text>
-                        <Text style={styles.switchText}>Rare, opt-in, and never used casually.</Text>
-                    </View>
-                    <Switch value={draft.futureChildOptIn} onValueChange={(value) => updateDraft("futureChildOptIn", value)} />
-                </View>
             </View>
         );
     }
     return (
         <View style={styles.formStack}>
-            <VoiceChoice
-                active={draft.voicePreset === "ember"}
-                description="Warm, close, certain. The voice that sounds like a hand on your shoulder."
-                name="Ember"
-                onPress={() => updateDraft("voicePreset", "ember")}
+            <Text style={styles.optionLabel}>Choose the voice that returns</Text>
+            <View style={styles.voiceSelectionRow}>
+                <VoiceChoice
+                    active={draft.voicePreset === "ember"}
+                    description="Warm, close, certain."
+                    name="Ember"
+                    onPress={() => updateDraft("voicePreset", "ember")}
+                />
+                <VoiceChoice
+                    active={draft.voicePreset === "atlas"}
+                    description="Grounded and older."
+                    name="Atlas"
+                    onPress={() => updateDraft("voicePreset", "atlas")}
+                />
+                <VoiceChoice
+                    active={draft.voicePreset === "sol"}
+                    description="Soft, bright, prophetic."
+                    name="Sol"
+                    onPress={() => updateDraft("voicePreset", "sol")}
+                />
+            </View>
+            <Text style={styles.optionLabel}>First contact through...</Text>
+            <ChipGrid
+                values={firstVoiceValues}
+                selected={draft.firstVoice}
+                labels={firstVoiceLabels}
+                onSelect={(value) => updateDraft("firstVoice", value)}
             />
-            <VoiceChoice
-                active={draft.voicePreset === "atlas"}
-                description="Grounded and older. Slow enough that the room changes around each sentence."
-                name="Atlas"
-                onPress={() => updateDraft("voicePreset", "atlas")}
-            />
-            <VoiceChoice
-                active={draft.voicePreset === "sol"}
-                description="Soft, bright, quietly prophetic. The signal before dawn."
-                name="Sol"
-                onPress={() => updateDraft("voicePreset", "sol")}
-            />
+            <View style={styles.switchRow}>
+                <View style={styles.switchCopy}>
+                    <Text style={styles.switchTitle}>Future Child opt-in</Text>
+                    <Text style={styles.switchText}>Rare, and only after a long streak.</Text>
+                </View>
+                <Switch value={draft.futureChildOptIn} onValueChange={(value) => updateDraft("futureChildOptIn", value)} />
+            </View>
         </View>
     );
 }
@@ -337,10 +322,9 @@ interface RewardTrailProps {
 
 function RewardTrail({ draft }: RewardTrailProps) {
     const rewards = [
-        { label: "Signal has your name", complete: Boolean(draft.name.trim()) },
-        { label: "Place locked", complete: Boolean(draft.city.trim()) },
-        { label: "Scene has texture", complete: Boolean(draft.currentChapter.trim()) },
-        { label: "Future pull found", complete: Boolean(draft.miraculousYear.trim()) },
+        { label: "Signal locked", complete: Boolean(draft.name.trim() && draft.city.trim()) },
+        { label: "Scene texture", complete: Boolean(draft.currentChapter.trim()) },
+        { label: "Future pull", complete: Boolean(draft.miraculousYear.trim()) },
         { label: "Shadow named", complete: Boolean(draft.avoiding.trim() && draft.afraidWontHappen.trim()) },
     ];
     return (
@@ -404,7 +388,6 @@ function VoiceChoice({ name, description, active, onPress }: VoiceChoiceProps) {
 function getChapterTitle(chapter: number): string {
     const titles = [
         "Someone has been trying to reach you.",
-        "Tell the future what it is pulling toward.",
         "Every good story has a locked room.",
         "Set the distance of the echo.",
         "Choose the voice that returns.",
@@ -414,11 +397,10 @@ function getChapterTitle(chapter: number): string {
 
 function getChapterSubtitle(chapter: number): string {
     const subtitles = [
-        "A transmission cannot find a stranger. Give it just enough texture to recognize you.",
-        "This becomes the gravity of the first season: love, money, purpose, or health.",
+        "A transmission cannot find a stranger. Give it just enough texture to recognize you, and tell it what you're pulling toward.",
         "The shadow is not punishment. It is the part of the story that makes the voice feel real.",
         "Your future self can stand close enough to be practical or far enough to feel mythic.",
-        "Soon this becomes an ElevenLabs voice note. For now, choose the emotional frequency.",
+        "This becomes the voice of your first transmission. If audio is configured, ElevenLabs speaks it. If not, the signal still arrives in text.",
     ];
     return subtitles[chapter];
 }
@@ -610,6 +592,9 @@ const styles = StyleSheet.create({
     switchText: {
         color: "#8F96B4",
         marginTop: 3,
+    },
+    voiceSelectionRow: {
+        gap: 10,
     },
     voiceCard: {
         flexDirection: "row",

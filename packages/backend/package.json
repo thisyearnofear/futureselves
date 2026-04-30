@@ -5,6 +5,7 @@
     "scripts": {
         "dev": "convex dev --env-file ../../.env",
         "deploy": "convex deploy --env-file ../../.env",
+        "typecheck": "tsc --noEmit",
         "test": "vitest run",
         "lint": "eslint ."
     },

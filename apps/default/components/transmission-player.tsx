@@ -1,6 +1,8 @@
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { WebView } from "react-native-webview";
+import * as Haptics from "expo-haptics";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import type { TransmissionState } from "@/lib/futureself";
 import { formatCastMember } from "@/lib/futureself";
 
@@ -18,11 +20,15 @@ export function TransmissionPlayer({ transmission }: TransmissionPlayerProps) {
                 </View>
                 <View style={styles.livePill}>
                     <View style={styles.liveDot} />
-                    <Text style={styles.liveText}>transmission</Text>
+                    <Text style={styles.liveText}>{transmission.audioUrl ? "transmission" : "text signal"}</Text>
                 </View>
             </View>
 
-            {transmission.audioUrl ? <AudioPlayer audioUrl={transmission.audioUrl} title={transmission.title} /> : <PendingAudio />}
+            {transmission.audioUrl ? (
+                <AudioPlayer audioUrl={transmission.audioUrl} title={transmission.title} />
+            ) : (
+                <TransmissionFallback status={transmission.status} />
+            )}
 
             <Text style={styles.body}>{transmission.text}</Text>
             <View style={styles.cliffhangerCard}>
@@ -33,54 +39,109 @@ export function TransmissionPlayer({ transmission }: TransmissionPlayerProps) {
     );
 }
 
-interface NativeAudioPlayerProps {
+interface AudioPlayerProps {
     audioUrl: string;
     title: string;
 }
 
-function AudioPlayer({ audioUrl, title }: NativeAudioPlayerProps) {
-    if (Platform.OS === "web") return <WebAudioFallback audioUrl={audioUrl} title={title} />;
-    return <NativeAudioPlayer audioUrl={audioUrl} title={title} />;
+function AudioPlayer({ audioUrl, title }: AudioPlayerProps) {
+    if (Platform.OS === "web") return <WebAudioPlayer audioUrl={audioUrl} title={title} />;
+    return <NativeAudioPlayer audioUrl={audioUrl} />;
 }
 
-function WebAudioFallback({ audioUrl, title }: NativeAudioPlayerProps) {
+function WebAudioPlayer({ audioUrl, title }: AudioPlayerProps) {
     return (
         <View style={styles.playerShell}>
-            <Pressable onPress={() => Linking.openURL(audioUrl)} style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}>
+            <Pressable
+                onPress={() => Linking.openURL(audioUrl)}
+                style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
+            >
                 <Ionicons name="play" size={22} color="#101320" />
             </Pressable>
             <View style={styles.progressColumn}>
                 <Text style={styles.pendingTitle}>{title}</Text>
-                <Text style={styles.pendingText}>Open the voice transmission in a new tab.</Text>
+                <Text style={styles.pendingText}>Open the spoken transmission in a new tab.</Text>
             </View>
         </View>
     );
 }
 
-function NativeAudioPlayer({ audioUrl, title }: NativeAudioPlayerProps) {
-    const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"/><style>body{margin:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}audio{width:100%;height:44px;accent-color:#F7D38B;} .label{color:#8F96B4;font-size:12px;margin-top:8px;}</style></head><body><audio controls preload="metadata" src="${audioUrl}" title="${title.replace(/"/g, "&quot;")}"></audio><div class="label">ElevenLabs voice transmission</div></body></html>`;
+function NativeAudioPlayer({ audioUrl }: { audioUrl: string }) {
+    const player = useAudioPlayer(audioUrl);
+    const status = useAudioPlayerStatus(player);
+    const [hasStarted, setHasStarted] = useState(false);
+
+    useEffect(() => {
+        if (status.playbackState === "playing") {
+            setHasStarted(true);
+        }
+    }, [status.playbackState]);
+
+    async function togglePlayback() {
+        if (status.playbackState === "playing") {
+            player.pause();
+        } else {
+            if (Platform.OS !== "web") await Haptics.selectionAsync();
+            player.play();
+        }
+    }
+
+    const progress = status.duration > 0 ? status.currentTime / status.duration : 0;
 
     return (
-        <View style={styles.webPlayerShell}>
-            <WebView
-                originWhitelist={["*"]}
-                source={{ html }}
-                style={styles.webPlayer}
-                scrollEnabled={false}
-            />
+        <View style={styles.nativePlayerShell}>
+            <Pressable onPress={togglePlayback} style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}>
+                <Ionicons name={status.playbackState === "playing" ? "pause" : "play"} size={24} color="#101320" />
+            </Pressable>
+
+            <View style={styles.playerControls}>
+                <View style={styles.playerStatusRow}>
+                    <Text style={styles.playerStatusText}>
+                        {status.playbackState === "playing" ? "Listening to the future..." : hasStarted ? "Transmission paused" : "Signal ready"}
+                    </Text>
+                    <Text style={styles.timeText}>{formatTime(status.currentTime)} / {formatTime(status.duration)}</Text>
+                </View>
+
+                <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+                </View>
+            </View>
         </View>
     );
 }
 
-function PendingAudio() {
+function formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function TransmissionFallback({ status }: { status: TransmissionState["status"] }) {
+    if (status === "generating") {
+        return (
+            <View style={styles.playerShell}>
+                <View style={[styles.playButton, styles.playButtonMuted]}>
+                    <ActivityIndicator color="#F7D38B" />
+                </View>
+                <View style={styles.progressColumn}>
+                    <Text style={styles.pendingTitle}>The voice is being woven...</Text>
+                    <Text style={styles.pendingText}>ElevenLabs is synthesizing your transmission. It will appear here in a moment.</Text>
+                </View>
+            </View>
+        );
+    }
+
+    const isFailed = status === "failed";
     return (
         <View style={styles.playerShell}>
             <View style={[styles.playButton, styles.playButtonMuted]}>
-                <Ionicons name="radio" size={22} color="#F7D38B" />
+                <Ionicons name={isFailed ? "alert-circle-outline" : "document-text-outline"} size={22} color="#F7D38B" />
             </View>
             <View style={styles.progressColumn}>
-                <Text style={styles.pendingTitle}>Audio is being woven.</Text>
-                <Text style={styles.pendingText}>When ElevenLabs returns the voice, playback appears here.</Text>
+                <Text style={styles.pendingTitle}>{isFailed ? "Voice rendering stalled." : "Text-only signal."}</Text>
+                <Text style={styles.pendingText}>
+                    {isFailed ? "The written transmission still landed." : "Spoken playback appears if ElevenLabs is configured."}
+                </Text>
             </View>
         </View>
     );
@@ -137,20 +198,47 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: "800",
     },
-    webPlayerShell: {
-        minHeight: 78,
-        overflow: "hidden",
+    nativePlayerShell: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 16,
+        padding: 16,
         borderRadius: 24,
         borderCurve: "continuous",
         backgroundColor: "rgba(9,11,24,0.62)",
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.08)",
-        padding: 12,
     },
-    webPlayer: {
+    playerControls: {
         flex: 1,
-        minHeight: 54,
-        backgroundColor: "transparent",
+        gap: 10,
+    },
+    playerStatusRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
+    playerStatusText: {
+        color: "#F8F0DE",
+        fontSize: 13,
+        fontWeight: "800",
+    },
+    timeText: {
+        color: "#8F96B4",
+        fontSize: 11,
+        fontWeight: "700",
+        fontVariant: ["tabular-nums"],
+    },
+    progressBarBg: {
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: "rgba(255,255,255,0.1)",
+        overflow: "hidden",
+    },
+    progressBarFill: {
+        height: "100%",
+        backgroundColor: "#F7D38B",
+        borderRadius: 3,
     },
     playerShell: {
         flexDirection: "row",
@@ -177,26 +265,6 @@ const styles = StyleSheet.create({
     progressColumn: {
         flex: 1,
         gap: 8,
-    },
-    waveRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 3,
-        minHeight: 32,
-    },
-    waveBar: {
-        flex: 1,
-        maxWidth: 5,
-        borderRadius: 3,
-        backgroundColor: "rgba(247,240,222,0.18)",
-    },
-    waveBarActive: {
-        backgroundColor: "#F7D38B",
-    },
-    duration: {
-        color: "#8F96B4",
-        fontSize: 12,
-        fontVariant: ["tabular-nums"],
     },
     pendingTitle: {
         color: "#F8F0DE",

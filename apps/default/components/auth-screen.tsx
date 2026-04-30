@@ -81,13 +81,13 @@ export function AuthScreen() {
                     <Text style={styles.eyebrow}>future self / interactive fiction</Text>
                     <Text style={styles.title}>A voice note from the person you are becoming.</Text>
                     <Text style={styles.subtitle}>
-                        Begin with a few intimate prompts. Then receive a daily spoken transmission that turns your real life into an unfolding story.
+                        Begin with a few intimate prompts in about a minute. Then receive a daily transmission — spoken when audio is available, always readable when it is not.
                     </Text>
 
                     <View style={styles.promiseStack}>
                         <PromiseRow icon="book-outline" text="A novel-like onboarding sequence, not a login wall." />
-                        <PromiseRow icon="mic-outline" text="Your first future voice is generated from what you reveal." />
-                        <PromiseRow icon="sparkles-outline" text="Daily choices unlock new voices from the life ahead." />
+                        <PromiseRow icon="mic-outline" text="Your first signal respects the voice you choose in the prologue." />
+                        <PromiseRow icon="sparkles-outline" text="Daily choices and streaks decide which future voices unlock next." />
                     </View>
 
                     <Pressable disabled={isBusy} onPress={handleStartPrologue} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
@@ -104,7 +104,7 @@ export function AuthScreen() {
                     <View style={styles.accountCard}>
                         <Text style={styles.accountTitle}>Optional account</Text>
                         <Text style={styles.accountCopy}>
-                            You can play first. Connect an account only when you want persistence and richer context.
+                            You can play first. Add an account when you want cross-session persistence and a safer long-running timeline.
                         </Text>
 
                         <View style={styles.modeRow}>
