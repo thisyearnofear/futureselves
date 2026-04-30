@@ -13,7 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAction, useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn, FadeInUp, FadeOut, ScaleInCenter } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInUp, FadeOut, ZoomIn } from "react-native-reanimated";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import type { Choice, ConstellationStar, GameState, PersonaState } from "@/lib/futureself";
@@ -180,7 +180,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                 </Animated.View>
 
                 {state.todayTransmission ? (
-                    <Animated.View entering={ScaleInCenter.duration(400).springify().damping(15)}>
+                    <Animated.View entering={ZoomIn.duration(400).springify().damping(15)}>
                         <TransmissionPlayer transmission={state.todayTransmission} />
                     </Animated.View>
                 ) : (
@@ -463,6 +463,34 @@ function getNextUnlock(persona: PersonaState, constellation: Array<Constellation
         future_stranger: persona.streak >= 100 ? candidate.unlockHint : `${Math.max(1, 100 - persona.streak)} more daily check-in${100 - persona.streak === 1 ? "" : "s"}`,
         alternate_self: persona.streak >= 60 ? candidate.unlockHint : `${Math.max(1, 60 - persona.streak)} more daily check-in${60 - persona.streak === 1 ? "" : "s"}`,
         shadow: persona.timelineDivergenceScore >= 4 ? "The shadow is close enough to speak." : `Let the timeline drift a little more before this voice appears.`,
+        the_ceiling: persona.streak >= 14
+            ? candidate.unlockHint
+            : `${Math.max(1, 14 - persona.streak)} more check-in${14 - persona.streak === 1 ? "" : "s"} (and the path feels safe)`,
+        the_flatlined: persona.streak >= 7
+            ? candidate.unlockHint
+            : `${Math.max(1, 7 - persona.streak)} more check-in${7 - persona.streak === 1 ? "" : "s"} (make 2 release choices)`,
+        the_resentee: persona.primaryArc === "love"
+            ? candidate.unlockHint
+            : "Choose Love as your primary arc.",
+        the_grandfather: persona.timeline === "10_years" && persona.streak >= 60
+            ? candidate.unlockHint
+            : persona.timeline !== "10_years"
+                ? "Shift your timeline to 10 years."
+                : `${Math.max(1, 60 - persona.streak)} more check-in${60 - persona.streak === 1 ? "" : "s"}`,
+        the_exhausted_winner: persona.primaryArc === "money" && persona.streak >= 30
+            ? candidate.unlockHint
+            : persona.primaryArc !== "money"
+                ? "Choose Money as your primary arc."
+                : `${Math.max(1, 30 - persona.streak)} more business-arc day${30 - persona.streak === 1 ? "" : "s"}`,
+        the_ghost: persona.streak >= 7
+            ? candidate.unlockHint
+            : `${Math.max(1, 7 - persona.streak)} more check-in${7 - persona.streak === 1 ? "" : "s"} (and let divergence grow)`,
+        the_disappointed_healer: persona.primaryArc === "health"
+            ? candidate.unlockHint
+            : "Choose Health as your primary arc.",
+        the_dissolver: persona.streak >= 14
+            ? candidate.unlockHint
+            : `${Math.max(1, 14 - persona.streak)} more check-in${14 - persona.streak === 1 ? "" : "s"} (and make a release choice)`,
     };
 
     return {

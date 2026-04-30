@@ -11,7 +11,15 @@ export type CastMember =
     | "future_child"
     | "future_stranger"
     | "alternate_self"
-    | "shadow";
+    | "shadow"
+    | "the_ceiling"
+    | "the_flatlined"
+    | "the_resentee"
+    | "the_grandfather"
+    | "the_exhausted_winner"
+    | "the_ghost"
+    | "the_disappointed_healer"
+    | "the_dissolver";
 export type Choice = "toward" | "steady" | "release" | "repair";
 
 export interface PersonaState {
@@ -41,6 +49,7 @@ export interface PersonaState {
     lastCheckInDateKey?: string;
     lastTransmissionDateKey?: string;
     timelineDivergenceScore: number;
+    activeUnchosenSelves: Array<CastMember>;
 }
 
 export interface CheckInState {
@@ -125,6 +134,14 @@ export function formatCastMember(castMember: CastMember): string {
         future_stranger: "Future Stranger",
         alternate_self: "Alternate Self",
         shadow: "The Shadow",
+        the_ceiling: "The Ceiling",
+        the_flatlined: "The Flatlined",
+        the_resentee: "The Resentee",
+        the_grandfather: "The Grandfather",
+        the_exhausted_winner: "The Exhausted Winner",
+        the_ghost: "The Ghost",
+        the_disappointed_healer: "The Disappointed Healer",
+        the_dissolver: "The Dissolver",
     };
     return labels[castMember];
 }

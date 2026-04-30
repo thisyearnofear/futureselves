@@ -46,12 +46,12 @@ export function TransmissionPlayer({ transmission }: TransmissionPlayerProps) {
 interface AudioPlayerProps {
     audioUrl: string;
     title: string;
-    castMember: string;
+    castMember?: string;
 }
 
 function AudioPlayer({ audioUrl, title, castMember }: AudioPlayerProps) {
-    if (Platform.OS === "web") return <WebAudioPlayer audioUrl={audioUrl} title={title} />;
-    return <NativeAudioPlayer audioUrl={audioUrl} castMember={castMember} />;
+    if (Platform.OS === "web") return <WebAudioPlayer audioUrl={audioUrl} title={title} castMember={castMember} />;
+    return <NativeAudioPlayer audioUrl={audioUrl} castMember={castMember ?? ""} />;
 }
 
 function WebAudioPlayer({ audioUrl, title }: AudioPlayerProps) {
@@ -77,8 +77,8 @@ function NativeAudioPlayer({ audioUrl, castMember }: { audioUrl: string; castMem
     const [hasStarted, setHasStarted] = useState(false);
 
     // Dynamic ambient loop based on cast member
-    const ambientUrl = getAmbientUrl(castMember);
-    const ambientPlayer = useAudioPlayer(ambientUrl);
+    const ambientSource = getAmbientSource(castMember);
+    const ambientPlayer = useAudioPlayer(ambientSource);
     
     useEffect(() => {
         if (ambientPlayer) {
@@ -129,17 +129,17 @@ function NativeAudioPlayer({ audioUrl, castMember }: { audioUrl: string; castMem
     );
 }
 
-function getAmbientUrl(castMember: string): string {
-    // These should be replaced with actual assets in /assets/audio/
-    const baseUrl = "https://your-deployment.convex.site/ambient/";
-    const mapping: Record<string, string> = {
-        future_self: "room-tone.mp3",
-        future_partner: "tender-pads.mp3",
-        future_mentor: "spacious-hum.mp3",
-        shadow: "shadow-wind.mp3",
-        alternate_self: "uncanny-resonance.mp3",
-    };
-    return baseUrl + (mapping[castMember] || "room-tone.mp3");
+const ambientAssets: Record<string, number> = {
+    future_self: require("@/assets/audio/room-tone.mp3"),
+    future_partner: require("@/assets/audio/tender-pads.mp3"),
+    future_mentor: require("@/assets/audio/spacious-hum.mp3"),
+    shadow: require("@/assets/audio/shadow-wind.mp3"),
+    alternate_self: require("@/assets/audio/uncanny-resonance.mp3"),
+};
+const defaultAmbient: number = require("@/assets/audio/room-tone.mp3");
+
+function getAmbientSource(castMember: string): number {
+    return ambientAssets[castMember] ?? defaultAmbient;
 }
 
 function formatTime(seconds: number): string {
