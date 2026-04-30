@@ -34,6 +34,14 @@ const castMemberValidator = v.union(
     v.literal("future_stranger"),
     v.literal("alternate_self"),
     v.literal("shadow"),
+    v.literal("the_ceiling"),
+    v.literal("the_flatlined"),
+    v.literal("the_resentee"),
+    v.literal("the_grandfather"),
+    v.literal("the_exhausted_winner"),
+    v.literal("the_ghost"),
+    v.literal("the_disappointed_healer"),
+    v.literal("the_dissolver"),
 );
 
 export default defineSchema({
@@ -65,6 +73,7 @@ export default defineSchema({
         lastCheckInDateKey: v.optional(v.string()),
         lastTransmissionDateKey: v.optional(v.string()),
         timelineDivergenceScore: v.number(),
+        activeUnchosenSelves: v.array(castMemberValidator),
         createdAt: v.number(),
         updatedAt: v.number(),
     }).index("by_userId", ["userId"]),

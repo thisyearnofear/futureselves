@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Platform,
     Pressable,
     ScrollView,
@@ -12,7 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAction, useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn, FadeInUp, FadeOut } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInUp, FadeOut, ScaleInCenter } from "react-native-reanimated";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import type { Choice, ConstellationStar, GameState, PersonaState } from "@/lib/futureself";
@@ -56,6 +57,11 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
     const saveCheckIn = useMutation(api.game.saveCheckIn);
     const recordChoice = useMutation(api.game.recordChoice);
     const generateTransmission = useAction(api.game.generateDailyTransmission);
+    
+    // Debug mutations
+    const debugReset = useMutation(api.game.debugResetPersona);
+    const debugSetState = useMutation(api.game.debugSetGameState);
+
     const [word, setWord] = useState(state.todayCheckIn?.word ?? "");
     const [note, setNote] = useState(state.todayCheckIn?.note ?? "");
     const [isReceiving, setIsReceiving] = useState(false);
@@ -63,6 +69,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
     const [error, setError] = useState<string | null>(null);
     const [showFlare, setShowFlare] = useState(false);
     const [flareColor, setFlareColor] = useState("#F7D38B");
+    const [debugTapCount, setDebugTapCount] = useState(0);
 
     const persona = state.persona;
     const litVoices = state.constellation.filter((star) => star.state === "lit" || star.state === "dim");
@@ -105,12 +112,35 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                 prompt: state.todayTransmission.actionPrompt,
             });
             if (Platform.OS !== "web") await Haptics.selectionAsync();
-            
-            // Trigger the visual payoff for 2 seconds
             setTimeout(() => setShowFlare(false), 2000);
         } catch (caughtError) {
             setError(caughtError instanceof Error ? caughtError.message : "Could not log choice.");
             setShowFlare(false);
+        }
+    }
+
+    function handleDebugTap() {
+        const newCount = debugTapCount + 1;
+        if (newCount >= 3) {
+            setDebugTapCount(0);
+            if (Platform.OS === "web") {
+                const cmd = window.prompt("DEBUG: reset | streak | shadow | clear");
+                if (cmd === "reset") debugReset();
+                if (cmd === "streak") debugSetState({ streak: 30 });
+                if (cmd === "shadow") debugSetState({ divergence: 6 });
+                if (cmd === "clear") debugSetState({ clearToday: true });
+            } else {
+                Alert.alert("Debug Menu", "Stage the demo recording", [
+                    { text: "Reset Persona", onPress: () => debugReset() },
+                    { text: "Force 30-Day Streak", onPress: () => debugSetState({ streak: 30 }) },
+                    { text: "Force Shadow Mode", onPress: () => debugSetState({ divergence: 6 }) },
+                    { text: "Clear Today", onPress: () => debugSetState({ clearToday: true }) },
+                    { text: "Cancel", style: "cancel" },
+                ]);
+            }
+        } else {
+            setDebugTapCount(newCount);
+            setTimeout(() => setDebugTapCount(0), 2000);
         }
     }
 
@@ -119,10 +149,12 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
             <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled">
                 <Animated.View entering={Platform.OS === "web" ? undefined : FadeInUp.duration(260)} style={styles.hero}>
                     <View style={styles.heroTopRow}>
-                        <View style={styles.signalBadge}>
-                            <View style={styles.liveDot} />
-                            <Text style={styles.signalBadgeText}>daily signal</Text>
-                        </View>
+                        <Pressable onPress={handleDebugTap}>
+                            <View style={styles.signalBadge}>
+                                <View style={styles.liveDot} />
+                                <Text style={styles.signalBadgeText}>daily signal</Text>
+                            </View>
+                        </Pressable>
                         <Pressable onPress={() => signOut()} style={styles.signOutButton}>
                             <Ionicons name="log-out-outline" size={18} color="#C5CCE6" />
                         </Pressable>
@@ -148,7 +180,9 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                 </Animated.View>
 
                 {state.todayTransmission ? (
-                    <TransmissionPlayer transmission={state.todayTransmission} />
+                    <Animated.View entering={ScaleInCenter.duration(400).springify().damping(15)}>
+                        <TransmissionPlayer transmission={state.todayTransmission} />
+                    </Animated.View>
                 ) : (
                     <Animated.View entering={Platform.OS === "web" ? undefined : FadeInUp.delay(80).duration(260)} style={styles.receiveCard}>
                         <View style={styles.receiveHeader}>
@@ -196,7 +230,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                 )}
 
                 {state.todayTransmission ? (
-                    <View style={styles.choiceCard}>
+                    <Animated.View entering={FadeInUp.delay(300)} style={styles.choiceCard}>
                         <Text style={styles.sectionTitle}>Choose the timeline lean.</Text>
                         <Text style={styles.sectionCopy}>{state.todayTransmission.actionPrompt}</Text>
                         <View style={styles.choiceGrid}>
@@ -219,7 +253,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                             <Ionicons name="git-compare-outline" size={16} color="#AEB6D4" />
                             <Text style={styles.contextNoteText}>Toward, repair, and release help the timeline settle. Skipping the lean leaves more room for the shadow later.</Text>
                         </View>
-                    </View>
+                    </Animated.View>
                 ) : null}
 
                 <View style={styles.unlockCard}>
@@ -766,9 +800,6 @@ const styles = StyleSheet.create({
         backgroundColor: "#F7D38B",
         alignItems: "center",
         justifyContent: "center",
-    },
-    nextUnlockBadgeActive: {
-        backgroundColor: "#F7D38B",
     },
     nextUnlockCopy: {
         flex: 1,

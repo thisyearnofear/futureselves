@@ -36,6 +36,14 @@ const castMemberValidator = v.union(
   v.literal("future_stranger"),
   v.literal("alternate_self"),
   v.literal("shadow"),
+  v.literal("the_ceiling"),
+  v.literal("the_flatlined"),
+  v.literal("the_resentee"),
+  v.literal("the_grandfather"),
+  v.literal("the_exhausted_winner"),
+  v.literal("the_ghost"),
+  v.literal("the_disappointed_healer"),
+  v.literal("the_dissolver"),
 );
 
 const choiceValidator = v.union(
@@ -162,7 +170,15 @@ type CastMember =
   | "future_child"
   | "future_stranger"
   | "alternate_self"
-  | "shadow";
+  | "shadow"
+  | "the_ceiling"
+  | "the_flatlined"
+  | "the_resentee"
+  | "the_grandfather"
+  | "the_exhausted_winner"
+  | "the_ghost"
+  | "the_disappointed_healer"
+  | "the_dissolver";
 type Choice = "toward" | "steady" | "release" | "repair";
 
 interface PersonaReturn {
