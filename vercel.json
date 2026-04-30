@@ -1,0 +1,5 @@
+{
+    "buildCommand": "turbo run build --filter=@bloom/mobile",
+    "outputDirectory": "apps/default/dist",
+    "installCommand": "npm install"
+}

@@ -11,6 +11,7 @@
     "web": "expo start --web",
     "dev": "expo start",
     "typecheck": "tsc --noEmit",
+    "build": "npx expo export --platform web",
     "lint": "expo lint"
   },
   "dependencies": {
