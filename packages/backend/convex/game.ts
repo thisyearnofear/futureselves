@@ -1355,3 +1355,54 @@ function isPreviousDateKey(previous: string, current: string): boolean {
   const diff = currentDate.getTime() - previousDate.getTime();
   return diff > 0 && diff <= 36 * 60 * 60 * 1000;
 }
+
+export const debugResetPersona = authMutation({
+    args: {},
+    handler: async (ctx) => {
+        const persona = await ctx.db
+            .query("personas")
+            .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
+            .unique();
+        if (persona) {
+            await ctx.db.delete(persona._id);
+            const checkIns = await ctx.db.query("checkIns").withIndex("by_userId", q => q.eq("userId", ctx.user._id)).collect();
+            for (const c of checkIns) await ctx.db.delete(c._id);
+            const transmissions = await ctx.db.query("transmissions").withIndex("by_userId", q => q.eq("userId", ctx.user._id)).collect();
+            for (const t of transmissions) await ctx.db.delete(t._id);
+            const threads = await ctx.db.query("narrativeThreads").withIndex("by_userId", q => q.eq("userId", ctx.user._id)).collect();
+            for (const th of threads) await ctx.db.delete(th._id);
+            const choices = await ctx.db.query("choices").withIndex("by_userId", q => q.eq("userId", ctx.user._id)).collect();
+            for (const ch of choices) await ctx.db.delete(ch._id);
+        }
+    },
+});
+
+export const debugSetGameState = authMutation({
+    args: {
+        streak: v.optional(v.number()),
+        divergence: v.optional(v.number()),
+        clearToday: v.optional(v.boolean()),
+    },
+    handler: async (ctx, args) => {
+        const persona = await ctx.db
+            .query("personas")
+            .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
+            .unique();
+        if (!persona) return;
+
+        await ctx.db.patch(persona._id, {
+            streak: args.streak ?? persona.streak,
+            timelineDivergenceScore: args.divergence ?? persona.timelineDivergenceScore,
+            lastTransmissionDateKey: args.clearToday ? undefined : persona.lastTransmissionDateKey,
+            lastCheckInDateKey: args.clearToday ? undefined : persona.lastCheckInDateKey,
+        });
+
+        if (args.clearToday) {
+            const dateKey = new Date().toISOString().split("T")[0];
+            const todayT = await ctx.db.query("transmissions").withIndex("by_userId_and_dateKey", q => q.eq("userId", ctx.user._id).eq("dateKey", dateKey)).unique();
+            if (todayT) await ctx.db.delete(todayT._id);
+            const todayC = await ctx.db.query("checkIns").withIndex("by_userId_and_dateKey", q => q.eq("userId", ctx.user._id).eq("dateKey", dateKey)).unique();
+            if (todayC) await ctx.db.delete(todayC._id);
+        }
+    },
+});

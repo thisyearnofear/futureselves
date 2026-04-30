@@ -110,7 +110,7 @@ function NativeAudioPlayer({ audioUrl, castMember }: { audioUrl: string; castMem
     return (
         <View style={styles.nativePlayerShell}>
             <Pressable onPress={togglePlayback} style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}>
-                <Ionicons name={status.playbackState === "playing" ? "pause" : "play"} size={24} color="#101320" />
+                <Ionicons name={status.playbackState === "playing" ? "pause" : "play"} size={28} color="#101320" />
             </Pressable>
 
             <View style={styles.playerControls}>
@@ -284,12 +284,17 @@ const styles = StyleSheet.create({
         borderColor: "rgba(255,255,255,0.08)",
     },
     playButton: {
-        width: 54,
-        height: 54,
-        borderRadius: 27,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: "#F7D38B",
+        shadowColor: "#F7D38B",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 4,
     },
     playButtonMuted: {
         backgroundColor: "rgba(247,211,139,0.12)",
