@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,10 +14,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAction, useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import Animated, {
+  Easing,
   FadeIn,
   FadeInUp,
   FadeOut,
   ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
 } from "react-native-reanimated";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
@@ -107,6 +112,10 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
   const [showFlare, setShowFlare] = useState(false);
   const [flareColor, setFlareColor] = useState("#F7D38B");
   const [debugTapCount, setDebugTapCount] = useState(0);
+  const [celebrateNextTransmission, setCelebrateNextTransmission] =
+    useState(false);
+  const [showTransmissionArrival, setShowTransmissionArrival] = useState(false);
+  const arrivalPulse = useSharedValue(0);
 
   const persona = state.persona;
   const litVoices = state.constellation.filter(
@@ -126,6 +135,48 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
     [state.recentTransmissions, state.todayTransmission],
   );
 
+  const transmissionArrivalGlow = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + arrivalPulse.value * 0.08 }],
+    opacity: 0.24 + arrivalPulse.value * 0.42,
+  }));
+
+  const transmissionArrivalCore = useAnimatedStyle(() => ({
+    transform: [{ scale: 0.96 + arrivalPulse.value * 0.06 }],
+    opacity: 0.3 + arrivalPulse.value * 0.5,
+  }));
+
+  useEffect(() => {
+    if (
+      !celebrateNextTransmission ||
+      !state.todayTransmission ||
+      state.todayTransmission.status === "generating"
+    ) {
+      return;
+    }
+
+    setShowTransmissionArrival(true);
+    arrivalPulse.value = 0;
+    arrivalPulse.value = withRepeat(
+      withTiming(1, {
+        duration: 1100,
+        easing: Easing.inOut(Easing.quad),
+      }),
+      2,
+      true,
+    );
+
+    if (Platform.OS !== "web") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+
+    const timeout = setTimeout(() => {
+      setShowTransmissionArrival(false);
+      setCelebrateNextTransmission(false);
+    }, 1800);
+
+    return () => clearTimeout(timeout);
+  }, [arrivalPulse, celebrateNextTransmission, state.todayTransmission]);
+
   async function handleReceive() {
     setError(null);
     const trimmedWord = word.trim();
@@ -133,6 +184,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
       setError("Give today one word first. It becomes the key in the signal.");
       return;
     }
+    setCelebrateNextTransmission(true);
     setIsReceiving(true);
     try {
       await saveCheckIn({
@@ -144,11 +196,8 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
         dateKey,
         localNow: new Date().toLocaleString(),
       });
-      if (Platform.OS !== "web")
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
     } catch (caughtError) {
+      setCelebrateNextTransmission(false);
       setError(
         caughtError instanceof Error
           ? caughtError.message
@@ -275,8 +324,46 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
         {state.todayTransmission ? (
           <Animated.View
             entering={ZoomIn.duration(400).springify().damping(15)}
+            style={styles.transmissionShell}
           >
             <TransmissionPlayer transmission={state.todayTransmission} />
+            {showTransmissionArrival ? (
+              <Animated.View
+                entering={FadeIn.duration(240)}
+                exiting={FadeOut.duration(520)}
+                pointerEvents="none"
+                style={styles.transmissionArrivalOverlay}
+              >
+                <Animated.View
+                  style={[
+                    styles.transmissionArrivalGlow,
+                    transmissionArrivalGlow,
+                  ]}
+                />
+                <Animated.View
+                  style={[
+                    styles.transmissionArrivalCore,
+                    transmissionArrivalCore,
+                  ]}
+                />
+                <View style={styles.transmissionArrivalBadge}>
+                  <View style={styles.transmissionArrivalDot} />
+                  <Text style={styles.transmissionArrivalEyebrow}>
+                    Transmission received
+                  </Text>
+                </View>
+                <Text style={styles.transmissionArrivalTitle}>
+                  {state.todayTransmission.audioUrl
+                    ? "The voice has arrived."
+                    : "The signal has landed."}
+                </Text>
+                <Text style={styles.transmissionArrivalCopy}>
+                  {state.todayTransmission.audioUrl
+                    ? "Pause for a breath, then press play."
+                    : "Read slowly. The next choice still changes tomorrow."}
+                </Text>
+              </Animated.View>
+            ) : null}
           </Animated.View>
         ) : (
           <Animated.View
@@ -461,13 +548,14 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                 <Text style={styles.futureSelfPlusBadgeText}>FutureSelf+</Text>
               </View>
               <Text style={styles.futureSelfPlusTitle}>
-                Post-launch premium layer
+                The wider constellation
               </Text>
             </View>
             <Text style={styles.futureSelfPlusCopy}>
-              The core ritual stays free. FutureSelf+ is where rarer voices,
-              richer sound worlds, and deeper continuity can live later without
-              cluttering the main loop now.
+              The core ritual stays clean and free. FutureSelf+ is where the
+              wider mythology can expand later: rarer voices, stranger
+              timelines, and richer atmospheres that deepen the world without
+              interrupting the daily practice.
             </Text>
             <View style={styles.futureSelfPlusList}>
               {futureSelfPlusPreview.constellation.map((item) => (
@@ -526,12 +614,12 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                     FutureSelf+
                   </Text>
                 </View>
-                <Text style={styles.futureSelfPlusTitle}>Archive concept</Text>
+                <Text style={styles.futureSelfPlusTitle}>Archive depth</Text>
               </View>
               <Text style={styles.futureSelfPlusCopy}>
-                If we monetize later, the best premium surface is depth: a full
-                archive, richer thread memory, and replayable transmissions —
-                not blocking the first emotional payoff.
+                The premium logic is depth, not interruption: a full archive,
+                persistent memory across threads, and replayable transmissions
+                that make the relationship feel cumulative over time.
               </Text>
               <View style={styles.futureSelfPlusList}>
                 {futureSelfPlusPreview.archive.map((item) => (
@@ -919,6 +1007,76 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "900",
     letterSpacing: -0.3,
+  },
+  transmissionShell: {
+    position: "relative",
+  },
+  transmissionArrivalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    borderRadius: 30,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(8,10,23,0.68)",
+    paddingHorizontal: 24,
+  },
+  transmissionArrivalGlow: {
+    position: "absolute",
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: "rgba(247,211,139,0.18)",
+  },
+  transmissionArrivalCore: {
+    position: "absolute",
+    width: 148,
+    height: 148,
+    borderRadius: 74,
+    backgroundColor: "rgba(247,211,139,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.3)",
+  },
+  transmissionArrivalBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: "rgba(247,211,139,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.24)",
+  },
+  transmissionArrivalDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#F7D38B",
+  },
+  transmissionArrivalEyebrow: {
+    color: "#F7D38B",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  transmissionArrivalTitle: {
+    color: "#F8F0DE",
+    fontSize: 28,
+    lineHeight: 30,
+    fontWeight: "900",
+    letterSpacing: -0.8,
+    textAlign: "center",
+  },
+  transmissionArrivalCopy: {
+    maxWidth: 260,
+    color: "#D6DCEF",
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "700",
+    textAlign: "center",
   },
   receiveCard: {
     gap: 14,

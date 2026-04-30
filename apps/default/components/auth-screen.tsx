@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -13,6 +13,36 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useOAuthSignIn } from "@/hooks/use-oauth-sign-in";
+import Animated, {
+    FadeIn,
+    FadeInDown,
+    FadeInUp,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withSequence,
+    withTiming,
+    Easing,
+} from "react-native-reanimated";
+
+const TAGLINE_FULL = "A voice note from the person you are becoming.";
+
+function useTypewriter(text: string, speed = 38, delay = 600) {
+    const [displayed, setDisplayed] = useState("");
+    useEffect(() => {
+        let cancelled = false;
+        let i = 0;
+        const timeout = setTimeout(() => {
+            const interval = setInterval(() => {
+                i++;
+                if (!cancelled) setDisplayed(text.slice(0, i));
+                if (i >= text.length) clearInterval(interval);
+            }, speed);
+        }, delay);
+        return () => { cancelled = true; clearTimeout(timeout); };
+    }, [text, speed, delay]);
+    return displayed;
+}
 
 export function AuthScreen() {
     const { signIn } = useAuthActions();
@@ -25,6 +55,45 @@ export function AuthScreen() {
     const [error, setError] = useState<string | null>(null);
 
     const isBusy = isSubmitting || isOAuthLoading;
+    const tagline = useTypewriter(TAGLINE_FULL);
+
+    // Pulsing orb animation
+    const orbScale = useSharedValue(1);
+    const orbGlow = useSharedValue(0.12);
+    const ringRotation = useSharedValue(0);
+
+    useEffect(() => {
+        orbScale.value = withRepeat(
+            withSequence(
+                withTiming(1.08, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
+            ),
+            -1,
+            true,
+        );
+        orbGlow.value = withRepeat(
+            withSequence(
+                withTiming(0.28, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
+                withTiming(0.12, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
+            ),
+            -1,
+            true,
+        );
+        ringRotation.value = withRepeat(
+            withTiming(360, { duration: 18000, easing: Easing.linear }),
+            -1,
+            false,
+        );
+    }, []);
+
+    const orbAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: orbScale.value }],
+        backgroundColor: `rgba(247,211,139,${orbGlow.value})`,
+    }));
+
+    const ringAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [{ rotate: `${ringRotation.value}deg` }, { scaleX: 1.18 }],
+    }));
 
     async function handlePasswordAuth() {
         if (!email.trim() || !password) {
@@ -67,41 +136,79 @@ export function AuthScreen() {
         }
     }
 
+    const isWeb = Platform.OS === "web";
+
     return (
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.container}>
             <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-                <View style={styles.heroCard}>
-                    <View style={styles.orbitShell}>
-                        <View style={styles.orbitRing} />
-                        <View style={styles.orb}>
-                            <Ionicons name="radio" size={28} color="#F7D38B" />
+                {/* ── Cinematic Hero ── */}
+                <Animated.View entering={isWeb ? undefined : FadeIn.duration(400)} style={styles.heroCard}>
+                    {/* Animated Orb */}
+                    <View style={styles.orbContainer}>
+                        <View style={styles.orbGlow} />
+                        <Animated.View style={[styles.orbitRingOuter, ringAnimatedStyle]} />
+                        <Animated.View style={[styles.orbitRingInner, ringAnimatedStyle]} />
+                        <Animated.View style={[styles.orb, orbAnimatedStyle]}>
+                            <Ionicons name="radio" size={30} color="#F7D38B" />
+                        </Animated.View>
+                    </View>
+
+                    <Animated.Text entering={isWeb ? undefined : FadeInDown.delay(200).duration(600)} style={styles.eyebrow}>
+                        future self
+                    </Animated.Text>
+
+                    {/* Typewriter tagline */}
+                    <View style={styles.taglineContainer}>
+                        <Text style={styles.title}>
+                            {tagline}
+                            <Text style={styles.cursor}>|</Text>
+                        </Text>
+                    </View>
+
+                    <Animated.Text entering={isWeb ? undefined : FadeInDown.delay(800).duration(600)} style={styles.subtitle}>
+                        One minute to begin. A daily voice transmission from your future — spoken aloud or read in silence. Your choices shape who speaks next.
+                    </Animated.Text>
+
+                    {/* Social proof / urgency nudge */}
+                    <Animated.View entering={isWeb ? undefined : FadeInDown.delay(1000).duration(500)} style={styles.socialProof}>
+                        <View style={styles.liveIndicator}>
+                            <View style={styles.liveDot} />
+                            <Text style={styles.liveText}>Interactive fiction experience</Text>
                         </View>
-                    </View>
+                        <Text style={styles.durationHint}>~60 seconds to start · free · no account needed</Text>
+                    </Animated.View>
 
-                    <Text style={styles.eyebrow}>future self / interactive fiction</Text>
-                    <Text style={styles.title}>A voice note from the person you are becoming.</Text>
-                    <Text style={styles.subtitle}>
-                        Begin with a few intimate prompts in about a minute. Then receive a daily transmission — spoken when audio is available, always readable when it is not.
-                    </Text>
+                    {/* Promise stack */}
+                    <Animated.View entering={isWeb ? undefined : FadeInDown.delay(1200).duration(500)} style={styles.promiseStack}>
+                        <PromiseRow icon="headset-outline" text="AI-voiced transmissions that know your name and your mood" />
+                        <PromiseRow icon="git-branch-outline" text="18 future voices unlock based on your daily choices" />
+                        <PromiseRow icon="pulse-outline" text="A living story that evolves with every check-in" />
+                    </Animated.View>
 
-                    <View style={styles.promiseStack}>
-                        <PromiseRow icon="book-outline" text="A novel-like onboarding sequence, not a login wall." />
-                        <PromiseRow icon="mic-outline" text="Your first signal respects the voice you choose in the prologue." />
-                        <PromiseRow icon="sparkles-outline" text="Daily choices and streaks decide which future voices unlock next." />
-                    </View>
+                    {/* Primary CTA */}
+                    <Animated.View entering={isWeb ? undefined : FadeInUp.delay(1400).duration(500)}>
+                        <Pressable disabled={isBusy} onPress={handleStartPrologue} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
+                            {isSubmitting ? (
+                                <ActivityIndicator color="#101320" />
+                            ) : (
+                                <View style={styles.ctaInner}>
+                                    <Ionicons name="play" size={18} color="#101320" />
+                                    <Text style={styles.primaryText}>Begin your prologue</Text>
+                                </View>
+                            )}
+                        </Pressable>
+                        <Text style={styles.ctaSubtext}>No sign-up required — play instantly</Text>
+                    </Animated.View>
 
-                    <Pressable disabled={isBusy} onPress={handleStartPrologue} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-                        {isSubmitting ? <ActivityIndicator color="#101320" /> : <Text style={styles.primaryText}>Start the prologue</Text>}
-                    </Pressable>
-
+                    {/* Account toggle */}
                     <Pressable disabled={isBusy} onPress={() => setIsAccountPanelOpen((current) => !current)} style={styles.accountToggle}>
-                        <Text style={styles.accountToggleText}>{isAccountPanelOpen ? "Hide account options" : "Save progress or return"}</Text>
+                        <Text style={styles.accountToggleText}>{isAccountPanelOpen ? "Hide account options" : "Already playing? Save your timeline"}</Text>
                         <Ionicons name={isAccountPanelOpen ? "chevron-up" : "chevron-down"} size={16} color="#AEB6D4" />
                     </Pressable>
-                </View>
+                </Animated.View>
 
                 {isAccountPanelOpen ? (
-                    <View style={styles.accountCard}>
+                    <Animated.View entering={isWeb ? undefined : FadeInDown.duration(300)} style={styles.accountCard}>
                         <Text style={styles.accountTitle}>Optional account</Text>
                         <Text style={styles.accountCopy}>
                             You can play first. Add an account when you want cross-session persistence and a safer long-running timeline.
@@ -143,7 +250,7 @@ export function AuthScreen() {
                             <Ionicons name="logo-google" size={17} color="#F7F0DF" />
                             <Text style={styles.googleText}>Continue with Google</Text>
                         </Pressable>
-                    </View>
+                    </Animated.View>
                 ) : null}
 
                 {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -180,29 +287,38 @@ const styles = StyleSheet.create({
         gap: 14,
     },
     heroCard: {
-        gap: 16,
+        gap: 18,
         borderRadius: 36,
         borderCurve: "continuous",
         backgroundColor: "rgba(14,17,34,0.82)",
         borderWidth: 1,
         borderColor: "rgba(247,211,139,0.22)",
-        padding: 24,
+        padding: 28,
         boxShadow: "0 24px 70px rgba(0,0,0,0.38)",
     },
-    orbitShell: {
-        width: 92,
-        height: 92,
+    orbContainer: {
+        width: 110,
+        height: 110,
         alignItems: "center",
         justifyContent: "center",
+        alignSelf: "center",
+        marginBottom: 4,
     },
-    orbitRing: {
+    orbitRingOuter: {
         position: "absolute",
-        width: 92,
-        height: 92,
-        borderRadius: 46,
+        width: 110,
+        height: 110,
+        borderRadius: 55,
         borderWidth: 1,
-        borderColor: "rgba(247,211,139,0.24)",
-        transform: [{ scaleX: 1.18 }, { rotate: "-18deg" }],
+        borderColor: "rgba(247,211,139,0.18)",
+    },
+    orbitRingInner: {
+        position: "absolute",
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        borderWidth: 1,
+        borderColor: "rgba(247,211,139,0.12)",
     },
     orb: {
         width: 62,
@@ -210,45 +326,93 @@ const styles = StyleSheet.create({
         borderRadius: 31,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "rgba(247,211,139,0.12)",
         borderWidth: 1,
-        borderColor: "rgba(247,211,139,0.32)",
+        borderColor: "rgba(247,211,139,0.36)",
+    },
+    orbGlow: {
+        position: "absolute",
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: "rgba(247,211,139,0.06)",
     },
     eyebrow: {
         color: "#F7D38B",
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: "900",
-        letterSpacing: 2.1,
+        letterSpacing: 3,
         textTransform: "uppercase",
+        textAlign: "center",
+    },
+    taglineContainer: {
+        minHeight: 90,
     },
     title: {
         color: "#F7F0DF",
-        fontSize: 39,
+        fontSize: 34,
         fontWeight: "900",
-        letterSpacing: -1.45,
-        lineHeight: 42,
+        letterSpacing: -1.2,
+        lineHeight: 40,
+        textAlign: "center",
+    },
+    cursor: {
+        color: "#F7D38B",
+        fontWeight: "300",
     },
     subtitle: {
         color: "#BCC2DA",
-        fontSize: 16,
-        lineHeight: 24,
+        fontSize: 15,
+        lineHeight: 23,
+        textAlign: "center",
+    },
+    socialProof: {
+        alignItems: "center",
+        gap: 6,
+    },
+    liveIndicator: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 7,
+        backgroundColor: "rgba(247,211,139,0.08)",
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    liveDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 3.5,
+        backgroundColor: "#F7D38B",
+    },
+    liveText: {
+        color: "#F7D38B",
+        fontSize: 12,
+        fontWeight: "800",
+        letterSpacing: 0.3,
+    },
+    durationHint: {
+        color: "#767B96",
+        fontSize: 12,
+        fontWeight: "600",
     },
     promiseStack: {
-        gap: 10,
-        paddingVertical: 2,
+        gap: 12,
+        paddingVertical: 4,
     },
     promiseRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 10,
+        gap: 12,
     },
     promiseIcon: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: "rgba(247,211,139,0.1)",
+        borderWidth: 1,
+        borderColor: "rgba(247,211,139,0.15)",
     },
     promiseText: {
         flex: 1,
@@ -265,11 +429,24 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         marginTop: 4,
+        boxShadow: "0 8px 32px rgba(247,211,139,0.25)",
+    },
+    ctaInner: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
     },
     primaryText: {
         color: "#101320",
         fontSize: 17,
         fontWeight: "900",
+    },
+    ctaSubtext: {
+        color: "#767B96",
+        fontSize: 12,
+        fontWeight: "600",
+        textAlign: "center",
+        marginTop: 8,
     },
     accountToggle: {
         minHeight: 42,

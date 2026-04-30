@@ -187,14 +187,14 @@ export const futureSelfPlusCastMembers: Array<CastMember> = [
 
 export const futureSelfPlusPreview = {
   constellation: [
-    "rare voices and alternate timelines",
-    "premium ambient sound worlds",
-    "special event transmissions",
+    "rarer voices from alternate timelines",
+    "cinematic ambient sound worlds",
+    "special event and seasonal transmissions",
   ],
   archive: [
-    "full archive and replayable memories",
-    "searchable timeline history",
-    "alternate voice re-reads",
+    "full transmission archive",
+    "searchable memory and timeline history",
+    "replayable voices and returning threads",
   ],
 } as const;
 
