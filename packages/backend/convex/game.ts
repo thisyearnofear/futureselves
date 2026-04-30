@@ -248,25 +248,86 @@ interface GeneratedTransmission {
   cliffhanger: string;
 }
 
-const voicePresets: Record<
-  string,
-  { voiceId: string; label: string; description: string }
-> = {
-  ember: {
-    voiceId: "21m00Tcm4TlvDq8ikWAM",
-    label: "Ember",
-    description: "warm, intimate, certain",
-  },
-  atlas: {
-    voiceId: "TxGEqnHWrfWFTfGW9XjX",
-    label: "Atlas",
-    description: "grounded, older, steady",
-  },
-  sol: {
-    voiceId: "EXAVITQu4vr4xnSDxMaL",
-    label: "Sol",
-    description: "soft, bright, quietly prophetic",
-  },
+type VoicePreset = "ember" | "atlas" | "sol";
+
+interface VoiceSettings {
+  stability: number;
+  similarityBoost: number;
+  style: number;
+  useSpeakerBoost: boolean;
+}
+
+const voicePresetDefaults: Record<VoicePreset, VoiceSettings> = {
+  ember: { stability: 0.72, similarityBoost: 0.85, style: 0.1, useSpeakerBoost: true },
+  atlas: { stability: 0.78, similarityBoost: 0.88, style: 0.12, useSpeakerBoost: true },
+  sol: { stability: 0.65, similarityBoost: 0.8, style: 0.35, useSpeakerBoost: true },
+};
+
+const voicePresetIds: Record<VoicePreset, string> = {
+  ember: "21m00Tcm4TlvDq8ikWAM",
+  atlas: "TxGEqnHWrfWFTfGW9XjX",
+  sol: "EXAVITQu4vr4xnSDxMaL",
+};
+
+const voicePresetLabels: Record<VoicePreset, string> = {
+  ember: "Ember",
+  atlas: "Atlas",
+  sol: "Sol",
+};
+
+const voicePresetDescriptions: Record<VoicePreset, string> = {
+  ember: "warm, intimate, certain",
+  atlas: "grounded, older, steady",
+  sol: "soft, bright, quietly prophetic",
+};
+
+/** Default voice used for first-contact transmissions (user-selected at onboarding). */
+const defaultVoiceId = voicePresetIds.ember;
+const defaultVoiceSettings = voicePresetDefaults.ember;
+
+/**
+ * Distinct voice IDs per cast member.
+ * Swap these for custom/cloned voices before filming for maximum personality contrast.
+ */
+const castMemberVoiceMap: Record<CastMember, string> = {
+  future_self: "21m00Tcm4TlvDq8ikWAM", // Ember-like: warm, intimate
+  future_best_friend: "pFZP7JQGylIh6mjFyO2a", // Warm, conversational
+  future_mentor: "TXhJ7dX3GJ5bNj6EPJpd", // Measured, slightly older
+  future_partner: "MF3ZGxNSIZHw3HjBFBqu", // Vulnerable, emotionally charged
+  future_employee: "a2HLqOq8XMFZ7V5kWzQf", // Grateful, professional
+  future_customer: "wC6hHJG1mGSpDxHGNzX6", // Changed by something you built
+  future_child: "bIHZnB3eyE6R7V5t7pJn", // Rare, gentle, devastating
+  future_stranger: "kD5hB3fN4eR6H8jL2mQp", // Unknown, moving, uncanny
+  alternate_self: "vN7rEPF2hR8G4sLb3jKc", // Familiar but slightly off
+  shadow: "qW6tFDg1hO3nL9aY5pRs", // Gentle but unsettling
+};
+
+/** Per-character voice settings tuned for personality contrast. */
+const castMemberVoiceSettings: Record<CastMember, VoiceSettings> = {
+  future_self: { stability: 0.72, similarityBoost: 0.85, style: 0.1, useSpeakerBoost: true },
+  future_best_friend: { stability: 0.55, similarityBoost: 0.7, style: 0.38, useSpeakerBoost: false },
+  future_mentor: { stability: 0.78, similarityBoost: 0.88, style: 0.12, useSpeakerBoost: true },
+  future_partner: { stability: 0.48, similarityBoost: 0.72, style: 0.42, useSpeakerBoost: false },
+  future_employee: { stability: 0.74, similarityBoost: 0.82, style: 0.15, useSpeakerBoost: true },
+  future_customer: { stability: 0.7, similarityBoost: 0.8, style: 0.2, useSpeakerBoost: true },
+  future_child: { stability: 0.44, similarityBoost: 0.75, style: 0.45, useSpeakerBoost: false },
+  future_stranger: { stability: 0.65, similarityBoost: 0.72, style: 0.25, useSpeakerBoost: true },
+  alternate_self: { stability: 0.62, similarityBoost: 0.78, style: 0.28, useSpeakerBoost: true },
+  shadow: { stability: 0.68, similarityBoost: 0.65, style: 0.18, useSpeakerBoost: true },
+};
+
+/** Display labels for cast-member voices (used in UI/audio attribution). */
+const castMemberVoiceLabels: Record<CastMember, string> = {
+  future_self: "Future Self",
+  future_best_friend: "Future Best Friend",
+  future_mentor: "Future Mentor",
+  future_partner: "Future Partner",
+  future_employee: "Future Employee",
+  future_customer: "Future Customer",
+  future_child: "Future Child",
+  future_stranger: "Future Stranger",
+  alternate_self: "Alternate Self",
+  shadow: "The Shadow",
 };
 
 function toPersonaReturn(persona: {
@@ -593,20 +654,27 @@ function buildPrompt(
   context: GenerationContext,
   castMember: CastMember,
 ): string {
-  const recentText = context.recentTransmissions
-    .map(
-      (transmission) =>
-        `${transmission.dateKey}: ${transmission.title} — ${transmission.cliffhanger}`,
-    )
+  const recentTransmissions = context.recentTransmissions
+    .map((t) => `${t.dateKey}: ${t.title} (Cliffhanger: ${t.cliffhanger})`)
     .join("\n");
+
+  const previousCheckIn =
+    context.recentTransmissions.length > 0 ? context.checkIn : null;
+
+  const continuityInstruction = previousCheckIn
+    ? `NARRATIVE CONTINUITY: You MUST explicitly reference today's check-in word ("${previousCheckIn.word}") and contrast it with their current chapter or recent choices. If there was a recent choice, acknowledge the "lean" they took.`
+    : "NARRATIVE START: This is the first contact. Make it feel like a long-awaited signal finally breaking through.";
+
   const choices = context.recentChoices
-    .map((choice) => `${choice.dateKey}: ${choice.choice}`)
-    .join(", ");
-  const threads = context.openThreads
-    .map((thread) => `${thread.title}: ${thread.seed}`)
+    .map(
+      (choice) =>
+        `${choice.dateKey}: ${choice.choice} (Prompt: ${choice.prompt})`,
+    )
     .join("\n");
 
   return `Create today's futureself transmission as JSON only.
+
+${continuityInstruction}
 
 Player profile:
 - Name: ${context.persona.name}
@@ -617,13 +685,8 @@ Player profile:
 - Avoiding: ${context.persona.avoiding}
 - Afraid won't happen: ${context.persona.afraidWontHappen}
 - Draining them: ${context.persona.draining}
-- Timeline: ${context.persona.timeline}
-- Archetype: ${context.persona.archetype}
 - Today's check-in word: ${context.checkIn?.word ?? "not submitted"}
 - Today's note: ${context.checkIn?.note ?? "none"}
-- Recent choices: ${choices || "none yet"}
-- Recent transmissions: ${recentText || "none yet"}
-- Open threads: ${threads || "none yet"}
 
 Voice speaking today: ${castMember}.
 Voice continuity: ${context.persona.selectedVoiceName}, ${context.persona.selectedVoiceDescription}.
@@ -631,12 +694,9 @@ ${getCastDirection(castMember)}
 
 Constraints:
 - 160-230 words; intimate, warm, cinematic, not therapy-speak.
-- It is reflective imagination/coaching fiction, not supernatural prophecy.
-- Never claim to know the future literally.
-- No deterministic financial/legal/medical advice.
-- If avoidance is present, respond with compassion, not guilt.
-- Mention no raw private event details; speak around context.
-- End with unresolved narrative pull for tomorrow.
+- Mention the word "${context.checkIn?.word ?? ""}" naturally in the first 2 paragraphs.
+- If they made a choice recently, reference the "direction" they moved (toward, repair, etc).
+- End with an unresolved cliffhanger that makes them want to check in tomorrow.
 
 Return exactly:
 {"title":"...","text":"...","actionPrompt":"one concrete action","cliffhanger":"tomorrow thread"}`;
@@ -696,7 +756,7 @@ export const completeOnboarding = authMutation({
   returns: v.id("personas"),
   handler: async (ctx, args) => {
     const now = Date.now();
-    const selectedVoice = voicePresets[args.voicePreset];
+    const preset = args.voicePreset as VoicePreset;
     const terms = [
       ...extractTerms(args.currentChapter),
       ...extractTerms(args.miraculousYear),
@@ -720,9 +780,9 @@ export const completeOnboarding = authMutation({
       timeline: args.timeline,
       archetype: args.archetype,
       firstVoice: args.firstVoice,
-      selectedVoiceId: selectedVoice.voiceId,
-      selectedVoiceName: selectedVoice.label,
-      selectedVoiceDescription: selectedVoice.description,
+      selectedVoiceId: voicePresetIds[preset],
+      selectedVoiceName: voicePresetLabels[preset],
+      selectedVoiceDescription: voicePresetDescriptions[preset],
       futureChildOptIn: args.futureChildOptIn,
       themes: Array.from(new Set(terms)).slice(0, 10),
       wounds: extractTerms(`${args.avoiding} ${args.afraidWontHappen}`).slice(
@@ -1217,8 +1277,10 @@ export const generateDailyTransmission = authAction({
       let audioStorageId: Id<"_storage"> | undefined;
       if (elevenLabsKey) {
         try {
+          const voiceId = castMemberVoiceMap[castMember] ?? defaultVoiceId;
+          const settings = castMemberVoiceSettings[castMember] ?? defaultVoiceSettings;
           const ttsResponse = await fetch(
-            `https://api.elevenlabs.io/v1/text-to-speech/${context.persona.selectedVoiceId}`,
+            `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
             {
               method: "POST",
               headers: {
@@ -1230,10 +1292,10 @@ export const generateDailyTransmission = authAction({
                 text: generated.text,
                 model_id: "eleven_multilingual_v2",
                 voice_settings: {
-                  stability: 0.58,
-                  similarity_boost: 0.82,
-                  style: 0.25,
-                  use_speaker_boost: true,
+                  stability: settings.stability,
+                  similarity_boost: settings.similarityBoost,
+                  style: settings.style,
+                  use_speaker_boost: settings.useSpeakerBoost,
                 },
               }),
             },

@@ -25,7 +25,11 @@ export function TransmissionPlayer({ transmission }: TransmissionPlayerProps) {
             </View>
 
             {transmission.audioUrl ? (
-                <AudioPlayer audioUrl={transmission.audioUrl} title={transmission.title} />
+                <AudioPlayer 
+                    audioUrl={transmission.audioUrl} 
+                    title={transmission.title} 
+                    castMember={transmission.castMember} 
+                />
             ) : (
                 <TransmissionFallback status={transmission.status} />
             )}
@@ -42,11 +46,12 @@ export function TransmissionPlayer({ transmission }: TransmissionPlayerProps) {
 interface AudioPlayerProps {
     audioUrl: string;
     title: string;
+    castMember: string;
 }
 
-function AudioPlayer({ audioUrl, title }: AudioPlayerProps) {
+function AudioPlayer({ audioUrl, title, castMember }: AudioPlayerProps) {
     if (Platform.OS === "web") return <WebAudioPlayer audioUrl={audioUrl} title={title} />;
-    return <NativeAudioPlayer audioUrl={audioUrl} />;
+    return <NativeAudioPlayer audioUrl={audioUrl} castMember={castMember} />;
 }
 
 function WebAudioPlayer({ audioUrl, title }: AudioPlayerProps) {
@@ -66,16 +71,30 @@ function WebAudioPlayer({ audioUrl, title }: AudioPlayerProps) {
     );
 }
 
-function NativeAudioPlayer({ audioUrl }: { audioUrl: string }) {
+function NativeAudioPlayer({ audioUrl, castMember }: { audioUrl: string; castMember: string }) {
     const player = useAudioPlayer(audioUrl);
     const status = useAudioPlayerStatus(player);
     const [hasStarted, setHasStarted] = useState(false);
 
+    // Dynamic ambient loop based on cast member
+    const ambientUrl = getAmbientUrl(castMember);
+    const ambientPlayer = useAudioPlayer(ambientUrl);
+    
+    useEffect(() => {
+        if (ambientPlayer) {
+            ambientPlayer.loop = true;
+            ambientPlayer.volume = 0.15; // Subtle background
+        }
+    }, [ambientPlayer]);
+
     useEffect(() => {
         if (status.playbackState === "playing") {
             setHasStarted(true);
+            ambientPlayer?.play();
+        } else {
+            ambientPlayer?.pause();
         }
-    }, [status.playbackState]);
+    }, [status.playbackState, ambientPlayer]);
 
     async function togglePlayback() {
         if (status.playbackState === "playing") {
@@ -108,6 +127,19 @@ function NativeAudioPlayer({ audioUrl }: { audioUrl: string }) {
             </View>
         </View>
     );
+}
+
+function getAmbientUrl(castMember: string): string {
+    // These should be replaced with actual assets in /assets/audio/
+    const baseUrl = "https://your-deployment.convex.site/ambient/";
+    const mapping: Record<string, string> = {
+        future_self: "room-tone.mp3",
+        future_partner: "tender-pads.mp3",
+        future_mentor: "spacious-hum.mp3",
+        shadow: "shadow-wind.mp3",
+        alternate_self: "uncanny-resonance.mp3",
+    };
+    return baseUrl + (mapping[castMember] || "room-tone.mp3");
 }
 
 function formatTime(seconds: number): string {

@@ -224,45 +224,58 @@ function renderChapter(
             </View>
         );
     }
-    return (
-        <View style={styles.formStack}>
-            <Text style={styles.optionLabel}>Choose the voice that returns</Text>
-            <View style={styles.voiceSelectionRow}>
-                <VoiceChoice
-                    active={draft.voicePreset === "ember"}
-                    description="Warm, close, certain."
-                    name="Ember"
-                    onPress={() => updateDraft("voicePreset", "ember")}
+    if (chapter === 2) {
+        return (
+            <View style={styles.formStack}>
+                <Text style={styles.optionLabel}>Choose your timeline</Text>
+                <ChipGrid values={Object.keys(timelineLabels) as Array<Timeline>} selected={draft.timeline} labels={timelineLabels} onSelect={(value) => updateDraft("timeline", value)} />
+                <Text style={styles.optionLabel}>Choose your archetype</Text>
+                <ChipGrid values={Object.keys(archetypeLabels) as Array<Archetype>} selected={draft.archetype} labels={archetypeLabels} onSelect={(value) => updateDraft("archetype", value)} />
+                <Text style={styles.optionLabel}>First voice</Text>
+                <ChipGrid
+                    values={firstVoiceValues}
+                    selected={draft.firstVoice}
+                    labels={firstVoiceLabels}
+                    onSelect={(value) => updateDraft("firstVoice", value)}
                 />
-                <VoiceChoice
-                    active={draft.voicePreset === "atlas"}
-                    description="Grounded and older."
-                    name="Atlas"
-                    onPress={() => updateDraft("voicePreset", "atlas")}
-                />
-                <VoiceChoice
-                    active={draft.voicePreset === "sol"}
-                    description="Soft, bright, prophetic."
-                    name="Sol"
-                    onPress={() => updateDraft("voicePreset", "sol")}
-                />
-            </View>
-            <Text style={styles.optionLabel}>First contact through...</Text>
-            <ChipGrid
-                values={firstVoiceValues}
-                selected={draft.firstVoice}
-                labels={firstVoiceLabels}
-                onSelect={(value) => updateDraft("firstVoice", value)}
-            />
-            <View style={styles.switchRow}>
-                <View style={styles.switchCopy}>
-                    <Text style={styles.switchTitle}>Future Child opt-in</Text>
-                    <Text style={styles.switchText}>Rare, and only after a long streak.</Text>
+                <View style={styles.switchRow}>
+                    <View style={styles.switchCopy}>
+                        <Text style={styles.switchTitle}>Let Future Child exist someday</Text>
+                        <Text style={styles.switchText}>Rare, opt-in, and never used casually.</Text>
+                    </View>
+                    <Switch value={draft.futureChildOptIn} onValueChange={(value) => updateDraft("futureChildOptIn", value)} />
                 </View>
-                <Switch value={draft.futureChildOptIn} onValueChange={(value) => updateDraft("futureChildOptIn", value)} />
             </View>
-        </View>
-    );
+        );
+    }
+    if (chapter === 3) {
+        return (
+            <View style={styles.formStack}>
+                <Text style={styles.optionLabel}>Choose the voice that returns</Text>
+                <View style={styles.voiceSelectionRow}>
+                    <VoiceChoice
+                        active={draft.voicePreset === "ember"}
+                        description="Warm, close, certain. The voice that sounds like a hand on your shoulder."
+                        name="Ember"
+                        onPress={() => updateDraft("voicePreset", "ember")}
+                    />
+                    <VoiceChoice
+                        active={draft.voicePreset === "atlas"}
+                        description="Grounded and older. Slow enough that the room changes around each sentence."
+                        name="Atlas"
+                        onPress={() => updateDraft("voicePreset", "atlas")}
+                    />
+                    <VoiceChoice
+                        active={draft.voicePreset === "sol"}
+                        description="Soft, bright, quietly prophetic. The signal before dawn."
+                        name="Sol"
+                        onPress={() => updateDraft("voicePreset", "sol")}
+                    />
+                </View>
+            </View>
+        );
+    }
+    return null;
 }
 
 interface FieldProps {
