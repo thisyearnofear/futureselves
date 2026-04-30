@@ -33,6 +33,7 @@ export const seedFounderPersona = internalMutation({
             significantDates: ["2025-06-01"],
             streak: 21,
             timelineDivergenceScore: 2,
+            activeUnchosenSelves: [],
             createdAt: now,
             updatedAt: now,
         });

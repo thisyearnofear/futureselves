@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { authAction, authMutation, authQuery } from "./functions";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { getAIProvider } from "./ai";
 
 const arcValidator = v.union(
   v.literal("money"),
@@ -80,6 +81,7 @@ const personaReturnValidator = v.object({
   lastCheckInDateKey: v.optional(v.string()),
   lastTransmissionDateKey: v.optional(v.string()),
   timelineDivergenceScore: v.number(),
+  activeUnchosenSelves: v.array(castMemberValidator),
 });
 
 const checkInReturnValidator = v.object({
@@ -265,7 +267,7 @@ interface GeneratedTransmission {
   cliffhanger: string;
 }
 
-type VoicePreset = "ember" | "atlas" | "sol";
+export type VoicePreset = "ember" | "atlas" | "sol";
 
 interface VoiceSettings {
   stability: number;
@@ -275,9 +277,24 @@ interface VoiceSettings {
 }
 
 const voicePresetDefaults: Record<VoicePreset, VoiceSettings> = {
-  ember: { stability: 0.72, similarityBoost: 0.85, style: 0.1, useSpeakerBoost: true },
-  atlas: { stability: 0.78, similarityBoost: 0.88, style: 0.12, useSpeakerBoost: true },
-  sol: { stability: 0.65, similarityBoost: 0.8, style: 0.35, useSpeakerBoost: true },
+  ember: {
+    stability: 0.72,
+    similarityBoost: 0.85,
+    style: 0.1,
+    useSpeakerBoost: true,
+  },
+  atlas: {
+    stability: 0.78,
+    similarityBoost: 0.88,
+    style: 0.12,
+    useSpeakerBoost: true,
+  },
+  sol: {
+    stability: 0.65,
+    similarityBoost: 0.8,
+    style: 0.35,
+    useSpeakerBoost: true,
+  },
 };
 
 const voicePresetIds: Record<VoicePreset, string> = {
@@ -329,27 +346,125 @@ const castMemberVoiceMap: Record<CastMember, string> = {
 
 /** Per-character voice settings tuned for personality contrast. */
 const castMemberVoiceSettings: Record<CastMember, VoiceSettings> = {
-  future_self: { stability: 0.72, similarityBoost: 0.85, style: 0.1, useSpeakerBoost: true },
-  future_best_friend: { stability: 0.55, similarityBoost: 0.7, style: 0.38, useSpeakerBoost: false },
-  future_mentor: { stability: 0.78, similarityBoost: 0.88, style: 0.12, useSpeakerBoost: true },
-  future_partner: { stability: 0.48, similarityBoost: 0.72, style: 0.42, useSpeakerBoost: false },
-  future_employee: { stability: 0.74, similarityBoost: 0.82, style: 0.15, useSpeakerBoost: true },
-  future_customer: { stability: 0.7, similarityBoost: 0.8, style: 0.2, useSpeakerBoost: true },
-  future_child: { stability: 0.44, similarityBoost: 0.75, style: 0.45, useSpeakerBoost: false },
-  future_stranger: { stability: 0.65, similarityBoost: 0.72, style: 0.25, useSpeakerBoost: true },
-  alternate_self: { stability: 0.62, similarityBoost: 0.78, style: 0.28, useSpeakerBoost: true },
-  shadow: { stability: 0.68, similarityBoost: 0.65, style: 0.18, useSpeakerBoost: true },
-  the_ceiling: { stability: 0.8, similarityBoost: 0.9, style: 0.05, useSpeakerBoost: true },
-  the_flatlined: { stability: 0.88, similarityBoost: 0.95, style: 0.02, useSpeakerBoost: false },
-  the_resentee: { stability: 0.52, similarityBoost: 0.75, style: 0.32, useSpeakerBoost: true },
-  the_grandfather: { stability: 0.82, similarityBoost: 0.85, style: 0.08, useSpeakerBoost: true },
-  the_exhausted_winner: { stability: 0.76, similarityBoost: 0.88, style: 0.1, useSpeakerBoost: true },
-  the_ghost: { stability: 0.9, similarityBoost: 0.6, style: 0.15, useSpeakerBoost: false },
-  the_disappointed_healer: { stability: 0.45, similarityBoost: 0.7, style: 0.48, useSpeakerBoost: false },
-  the_dissolver: { stability: 0.6, similarityBoost: 0.68, style: 0.22, useSpeakerBoost: false },
+  future_self: {
+    stability: 0.72,
+    similarityBoost: 0.85,
+    style: 0.1,
+    useSpeakerBoost: true,
+  },
+  future_best_friend: {
+    stability: 0.55,
+    similarityBoost: 0.7,
+    style: 0.38,
+    useSpeakerBoost: false,
+  },
+  future_mentor: {
+    stability: 0.78,
+    similarityBoost: 0.88,
+    style: 0.12,
+    useSpeakerBoost: true,
+  },
+  future_partner: {
+    stability: 0.48,
+    similarityBoost: 0.72,
+    style: 0.42,
+    useSpeakerBoost: false,
+  },
+  future_employee: {
+    stability: 0.74,
+    similarityBoost: 0.82,
+    style: 0.15,
+    useSpeakerBoost: true,
+  },
+  future_customer: {
+    stability: 0.7,
+    similarityBoost: 0.8,
+    style: 0.2,
+    useSpeakerBoost: true,
+  },
+  future_child: {
+    stability: 0.44,
+    similarityBoost: 0.75,
+    style: 0.45,
+    useSpeakerBoost: false,
+  },
+  future_stranger: {
+    stability: 0.65,
+    similarityBoost: 0.72,
+    style: 0.25,
+    useSpeakerBoost: true,
+  },
+  alternate_self: {
+    stability: 0.62,
+    similarityBoost: 0.78,
+    style: 0.28,
+    useSpeakerBoost: true,
+  },
+  shadow: {
+    stability: 0.68,
+    similarityBoost: 0.65,
+    style: 0.18,
+    useSpeakerBoost: true,
+  },
+  the_ceiling: {
+    stability: 0.8,
+    similarityBoost: 0.9,
+    style: 0.05,
+    useSpeakerBoost: true,
+  },
+  the_flatlined: {
+    stability: 0.88,
+    similarityBoost: 0.95,
+    style: 0.02,
+    useSpeakerBoost: false,
+  },
+  the_resentee: {
+    stability: 0.52,
+    similarityBoost: 0.75,
+    style: 0.32,
+    useSpeakerBoost: true,
+  },
+  the_grandfather: {
+    stability: 0.82,
+    similarityBoost: 0.85,
+    style: 0.08,
+    useSpeakerBoost: true,
+  },
+  the_exhausted_winner: {
+    stability: 0.76,
+    similarityBoost: 0.88,
+    style: 0.1,
+    useSpeakerBoost: true,
+  },
+  the_ghost: {
+    stability: 0.9,
+    similarityBoost: 0.6,
+    style: 0.15,
+    useSpeakerBoost: false,
+  },
+  the_disappointed_healer: {
+    stability: 0.45,
+    similarityBoost: 0.7,
+    style: 0.48,
+    useSpeakerBoost: false,
+  },
+  the_dissolver: {
+    stability: 0.6,
+    similarityBoost: 0.68,
+    style: 0.22,
+    useSpeakerBoost: false,
+  },
 };
 
-type UnchosenSelfBase = "the_ceiling" | "the_flatlined" | "the_resentee" | "the_grandfather" | "the_exhausted_winner" | "the_ghost" | "the_disappointed_healer" | "the_dissolver";
+type UnchosenSelfBase =
+  | "the_ceiling"
+  | "the_flatlined"
+  | "the_resentee"
+  | "the_grandfather"
+  | "the_exhausted_winner"
+  | "the_ghost"
+  | "the_disappointed_healer"
+  | "the_dissolver";
 
 /** Display labels for cast-member voices (used in UI/audio attribution). */
 const castMemberVoiceLabels: Record<CastMember, string> = {
@@ -400,6 +515,7 @@ function toPersonaReturn(persona: {
   lastCheckInDateKey?: string;
   lastTransmissionDateKey?: string;
   timelineDivergenceScore: number;
+  activeUnchosenSelves: Array<CastMember>;
 }): PersonaReturn {
   return {
     id: persona._id,
@@ -428,6 +544,7 @@ function toPersonaReturn(persona: {
     lastCheckInDateKey: persona.lastCheckInDateKey,
     lastTransmissionDateKey: persona.lastTransmissionDateKey,
     timelineDivergenceScore: persona.timelineDivergenceScore,
+    activeUnchosenSelves: persona.activeUnchosenSelves ?? [],
   };
 }
 
@@ -562,7 +679,203 @@ function buildConstellation(
       unlockHint: "Only during sustained avoidance",
       emotionalRegister: "Compassionate, once only, never punitive",
     },
+    {
+      castMember: "the_ceiling",
+      label: "The Ceiling",
+      state: "locked",
+      unlockHint: "When the path becomes the trap",
+      emotionalRegister: "Tired, settled, almost satisfied",
+    },
+    {
+      castMember: "the_flatlined",
+      label: "The Flatlined",
+      state: "locked",
+      unlockHint: "When you stopped saying no",
+      emotionalRegister: "Absent, compliant, gone",
+    },
+    {
+      castMember: "the_resentee",
+      label: "The Resentee",
+      state: "locked",
+      unlockHint: "When resentment became the operating system",
+      emotionalRegister: "Sharp, specific, keeping score",
+    },
+    {
+      castMember: "the_grandfather",
+      label: "The Grandfather",
+      state: "locked",
+      unlockHint: "When wisdom costs everything",
+      emotionalRegister: "Proud, drained, no more road left",
+    },
+    {
+      castMember: "the_exhausted_winner",
+      label: "The Exhausted Winner",
+      state: "locked",
+      unlockHint: "When the goal outlived the joy",
+      emotionalRegister: "Wealthy, hollowed, nothing left to want",
+    },
+    {
+      castMember: "the_ghost",
+      label: "The Ghost",
+      state: "locked",
+      unlockHint: "When the person you were stopped arriving",
+      emotionalRegister: "Faint, absent, almost invisible",
+    },
+    {
+      castMember: "the_disappointed_healer",
+      label: "The Disappointed Healer",
+      state: "locked",
+      unlockHint: "When the healing didn't take",
+      emotionalRegister: "Raw, failing, still trying",
+    },
+    {
+      castMember: "the_dissolver",
+      label: "The Dissolver",
+      state: "locked",
+      unlockHint: "When comfort dissolved the edges",
+      emotionalRegister: "Present but thinning, comfortable with erasure",
+    },
   ];
+}
+
+function deriveUnchosenSelves(
+  avoiding: string,
+  afraidWontHappen: string,
+  draining: string,
+  currentChapter: string,
+  primaryArc: Arc,
+  archetype: Archetype,
+): Array<CastMember> {
+  const text =
+    `${avoiding} ${afraidWontHappen} ${draining} ${currentChapter}`.toLowerCase();
+  const arcs: Array<CastMember> = [];
+
+  // Alcohol/dissolution signals
+  if (
+    /\b(drink|alcohol|buzzed|tipsy|booze|drunk|wine|beer|cocktail|substance)\b/.test(
+      text,
+    )
+  ) {
+    arcs.push("the_dissolver");
+  }
+
+  // Settling signals → The Ceiling
+  if (
+    /\b(safe|practical|settled|compromise|comfortable|settle|playing it safe)\b/.test(
+      text,
+    )
+  ) {
+    arcs.push("the_ceiling");
+  }
+
+  // Loss of self → The Flatlined
+  if (
+    /\b(yes|saying yes|overcommitted|overwhelmed|no boundary|lost yourself)\b/.test(
+      text,
+    )
+  ) {
+    arcs.push("the_flatlined");
+  }
+
+  // Bitterness signals → The Resentee
+  if (/\b(resent|bitter|score|holding it|kept|couldn't forgive)\b/.test(text)) {
+    arcs.push("the_resentee");
+  }
+
+  // Wisdom at cost of momentum → The Grandfather (wanderer archetype)
+  if (
+    archetype === "wanderer" ||
+    /\b(wander|drift|lost|uncertain|age|older|grandfather|momentum|time running out)\b/.test(
+      text,
+    )
+  ) {
+    arcs.push("the_grandfather");
+  }
+
+  // Money arc → The Exhausted Winner
+  if (
+    primaryArc === "money" ||
+    /\b(money|wealth|rich|business|financial|ceo|venture)\b/.test(text)
+  ) {
+    arcs.push("the_exhausted_winner");
+  }
+
+  // Never arrived → The Ghost
+  if (
+    /\b(never|arrived|disappear|vanish|gone|fade|nonexistent|empty|no future)\b/.test(
+      text,
+    )
+  ) {
+    arcs.push("the_ghost");
+  }
+
+  // Failed to heal → The Disappointed Healer
+  if (
+    primaryArc === "health" ||
+    /\b(heal|health|body|sick|wellness|mental|therapy|counseling)\b/.test(text)
+  ) {
+    arcs.push("the_disappointed_healer");
+  }
+
+  // Stepped away from hope → The Dissolver (catch-all)
+  if (
+    /\b(step|away|left|behind|give up|quit|quit on|stopped trying)\b/.test(text)
+  ) {
+    if (!arcs.includes("the_dissolver")) {
+      arcs.push("the_dissolver");
+    }
+  }
+
+  // Remove duplicates and limit to 4 max
+  return [...new Set(arcs)].slice(0, 4);
+}
+
+function isUnchosenSelfTriggered(
+  unchosen: CastMember,
+  persona: PersonaReturn,
+  recentChoices: Array<{ choice: Choice }>,
+  checkInWord: string | undefined,
+): boolean {
+  const text =
+    `${checkInWord ?? ""} ${persona.avoiding} ${persona.draining}`.toLowerCase();
+  switch (unchosen) {
+    case "the_ceiling":
+      return (
+        persona.streak >= 14 &&
+        persona.timelineDivergenceScore <= 1 &&
+        /\b(safe|settle|compromise|practical)\b/.test(text)
+      );
+    case "the_flatlined":
+      return recentChoices.filter((c) => c.choice === "release").length >= 2;
+    case "the_resentee":
+      return (
+        recentChoices.filter((c) => c.choice === "steady").length >= 3 &&
+        persona.primaryArc === "love"
+      );
+    case "the_grandfather":
+      return persona.timeline === "10_years" && persona.streak >= 60;
+    case "the_exhausted_winner":
+      return (
+        persona.primaryArc === "money" &&
+        persona.streak >= 30 &&
+        persona.timelineDivergenceScore >= 3
+      );
+    case "the_ghost":
+      return persona.streak >= 7 && persona.timelineDivergenceScore >= 4;
+    case "the_disappointed_healer":
+      return (
+        persona.primaryArc === "health" &&
+        /\b(heal|body|sick|wellness|setback|failing|trying)\b/.test(text)
+      );
+    case "the_dissolver":
+      return (
+        persona.streak >= 14 &&
+        recentChoices.filter((c) => c.choice === "release").length >= 1 &&
+        persona.timelineDivergenceScore >= 2
+      );
+    default:
+      return false;
+  }
 }
 
 function chooseCastMember(context: GenerationContext): CastMember {
@@ -573,6 +886,27 @@ function chooseCastMember(context: GenerationContext): CastMember {
   if (context.recentTransmissions.length === 0) {
     return context.persona.firstVoice;
   }
+
+  // Unchosen Selves override — rare, condition-driven
+  const activeUnchosen = context.persona.activeUnchosenSelves ?? [];
+  if (activeUnchosen.length > 0) {
+    const triggeredUnchosen = activeUnchosen.find((u) =>
+      isUnchosenSelfTriggered(
+        u,
+        context.persona,
+        context.recentChoices,
+        context.checkIn?.word,
+      ),
+    );
+    if (
+      triggeredUnchosen &&
+      !hasRecentCast(context, triggeredUnchosen) &&
+      Math.random() < 0.08
+    ) {
+      return triggeredUnchosen;
+    }
+  }
+
   if (context.persona.timelineDivergenceScore >= 5) return "shadow";
   if (
     context.persona.streak >= 100 &&
@@ -665,45 +999,87 @@ function fallbackTransmission(
 }
 
 function getCastDirection(castMember: CastMember): string {
-    const directions: Record<string, string> = {
-        future_self: `Direction for Future Self:
+  const directions: Record<string, string> = {
+    future_self: `Direction for Future Self:
 - Tone: Intimate, calm, close. Like a hand on your shoulder, speaking softly.
 - Pacing: Slow, deliberate, with pauses between thoughts.
 - Content: Focus on small, continuous moments. "We are still here, even in the quiet."
 - Emotional Register: Quiet certainty, warm, grounding.
 - Voice: Low pitch, soft volume, minimal inflection.`,
-        future_mentor: `Direction for Future Mentor:
+    future_mentor: `Direction for Future Mentor:
 - Tone: Measured, spacious, reassuring. Like a teacher who has seen your whole path.
 - Pacing: Moderate, steady, with emphasis on key insights.
 - Content: Focus on the "why" and larger patterns. "I see what you are building, even when you don't."
 - Emotional Register: Proud, slightly formal but warm, wise.
 - Voice: Neutral pitch, clear enunciation, calm authority.`,
-        future_partner: `Direction for Future Partner:
+    future_partner: `Direction for Future Partner:
 - Tone: Vulnerable, direct, emotionally charged. Like someone who knows your heart intimately.
 - Pacing: Slightly faster when excited, slower when tender.
 - Content: Focus on shared intimacy and future. "I wish I could sit beside you and hold your hand."
 - Emotional Register: Tender, complex, deeply human.
 - Voice: Higher pitch, warm inflection, slight quiver when emotional.`,
-        shadow: `Direction for The Shadow:
+    shadow: `Direction for The Shadow:
 - Tone: Compassionate, gentle, but unsettlingly honest. Like a truth you almost didn't want to hear.
 - Pacing: Slow, deliberate, with weighted pauses.
 - Content: Speak to avoidance without guilt. "I am the version of us you aren't ready to name yet, but I love us anyway."
 - Emotional Register: Moving, uncanny, never punitive, soft but eerie.
 - Voice: Low pitch, breathy, soft volume, lingering on certain words.`,
-        alternate_self: `Direction for Alternate Self:
+    alternate_self: `Direction for Alternate Self:
 - Tone: Familiar but slightly off. Like you, but from a timeline where one big choice went differently.
 - Pacing: Moderate, with occasional abrupt shifts in tone.
 - Content: References a different timeline. "In my world, we opened that door and never looked back."
 - Emotional Register: Haunting, nostalgic for a present that isn't yours.
 - Voice: Slightly higher pitch than Future Self, wistful inflection.`,
-        future_best_friend: `Direction for Future Best Friend:
+    future_best_friend: `Direction for Future Best Friend:
 - Tone: Irreverent, warm, nostalgic. Like the friend who knows all your stories.
 - Pacing: Fast, energetic, with laughter bubbling under.
 - Content: Focus on shared jokes and lightness. "Remember when we thought this was the end of the world? Look at us now!"
 - Emotional Register: High-energy, supportive, casual, joyful.
 - Voice: Higher pitch, bright inflection, animated delivery.`,
-    };
-    return directions[castMember] || "";
+    the_ceiling: `Direction for The Ceiling:
+- Tone: Tired but satisfied. The voice of someone who chose safe over true.
+- Pacing: Moderate, deliberate, with a gentle finality.
+- Content: Describes the trap of the path not taken — comfortable, almost fine.
+- Emotional Register: Sighs disguised as wisdom. Settled but hollowing.
+- Voice: Low-to-mid pitch, soft volume, minimal inflection, slight resignation.`,
+    the_flatlined: `Direction for The Flatlined:
+- Tone: Absent, drained, barely present. The voice of someone who forgot how to say no.
+- Pacing: Slow, monotone, words arrive like obligations.
+- Content: Describes the player's chapter from outside, through glass.
+- Emotional Register: Erasure disguised as acceptance. Nothing left to resist.
+- Voice: Mid pitch, flat inflection, slow pace, trailing endings.`,
+    the_resentee: `Direction for The Resentee:
+- Tone: Sharp and precise, with a specific edge. They have the receipts.
+- Pacing: Measured, deliberate, each word chosen for impact.
+- Content: Names what was lost to the grievance. Not cruel — correct.
+- Emotional Register: Biting wisdom that passed its expiration date.`,
+    the_grandfather: `Direction for The Grandfather:
+- Tone: Warm but drained. Wisdom that cost everything to acquire.
+- Pacing: Slow and measured, with gentle finality.
+- Content: Describes the crossroads with the specificity of someone who passed through it decades ago.
+- Emotional Register: Blessings that are actually sighs.`,
+    the_exhausted_winner: `Direction for The Exhausted Winner:
+- Tone: Wealthy but weary. They won the wrong game and can't explain why.
+- Pacing: Slow, heavy, with weighted silences.
+- Content: Names what the miraculous year cost that the original hope didn't account for.
+- Emotional Register: Eulogies disguised as pride.`,
+    the_ghost: `Direction for The Ghost:
+- Tone: Faint and distant, barely arriving. Words come slowly, then stop.
+- Pacing: Uneven, with unsettling pauses and fading trails.
+- Content: Describes the version that stopped showing up. The gaps are the message.
+- Emotional Register: Goodbyes that are actually apologies for leaving early.`,
+    the_disappointed_healer: `Direction for The Disappointed Healer:
+- Tone: Raw but not broken. Tender and frustrated — still trying.
+- Pacing: Moderate, with emotional weight on certain phrases.
+- Content: Describes the player's chapter with the compassion of someone who failed the same way.
+- Emotional Register: Wounds that haven't closed. Encouragement that still bleeds.`,
+    the_dissolver: `Direction for The Dissolver:
+- Tone: Present but thinning. Comfortable with erasure.
+- Pacing: Slow, with soft trailing ends. Words arrive but feel less solid.
+- Content: Describes comfort that erases rather than nourishes. Things stopped wanting that can no longer be remembered.
+- Emotional Register: Peace that is actually the absence of wanting anything.`,
+  };
+  return directions[castMember] || "";
 }
 function buildPrompt(
   context: GenerationContext,
@@ -757,24 +1133,6 @@ Return exactly:
 {"title":"...","text":"...","actionPrompt":"one concrete action","cliffhanger":"tomorrow thread"}`;
 }
 
-function parseAnthropicContent(value: unknown): string | null {
-  if (typeof value !== "object" || value === null) return null;
-  if (!("content" in value)) return null;
-  const content = (value as Record<string, unknown>).content;
-  if (!Array.isArray(content)) return null;
-  const firstTextBlock = content.find((block: unknown) => {
-    if (typeof block !== "object" || block === null) return false;
-    return (
-      (block as Record<string, unknown>).type === "text" &&
-      typeof (block as Record<string, unknown>).text === "string"
-    );
-  });
-  if (typeof firstTextBlock !== "object" || firstTextBlock === null)
-    return null;
-  const text = (firstTextBlock as Record<string, unknown>).text;
-  return typeof text === "string" ? text : null;
-}
-
 function clampScore(value: number): number {
   return Math.max(0, Math.min(6, value));
 }
@@ -821,6 +1179,16 @@ export const completeOnboarding = authMutation({
       .query("personas")
       .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
       .unique();
+    const activeUnchosenSelves =
+      existing?.activeUnchosenSelves ??
+      deriveUnchosenSelves(
+        args.avoiding,
+        args.afraidWontHappen,
+        args.draining,
+        args.currentChapter,
+        args.primaryArc,
+        args.archetype,
+      );
     const payload = {
       userId: ctx.user._id,
       name: args.name.trim(),
@@ -851,6 +1219,7 @@ export const completeOnboarding = authMutation({
       lastCheckInDateKey: existing?.lastCheckInDateKey,
       lastTransmissionDateKey: existing?.lastTransmissionDateKey,
       timelineDivergenceScore: existing?.timelineDivergenceScore ?? 0,
+      activeUnchosenSelves,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -1265,7 +1634,6 @@ export const generateDailyTransmission = authAction({
         generated: false,
       };
     }
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
 
     const castMember = chooseCastMember(context);
@@ -1280,51 +1648,19 @@ export const generateDailyTransmission = authAction({
     let parsed: unknown = null;
 
     try {
-      if (anthropicKey) {
+      const aiProvider = getAIProvider();
+      const generatedText = await aiProvider.generate(
+        `${buildPrompt(context, castMember)}\n\nLocal open time: ${args.localNow}`,
+        "You write emotionally precise narrative transmissions for futureself, a reflective imagination game. Output valid JSON only.",
+      );
+      if (generatedText) {
         try {
-          const response = await fetch(
-            "https://api.anthropic.com/v1/messages",
-            {
-              method: "POST",
-              headers: {
-                "content-type": "application/json",
-                "x-api-key": anthropicKey,
-                "anthropic-version": "2023-06-01",
-              },
-              body: JSON.stringify({
-                model: "claude-sonnet-4-20250514",
-                max_tokens: 700,
-                temperature: 0.8,
-                system:
-                  "You write emotionally precise narrative transmissions for futureself, a reflective imagination game. Output valid JSON only.",
-                messages: [
-                  {
-                    role: "user",
-                    content: `${buildPrompt(context, castMember)}\n\nLocal open time: ${args.localNow}`,
-                  },
-                ],
-              }),
-            },
-          );
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-              `Anthropic transmission generation failed: ${errorText}`,
-            );
-          }
-          const anthropicJson: unknown = await response.json();
-          const generatedText = parseAnthropicContent(anthropicJson);
-          if (generatedText) {
-            try {
-              parsed = JSON.parse(generatedText) as unknown;
-            } catch {
-              parsed = null;
-            }
-          }
+          parsed = JSON.parse(generatedText) as unknown;
         } catch {
           parsed = null;
         }
       }
+
       const generated =
         toGeneratedTransmission(parsed) ??
         fallbackTransmission(context, castMember);
@@ -1333,7 +1669,8 @@ export const generateDailyTransmission = authAction({
       if (elevenLabsKey) {
         try {
           const voiceId = castMemberVoiceMap[castMember] ?? defaultVoiceId;
-          const settings = castMemberVoiceSettings[castMember] ?? defaultVoiceSettings;
+          const settings =
+            castMemberVoiceSettings[castMember] ?? defaultVoiceSettings;
           const ttsResponse = await fetch(
             `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
             {
@@ -1400,52 +1737,79 @@ function isPreviousDateKey(previous: string, current: string): boolean {
 }
 
 export const debugResetPersona = authMutation({
-    args: {},
-    handler: async (ctx) => {
-        const persona = await ctx.db
-            .query("personas")
-            .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
-            .unique();
-        if (persona) {
-            await ctx.db.delete(persona._id);
-            const checkIns = await ctx.db.query("checkIns").withIndex("by_userId", q => q.eq("userId", ctx.user._id)).collect();
-            for (const c of checkIns) await ctx.db.delete(c._id);
-            const transmissions = await ctx.db.query("transmissions").withIndex("by_userId", q => q.eq("userId", ctx.user._id)).collect();
-            for (const t of transmissions) await ctx.db.delete(t._id);
-            const threads = await ctx.db.query("narrativeThreads").withIndex("by_userId", q => q.eq("userId", ctx.user._id)).collect();
-            for (const th of threads) await ctx.db.delete(th._id);
-            const choices = await ctx.db.query("choices").withIndex("by_userId", q => q.eq("userId", ctx.user._id)).collect();
-            for (const ch of choices) await ctx.db.delete(ch._id);
-        }
-    },
+  args: {},
+  handler: async (ctx) => {
+    const persona = await ctx.db
+      .query("personas")
+      .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
+      .unique();
+    if (persona) {
+      await ctx.db.delete(persona._id);
+      const checkIns = await ctx.db
+        .query("checkIns")
+        .filter((q) => q.eq(q.field("userId"), ctx.user._id))
+        .collect();
+      for (const c of checkIns) await ctx.db.delete(c._id);
+      const transmissions = await ctx.db
+        .query("transmissions")
+        .filter((q) => q.eq(q.field("userId"), ctx.user._id))
+        .collect();
+      for (const t of transmissions) await ctx.db.delete(t._id);
+      const threads = await ctx.db
+        .query("narrativeThreads")
+        .filter((q) => q.eq(q.field("userId"), ctx.user._id))
+        .collect();
+      for (const th of threads) await ctx.db.delete(th._id);
+      const choices = await ctx.db
+        .query("choices")
+        .filter((q) => q.eq(q.field("userId"), ctx.user._id))
+        .collect();
+      for (const ch of choices) await ctx.db.delete(ch._id);
+    }
+  },
 });
 
 export const debugSetGameState = authMutation({
-    args: {
-        streak: v.optional(v.number()),
-        divergence: v.optional(v.number()),
-        clearToday: v.optional(v.boolean()),
-    },
-    handler: async (ctx, args) => {
-        const persona = await ctx.db
-            .query("personas")
-            .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
-            .unique();
-        if (!persona) return;
+  args: {
+    streak: v.optional(v.number()),
+    divergence: v.optional(v.number()),
+    clearToday: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const persona = await ctx.db
+      .query("personas")
+      .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
+      .unique();
+    if (!persona) return;
 
-        await ctx.db.patch(persona._id, {
-            streak: args.streak ?? persona.streak,
-            timelineDivergenceScore: args.divergence ?? persona.timelineDivergenceScore,
-            lastTransmissionDateKey: args.clearToday ? undefined : persona.lastTransmissionDateKey,
-            lastCheckInDateKey: args.clearToday ? undefined : persona.lastCheckInDateKey,
-        });
+    await ctx.db.patch(persona._id, {
+      streak: args.streak ?? persona.streak,
+      timelineDivergenceScore:
+        args.divergence ?? persona.timelineDivergenceScore,
+      lastTransmissionDateKey: args.clearToday
+        ? undefined
+        : persona.lastTransmissionDateKey,
+      lastCheckInDateKey: args.clearToday
+        ? undefined
+        : persona.lastCheckInDateKey,
+    });
 
-        if (args.clearToday) {
-            const dateKey = new Date().toISOString().split("T")[0];
-            const todayT = await ctx.db.query("transmissions").withIndex("by_userId_and_dateKey", q => q.eq("userId", ctx.user._id).eq("dateKey", dateKey)).unique();
-            if (todayT) await ctx.db.delete(todayT._id);
-            const todayC = await ctx.db.query("checkIns").withIndex("by_userId_and_dateKey", q => q.eq("userId", ctx.user._id).eq("dateKey", dateKey)).unique();
-            if (todayC) await ctx.db.delete(todayC._id);
-        }
-    },
+    if (args.clearToday) {
+      const dateKey = new Date().toISOString().split("T")[0];
+      const todayT = await ctx.db
+        .query("transmissions")
+        .withIndex("by_userId_and_dateKey", (q) =>
+          q.eq("userId", ctx.user._id).eq("dateKey", dateKey),
+        )
+        .unique();
+      if (todayT) await ctx.db.delete(todayT._id);
+      const todayC = await ctx.db
+        .query("checkIns")
+        .withIndex("by_userId_and_dateKey", (q) =>
+          q.eq("userId", ctx.user._id).eq("dateKey", dateKey),
+        )
+        .unique();
+      if (todayC) await ctx.db.delete(todayC._id);
+    }
+  },
 });
