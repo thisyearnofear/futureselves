@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
@@ -55,17 +55,62 @@ function AudioPlayer({ audioUrl, title, castMember }: AudioPlayerProps) {
 }
 
 function WebAudioPlayer({ audioUrl, title }: AudioPlayerProps) {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [audioRef] = useState(() => {
+        if (typeof window === "undefined") return null;
+        const audio = new Audio(audioUrl);
+        audio.preload = "metadata";
+        return audio;
+    });
+
+    useEffect(() => {
+        if (!audioRef) return;
+        const onMeta = () => setDuration(audioRef.duration);
+        const onTime = () => {
+            setCurrentTime(audioRef.currentTime);
+            setProgress(audioRef.duration > 0 ? audioRef.currentTime / audioRef.duration : 0);
+        };
+        const onEnded = () => { setIsPlaying(false); setProgress(0); setCurrentTime(0); };
+        audioRef.addEventListener("loadedmetadata", onMeta);
+        audioRef.addEventListener("timeupdate", onTime);
+        audioRef.addEventListener("ended", onEnded);
+        return () => {
+            audioRef.removeEventListener("loadedmetadata", onMeta);
+            audioRef.removeEventListener("timeupdate", onTime);
+            audioRef.removeEventListener("ended", onEnded);
+            audioRef.pause();
+        };
+    }, [audioRef]);
+
+    function togglePlayback() {
+        if (!audioRef) return;
+        if (isPlaying) {
+            audioRef.pause();
+            setIsPlaying(false);
+        } else {
+            audioRef.play();
+            setIsPlaying(true);
+        }
+    }
+
     return (
-        <View style={styles.playerShell}>
-            <Pressable
-                onPress={() => Linking.openURL(audioUrl)}
-                style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
-            >
-                <Ionicons name="play" size={22} color="#101320" />
+        <View style={styles.nativePlayerShell}>
+            <Pressable onPress={togglePlayback} style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}>
+                <Ionicons name={isPlaying ? "pause" : "play"} size={28} color="#101320" />
             </Pressable>
-            <View style={styles.progressColumn}>
-                <Text style={styles.pendingTitle}>{title}</Text>
-                <Text style={styles.pendingText}>Open the spoken transmission in a new tab.</Text>
+            <View style={styles.playerControls}>
+                <View style={styles.playerStatusRow}>
+                    <Text style={styles.playerStatusText}>
+                        {isPlaying ? "Listening to the future..." : progress > 0 ? "Transmission paused" : "Signal ready"}
+                    </Text>
+                    <Text style={styles.timeText}>{formatTime(currentTime)} / {formatTime(duration)}</Text>
+                </View>
+                <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+                </View>
             </View>
         </View>
     );

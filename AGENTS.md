@@ -1,5 +1,3 @@
-# Kilo CLI Configuration
-
 ## AI Provider Configuration
 
 Set the following environment variables to configure AI inference providers:

@@ -1,5 +1,4 @@
 import { internalMutation } from "./_generated/server";
-import type { VoicePreset } from "./game";
 import { v } from "convex/values";
 
 export const seedFounderPersona = internalMutation({
