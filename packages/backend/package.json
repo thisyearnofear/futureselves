@@ -22,7 +22,7 @@
         "@convex-dev/rate-limiter": "^0.3.2",
         "@convex-dev/sharded-counter": "^0.2.0",
         "@convex-dev/workflow": "^0.3.4",
-        "convex": "1.32.0",
+        "convex": "^1.36.1",
         "convex-helpers": "0.1.113"
     },
     "devDependencies": {

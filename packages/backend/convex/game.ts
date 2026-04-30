@@ -324,24 +324,24 @@ const defaultVoiceSettings = voicePresetDefaults.ember;
  * Swap these for custom/cloned voices before filming for maximum personality contrast.
  */
 const castMemberVoiceMap: Record<CastMember, string> = {
-  future_self: "21m00Tcm4TlvDq8ikWAM",
-  future_best_friend: "pFZP7JQGylIh6mjFyO2a",
-  future_mentor: "TXhJ7dX3GJ5bNj6EPJpd",
-  future_partner: "MF3ZGxNSIZHw3HjBFBqu",
-  future_employee: "a2HLqOq8XMFZ7V5kWzQf",
-  future_customer: "wC6hHJG1mGSpDxHGNzX6",
-  future_child: "bIHZnB3eyE6R7V5t7pJn",
-  future_stranger: "kD5hB3fN4eR6H8jL2mQp",
-  alternate_self: "vN7rEPF2hR8G4sLb3jKc",
-  shadow: "qW6tFDg1hO3nL9aY5pRs",
-  the_ceiling: "TxGEqnHWrfWFTfGW9XjX",
-  the_flatlined: "uPMPQ7L8kO2nR5xH3jCd",
-  the_resentee: "nL7mFK9pQ1wY4xT2vAbS",
-  the_grandfather: "rQ3nBH6gO5sK7hY9xDfG",
-  the_exhausted_winner: "jW5vCM2hK8mP3zX7nPqE",
-  the_ghost: "gH8dLP4jN2qL6kW1vBsM",
-  the_disappointed_healer: "fZ7nKR3kM1pH5jV8tQwL",
-  the_dissolver: "eY6mJQ2iL9sF4qR3nBwD",
+  future_self: "XrExE9yKIg1WjnnlVkGX", // Rachel - warm, intimate
+  future_best_friend: "cgSgspJ2msm6clMCkdW9", // Jessica - playful, bright
+  future_mentor: "cjVigY5qzO86Huf0OWal", // Eric - smooth, trustworthy
+  future_partner: "hpp4J3VqNfWAUOO0d1Us", // Bella - warm, professional
+  future_employee: "iP95p4xoKVk53GoZ742B", // Chris - charming, down-to-earth
+  future_customer: "nPczCjzI2devNBz1zQrb", // Brian - deep, comforting
+  future_child: "bIHbv24MWmeRgasZH58o", // Will - relaxed optimist
+  future_stranger: "onwK4e9ZLuTAKqWW03F9", // Daniel - steady broadcaster
+  alternate_self: "pFZP5JQG7iQjIQuC4Bku", // Lily - velvety actress
+  shadow: "5kMbtRSEKIkRZSdXxrZg", // Jason - calm, meditative
+  the_ceiling: "XrExE9yKIg1WjnnlVkGX", // Rachel - warm, intimate
+  the_flatlined: "iP95p4xoKVk53GoZ742B", // Chris - charming, casual
+  the_resentee: "pFZP5JQG7iQjIQuC4Bku", // Lily - confident, sharp
+  the_grandfather: "nPczCjzI2devNBz1zQrb", // Brian - deep, comforting
+  the_exhausted_winner: "cjVigY5qzO86Huf0OWal", // Eric - smooth, weary
+  the_ghost: "5kMbtRSEKIkRZSdXxrZg", // Jason - calm, fading
+  the_disappointed_healer: "hpp4J3VqNfWAUOO0d1Us", // Bella - warm, tender
+  the_dissolver: "onwK4e9ZLuTAKqWW03F9", // Daniel - steady, dissolving
 };
 
 /** Per-character voice settings tuned for personality contrast. */
