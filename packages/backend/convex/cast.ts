@@ -30,6 +30,10 @@ interface PersonaFields {
   futureChildOptIn: boolean;
   streak: number;
   timelineDivergenceScore: number;
+  towardCount: number;
+  steadyCount: number;
+  releaseCount: number;
+  repairCount: number;
   activeUnchosenSelves: Array<CastMember>;
   avoiding: string;
   draining: string;
@@ -46,7 +50,12 @@ interface ConstellationReturn {
 interface GenerationContext {
   persona: PersonaFields;
   checkIn: { word: string; note?: string } | null;
-  recentTransmissions: Array<{ castMember: CastMember; dateKey: string; title: string; cliffhanger: string }>;
+  recentTransmissions: Array<{
+    castMember: CastMember;
+    dateKey: string;
+    title: string;
+    cliffhanger: string;
+  }>;
   recentChoices: Array<{ choice: Choice; dateKey: string; prompt: string }>;
   constellation: Array<ConstellationReturn>;
   existingTransmissionId: unknown;
@@ -57,10 +66,34 @@ export function buildConstellation(
 ): Array<ConstellationReturn> {
   const hasAvoidance = persona.timelineDivergenceScore >= 4;
   const partnerUnlocked = persona.primaryArc === "love";
+  const bestFriendUnlocked =
+    persona.streak >= 3 &&
+    (persona.repairCount >= 1 || persona.steadyCount >= 2);
+  const mentorUnlocked =
+    persona.streak >= 7 &&
+    persona.towardCount >= 2 &&
+    persona.timelineDivergenceScore <= 2;
   const employeeUnlocked =
-    persona.streak >= 21 && ["purpose", "money"].includes(persona.primaryArc);
+    persona.streak >= 10 &&
+    ["purpose", "money"].includes(persona.primaryArc) &&
+    persona.towardCount >= 2;
   const customerUnlocked =
-    persona.streak >= 30 && persona.primaryArc === "money";
+    persona.primaryArc === "money" &&
+    persona.streak >= 14 &&
+    persona.towardCount >= 3;
+  const childUnlocked =
+    persona.futureChildOptIn &&
+    persona.streak >= 30 &&
+    (persona.repairCount >= 2 || persona.steadyCount >= 4);
+  const strangerUnlocked =
+    persona.streak >= 21 &&
+    persona.releaseCount >= 2 &&
+    persona.timelineDivergenceScore >= 2;
+  const alternateUnlocked =
+    persona.streak >= 14 &&
+    persona.towardCount >= 2 &&
+    persona.releaseCount >= 1 &&
+    persona.timelineDivergenceScore >= 2;
 
   return [
     {
@@ -73,15 +106,15 @@ export function buildConstellation(
     {
       castMember: "future_best_friend",
       label: "Future Best Friend",
-      state: persona.streak >= 7 ? "lit" : "locked",
-      unlockHint: "7-day streak",
+      state: bestFriendUnlocked ? "lit" : "locked",
+      unlockHint: "3-day streak and at least 1 repair or 2 steady choices",
       emotionalRegister: "Warm, irreverent, nostalgic",
     },
     {
       castMember: "future_mentor",
       label: "Future Mentor",
-      state: persona.streak >= 30 ? "lit" : "locked",
-      unlockHint: "30-day streak",
+      state: mentorUnlocked ? "lit" : "locked",
+      unlockHint: "7-day streak, 2 toward choices, and a stable line",
       emotionalRegister: "Proud, measured, slightly formal",
     },
     {
@@ -95,36 +128,37 @@ export function buildConstellation(
       castMember: "future_employee",
       label: "Future Employee",
       state: employeeUnlocked ? (hasAvoidance ? "quiet" : "lit") : "locked",
-      unlockHint: "21 days of creative/work consistency",
+      unlockHint: "Purpose or Money arc, 10-day streak, and 2 toward choices",
       emotionalRegister: "Grateful, specific, professional",
     },
     {
       castMember: "future_customer",
       label: "Future Customer",
       state: customerUnlocked ? "lit" : "locked",
-      unlockHint: "30-day business arc",
+      unlockHint: "Money arc, 14-day streak, and 3 toward choices",
       emotionalRegister: "Changed by something you built",
     },
     {
       castMember: "future_child",
       label: "Future Child",
-      state:
-        persona.futureChildOptIn && persona.streak >= 60 ? "dim" : "locked",
-      unlockHint: "Opt-in, then wait for the right day",
+      state: childUnlocked ? "dim" : "locked",
+      unlockHint:
+        "Opt in, keep a 30-day line, and make 2 repair or 4 steady choices",
       emotionalRegister: "Rare, gentle, devastating",
     },
     {
       castMember: "future_stranger",
       label: "Future Stranger",
-      state: persona.streak >= 100 ? "dim" : "locked",
-      unlockHint: "Unannounced after 100 days",
+      state: strangerUnlocked ? "dim" : "locked",
+      unlockHint: "21-day streak, 2 release choices, and some drift",
       emotionalRegister: "Unknown, moving, uncanny",
     },
     {
       castMember: "alternate_self",
       label: "Alternate Self",
-      state: persona.streak >= 60 ? "dim" : "locked",
-      unlockHint: "Timeline divergence event, day 60+",
+      state: alternateUnlocked ? "dim" : "locked",
+      unlockHint:
+        "14-day streak, 2 toward choices, 1 release choice, and a flickering line",
       emotionalRegister: "Haunting, not villainous, just different",
     },
     {
@@ -206,17 +240,23 @@ export function deriveUnchosenSelves(
   const arcs: Array<CastMember> = [];
 
   if (
-    /\b(drink|alcohol|buzzed|tipsy|booze|drunk|wine|beer|cocktail|substance)\b/.test(text)
+    /\b(drink|alcohol|buzzed|tipsy|booze|drunk|wine|beer|cocktail|substance)\b/.test(
+      text,
+    )
   ) {
     arcs.push("the_dissolver");
   }
   if (
-    /\b(safe|practical|settled|compromise|comfortable|settle|playing it safe)\b/.test(text)
+    /\b(safe|practical|settled|compromise|comfortable|settle|playing it safe)\b/.test(
+      text,
+    )
   ) {
     arcs.push("the_ceiling");
   }
   if (
-    /\b(yes|saying yes|overcommitted|overwhelmed|no boundary|lost yourself)\b/.test(text)
+    /\b(yes|saying yes|overcommitted|overwhelmed|no boundary|lost yourself)\b/.test(
+      text,
+    )
   ) {
     arcs.push("the_flatlined");
   }
@@ -225,7 +265,9 @@ export function deriveUnchosenSelves(
   }
   if (
     archetype === "wanderer" ||
-    /\b(wander|drift|lost|uncertain|age|older|grandfather|momentum|time running out)\b/.test(text)
+    /\b(wander|drift|lost|uncertain|age|older|grandfather|momentum|time running out)\b/.test(
+      text,
+    )
   ) {
     arcs.push("the_grandfather");
   }
@@ -236,7 +278,9 @@ export function deriveUnchosenSelves(
     arcs.push("the_exhausted_winner");
   }
   if (
-    /\b(never|arrived|disappear|vanish|gone|fade|nonexistent|empty|no future)\b/.test(text)
+    /\b(never|arrived|disappear|vanish|gone|fade|nonexistent|empty|no future)\b/.test(
+      text,
+    )
   ) {
     arcs.push("the_ghost");
   }

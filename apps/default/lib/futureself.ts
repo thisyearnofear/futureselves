@@ -1,3 +1,5 @@
+import type { Id } from "@/convex/_generated/dataModel";
+
 export type Arc = "money" | "love" | "purpose" | "health";
 export type Timeline = "6_months" | "5_years" | "10_years";
 export type Archetype = "healed" | "wealthy" | "wise" | "builder" | "wanderer";
@@ -49,6 +51,10 @@ export interface PersonaState {
   lastCheckInDateKey?: string;
   lastTransmissionDateKey?: string;
   timelineDivergenceScore: number;
+  towardCount: number;
+  steadyCount: number;
+  releaseCount: number;
+  repairCount: number;
   activeUnchosenSelves: Array<CastMember>;
 }
 
@@ -82,10 +88,27 @@ export interface ConstellationStar {
 }
 
 export interface ThreadState {
-  id: string;
+  id: Id<"narrativeThreads">;
   title: string;
   seed: string;
   castMember: CastMember;
+}
+
+export interface ChoiceOutcome {
+  summary: string;
+  detail: string;
+  stabilityImpact: string;
+  voiceShift: string;
+  threadImpact?: string;
+}
+
+export interface StateSignals {
+  stabilityTitle: string;
+  stabilityNote: string;
+  voicePressureTitle: string;
+  voicePressureNote: string;
+  threadPressureTitle: string;
+  threadPressureNote: string;
 }
 
 export interface GameState {
@@ -95,6 +118,7 @@ export interface GameState {
   recentTransmissions: Array<TransmissionState>;
   constellation: Array<ConstellationStar>;
   openThreads: Array<ThreadState>;
+  systemSignals: StateSignals;
 }
 
 export interface OnboardingDraft {

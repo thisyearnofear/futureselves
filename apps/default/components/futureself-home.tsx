@@ -26,8 +26,11 @@ import Animated, {
 } from "react-native-reanimated";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import type {
+  CastMember,
   Choice,
+  ChoiceOutcome,
   ConstellationStar,
   GameState,
   PersonaState,
@@ -94,6 +97,14 @@ const actionNudges: Array<{
   },
 ];
 
+const demoCastOptions: Array<{ castMember: CastMember; label: string }> = [
+  { castMember: "future_partner", label: "Future Partner" },
+  { castMember: "future_mentor", label: "Future Mentor" },
+  { castMember: "alternate_self", label: "Alternate Self" },
+  { castMember: "shadow", label: "The Shadow" },
+  { castMember: "the_ghost", label: "The Ghost" },
+];
+
 export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
   const { signOut } = useAuthActions();
   const saveCheckIn = useMutation(api.game.saveCheckIn);
@@ -115,7 +126,16 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
   const [celebrateNextTransmission, setCelebrateNextTransmission] =
     useState(false);
   const [showTransmissionArrival, setShowTransmissionArrival] = useState(false);
+  const [forcedCastMember, setForcedCastMember] = useState<CastMember | null>(
+    null,
+  );
+  const [selectedThreadId, setSelectedThreadId] =
+    useState<Id<"narrativeThreads"> | null>(null);
+  const [choiceOutcome, setChoiceOutcome] = useState<ChoiceOutcome | null>(
+    null,
+  );
   const arrivalPulse = useSharedValue(0);
+  const arrivalSweep = useSharedValue(-280);
 
   const persona = state.persona;
   const litVoices = state.constellation.filter(
@@ -145,6 +165,11 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
     opacity: 0.3 + arrivalPulse.value * 0.5,
   }));
 
+  const transmissionArrivalSweep = useAnimatedStyle(() => ({
+    transform: [{ translateX: arrivalSweep.value }, { rotate: "18deg" }],
+    opacity: 0.14 + arrivalPulse.value * 0.18,
+  }));
+
   useEffect(() => {
     if (
       !celebrateNextTransmission ||
@@ -156,6 +181,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
 
     setShowTransmissionArrival(true);
     arrivalPulse.value = 0;
+    arrivalSweep.value = -280;
     arrivalPulse.value = withRepeat(
       withTiming(1, {
         duration: 1100,
@@ -164,6 +190,11 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
       2,
       true,
     );
+
+    arrivalSweep.value = withTiming(280, {
+      duration: 1450,
+      easing: Easing.out(Easing.cubic),
+    });
 
     if (Platform.OS !== "web") {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -175,7 +206,29 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
     }, 1800);
 
     return () => clearTimeout(timeout);
-  }, [arrivalPulse, celebrateNextTransmission, state.todayTransmission]);
+  }, [
+    arrivalPulse,
+    arrivalSweep,
+    celebrateNextTransmission,
+    state.todayTransmission,
+  ]);
+
+  useEffect(() => {
+    if (state.openThreads.length === 0) {
+      setSelectedThreadId(null);
+      return;
+    }
+
+    setSelectedThreadId((current) => {
+      if (
+        current &&
+        state.openThreads.some((thread) => thread.id === current)
+      ) {
+        return current;
+      }
+      return state.openThreads[0]?.id ?? null;
+    });
+  }, [state.openThreads]);
 
   async function handleReceive() {
     setError(null);
@@ -184,6 +237,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
       setError("Give today one word first. It becomes the key in the signal.");
       return;
     }
+    setChoiceOutcome(null);
     setCelebrateNextTransmission(true);
     setIsReceiving(true);
     try {
@@ -195,7 +249,9 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
       await generateTransmission({
         dateKey,
         localNow: new Date().toLocaleString(),
+        forcedCastMember: forcedCastMember ?? undefined,
       });
+      setForcedCastMember(null);
     } catch (caughtError) {
       setCelebrateNextTransmission(false);
       setError(
@@ -210,17 +266,29 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
 
   async function handleChoice(choice: Choice) {
     if (!state.todayTransmission) return;
+
+    const requiresThreadTarget =
+      (choice === "repair" || choice === "release") &&
+      state.openThreads.length > 0;
+
+    if (requiresThreadTarget && !selectedThreadId) {
+      setError("Choose a thread to aim that move at.");
+      return;
+    }
+
     setSelectedChoice(choice);
     setFlareColor(choiceColors[choice]);
     setShowFlare(true);
     setError(null);
 
     try {
-      await recordChoice({
+      const result = await recordChoice({
         dateKey,
         choice,
         prompt: state.todayTransmission.actionPrompt,
+        targetThreadId: selectedThreadId ?? undefined,
       });
+      setChoiceOutcome(result.outcome);
       if (Platform.OS !== "web") await Haptics.selectionAsync();
       setTimeout(() => setShowFlare(false), 2000);
     } catch (caughtError) {
@@ -233,16 +301,65 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
     }
   }
 
+  async function stageDemoCastMember(castMember: CastMember) {
+    setError(null);
+    setForcedCastMember(castMember);
+    await debugSetState({ clearToday: true });
+    if (Platform.OS === "web") {
+      window.alert(
+        `Demo voice locked: ${formatCastMember(castMember)}. Today's signal was cleared so you can receive it now.`,
+      );
+    }
+  }
+
+  function openDemoVoiceMenu() {
+    if (Platform.OS === "web") {
+      const cmd = window.prompt(
+        "DEBUG voice: partner | mentor | alternate | shadow | ghost | unlock",
+      );
+      if (cmd === "partner") void stageDemoCastMember("future_partner");
+      if (cmd === "mentor") void stageDemoCastMember("future_mentor");
+      if (cmd === "alternate") void stageDemoCastMember("alternate_self");
+      if (cmd === "shadow") void stageDemoCastMember("shadow");
+      if (cmd === "ghost") void stageDemoCastMember("the_ghost");
+      if (cmd === "unlock") setForcedCastMember(null);
+      return;
+    }
+
+    Alert.alert(
+      "Demo Voices",
+      "Lock the next transmission to a showcase voice",
+      [
+        ...demoCastOptions.map((option) => ({
+          text: option.label,
+          onPress: () => void stageDemoCastMember(option.castMember),
+        })),
+        ...(forcedCastMember
+          ? [
+              {
+                text: "Release Demo Lock",
+                onPress: () => setForcedCastMember(null),
+              },
+            ]
+          : []),
+        { text: "Cancel", style: "cancel" },
+      ],
+    );
+  }
+
   function handleDebugTap() {
     const newCount = debugTapCount + 1;
     if (newCount >= 3) {
       setDebugTapCount(0);
       if (Platform.OS === "web") {
-        const cmd = window.prompt("DEBUG: reset | streak | shadow | clear");
+        const cmd = window.prompt(
+          "DEBUG: reset | streak | shadow | clear | voices",
+        );
         if (cmd === "reset") debugReset();
         if (cmd === "streak") debugSetState({ streak: 30 });
         if (cmd === "shadow") debugSetState({ divergence: 6 });
         if (cmd === "clear") debugSetState({ clearToday: true });
+        if (cmd === "voices") openDemoVoiceMenu();
       } else {
         Alert.alert("Debug Menu", "Stage the demo recording", [
           { text: "Reset Persona", onPress: () => debugReset() },
@@ -253,6 +370,10 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
           {
             text: "Force Shadow Mode",
             onPress: () => debugSetState({ divergence: 6 }),
+          },
+          {
+            text: "Stage Demo Voice",
+            onPress: openDemoVoiceMenu,
           },
           {
             text: "Clear Today",
@@ -299,6 +420,15 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
             tomorrow respond.
           </Text>
 
+          {forcedCastMember ? (
+            <View style={styles.demoLockPill}>
+              <Ionicons name="radio-outline" size={14} color="#F7D38B" />
+              <Text style={styles.demoLockText}>
+                Demo voice locked: {formatCastMember(forcedCastMember)}
+              </Text>
+            </View>
+          ) : null}
+
           <View style={styles.heroPromiseRow}>
             <MiniPromise icon="mic" label="spoken" />
             <MiniPromise icon="book" label="serial" />
@@ -336,6 +466,12 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
               >
                 <Animated.View
                   style={[
+                    styles.transmissionArrivalSweep,
+                    transmissionArrivalSweep,
+                  ]}
+                />
+                <Animated.View
+                  style={[
                     styles.transmissionArrivalGlow,
                     transmissionArrivalGlow,
                   ]}
@@ -346,22 +482,50 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                     transmissionArrivalCore,
                   ]}
                 />
-                <View style={styles.transmissionArrivalBadge}>
-                  <View style={styles.transmissionArrivalDot} />
-                  <Text style={styles.transmissionArrivalEyebrow}>
-                    Transmission received
-                  </Text>
+                <View style={styles.transmissionArrivalStars}>
+                  <Animated.View
+                    entering={FadeInUp.delay(70).duration(260)}
+                    style={[
+                      styles.transmissionArrivalStar,
+                      styles.transmissionArrivalStarSmall,
+                    ]}
+                  />
+                  <Animated.View
+                    entering={FadeInUp.delay(130).duration(280)}
+                    style={styles.transmissionArrivalStar}
+                  />
+                  <Animated.View
+                    entering={FadeInUp.delay(210).duration(300)}
+                    style={[
+                      styles.transmissionArrivalStar,
+                      styles.transmissionArrivalStarSmall,
+                    ]}
+                  />
                 </View>
-                <Text style={styles.transmissionArrivalTitle}>
+                <Animated.View entering={FadeInUp.delay(110).duration(260)}>
+                  <View style={styles.transmissionArrivalBadge}>
+                    <View style={styles.transmissionArrivalDot} />
+                    <Text style={styles.transmissionArrivalEyebrow}>
+                      Transmission received
+                    </Text>
+                  </View>
+                </Animated.View>
+                <Animated.Text
+                  entering={FadeInUp.delay(180).duration(320)}
+                  style={styles.transmissionArrivalTitle}
+                >
                   {state.todayTransmission.audioUrl
                     ? "The voice has arrived."
                     : "The signal has landed."}
-                </Text>
-                <Text style={styles.transmissionArrivalCopy}>
+                </Animated.Text>
+                <Animated.Text
+                  entering={FadeInUp.delay(260).duration(340)}
+                  style={styles.transmissionArrivalCopy}
+                >
                   {state.todayTransmission.audioUrl
                     ? "Pause for a breath, then press play."
                     : "Read slowly. The next choice still changes tomorrow."}
-                </Text>
+                </Animated.Text>
               </Animated.View>
             ) : null}
           </Animated.View>
@@ -458,6 +622,45 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
             <Text style={styles.sectionCopy}>
               {state.todayTransmission.actionPrompt}
             </Text>
+            {state.openThreads.length > 0 ? (
+              <View style={styles.threadTargetSection}>
+                <Text style={styles.nudgeLabel}>Aim the move at a thread</Text>
+                <View style={styles.threadTargetGrid}>
+                  {state.openThreads.map((thread) => (
+                    <Pressable
+                      key={thread.id}
+                      onPress={() => setSelectedThreadId(thread.id)}
+                      style={[
+                        styles.threadTargetChip,
+                        selectedThreadId === thread.id &&
+                          styles.threadTargetChipActive,
+                      ]}
+                    >
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.threadTargetEyebrow,
+                          selectedThreadId === thread.id &&
+                            styles.threadTargetEyebrowActive,
+                        ]}
+                      >
+                        {formatCastMember(thread.castMember)}
+                      </Text>
+                      <Text
+                        numberOfLines={2}
+                        style={[
+                          styles.threadTargetTitle,
+                          selectedThreadId === thread.id &&
+                            styles.threadTargetTitleActive,
+                        ]}
+                      >
+                        {thread.title}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
             <View style={styles.choiceGrid}>
               {(Object.keys(choiceCopy) as Array<Choice>).map((choice) => (
                 <Pressable
@@ -479,6 +682,30 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                 </Pressable>
               ))}
             </View>
+            {choiceOutcome ? (
+              <View style={styles.choiceOutcomeCard}>
+                <View style={styles.choiceOutcomeHeader}>
+                  <Ionicons name="sparkles-outline" size={16} color="#F7D38B" />
+                  <Text style={styles.choiceOutcomeTitle}>
+                    {choiceOutcome.summary}
+                  </Text>
+                </View>
+                <Text style={styles.choiceOutcomeBody}>
+                  {choiceOutcome.detail}
+                </Text>
+                {choiceOutcome.threadImpact ? (
+                  <Text style={styles.choiceOutcomeMeta}>
+                    {choiceOutcome.threadImpact}
+                  </Text>
+                ) : null}
+                <Text style={styles.choiceOutcomeMeta}>
+                  {choiceOutcome.stabilityImpact}
+                </Text>
+                <Text style={styles.choiceOutcomeMeta}>
+                  {choiceOutcome.voiceShift}
+                </Text>
+              </View>
+            ) : null}
             <Text style={styles.nudgeLabel}>
               If you're blank, borrow a tiny move:
             </Text>
@@ -535,6 +762,39 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
               </Text>
             </View>
           ) : null}
+
+          <View style={styles.systemSignalsCard}>
+            <Text style={styles.systemSignalsTitle}>What the system sees</Text>
+            <View style={styles.systemSignalsList}>
+              <View style={styles.systemSignalItem}>
+                <Text style={styles.systemSignalEyebrow}>Stability</Text>
+                <Text style={styles.systemSignalHeading}>
+                  {state.systemSignals.stabilityTitle}
+                </Text>
+                <Text style={styles.systemSignalBody}>
+                  {state.systemSignals.stabilityNote}
+                </Text>
+              </View>
+              <View style={styles.systemSignalItem}>
+                <Text style={styles.systemSignalEyebrow}>Voice pressure</Text>
+                <Text style={styles.systemSignalHeading}>
+                  {state.systemSignals.voicePressureTitle}
+                </Text>
+                <Text style={styles.systemSignalBody}>
+                  {state.systemSignals.voicePressureNote}
+                </Text>
+              </View>
+              <View style={styles.systemSignalItem}>
+                <Text style={styles.systemSignalEyebrow}>Threads</Text>
+                <Text style={styles.systemSignalHeading}>
+                  {state.systemSignals.threadPressureTitle}
+                </Text>
+                <Text style={styles.systemSignalBody}>
+                  {state.systemSignals.threadPressureNote}
+                </Text>
+              </View>
+            </View>
+          </View>
 
           <View style={styles.voiceGrid}>
             {state.constellation.map((star) => (
@@ -803,89 +1063,14 @@ function getNextUnlock(
   );
   if (!candidate) return null;
 
-  const requirements: Record<ConstellationStar["castMember"], string> = {
-    future_self: "Already unlocked.",
-    future_best_friend:
-      persona.streak >= 7
-        ? candidate.unlockHint
-        : `${Math.max(1, 7 - persona.streak)} more daily check-in${7 - persona.streak === 1 ? "" : "s"}`,
-    future_mentor:
-      persona.streak >= 30
-        ? candidate.unlockHint
-        : `${Math.max(1, 30 - persona.streak)} more daily check-in${30 - persona.streak === 1 ? "" : "s"}`,
-    future_partner:
-      persona.primaryArc === "love"
-        ? candidate.unlockHint
-        : "Choose Love as your primary arc.",
-    future_employee: ["purpose", "money"].includes(persona.primaryArc)
-      ? persona.streak >= 21
-        ? candidate.unlockHint
-        : `${Math.max(1, 21 - persona.streak)} more work-arc day${21 - persona.streak === 1 ? "" : "s"}`
-      : "Shift your primary arc toward Purpose or Money.",
-    future_customer:
-      persona.primaryArc === "money"
-        ? persona.streak >= 30
-          ? candidate.unlockHint
-          : `${Math.max(1, 30 - persona.streak)} more business-arc day${30 - persona.streak === 1 ? "" : "s"}`
-        : "Choose Money as your primary arc.",
-    future_child: persona.futureChildOptIn
-      ? persona.streak >= 60
-        ? candidate.unlockHint
-        : `${Math.max(1, 60 - persona.streak)} more daily check-in${60 - persona.streak === 1 ? "" : "s"}`
-      : "Opt in to Future Child during onboarding.",
-    future_stranger:
-      persona.streak >= 100
-        ? candidate.unlockHint
-        : `${Math.max(1, 100 - persona.streak)} more daily check-in${100 - persona.streak === 1 ? "" : "s"}`,
-    alternate_self:
-      persona.streak >= 60
-        ? candidate.unlockHint
-        : `${Math.max(1, 60 - persona.streak)} more daily check-in${60 - persona.streak === 1 ? "" : "s"}`,
-    shadow:
-      persona.timelineDivergenceScore >= 4
-        ? "The shadow is close enough to speak."
-        : `Let the timeline drift a little more before this voice appears.`,
-    the_ceiling:
-      persona.streak >= 14
-        ? candidate.unlockHint
-        : `${Math.max(1, 14 - persona.streak)} more check-in${14 - persona.streak === 1 ? "" : "s"} (and the path feels safe)`,
-    the_flatlined:
-      persona.streak >= 7
-        ? candidate.unlockHint
-        : `${Math.max(1, 7 - persona.streak)} more check-in${7 - persona.streak === 1 ? "" : "s"} (make 2 release choices)`,
-    the_resentee:
-      persona.primaryArc === "love"
-        ? candidate.unlockHint
-        : "Choose Love as your primary arc.",
-    the_grandfather:
-      persona.timeline === "10_years" && persona.streak >= 60
-        ? candidate.unlockHint
-        : persona.timeline !== "10_years"
-          ? "Shift your timeline to 10 years."
-          : `${Math.max(1, 60 - persona.streak)} more check-in${60 - persona.streak === 1 ? "" : "s"}`,
-    the_exhausted_winner:
-      persona.primaryArc === "money" && persona.streak >= 30
-        ? candidate.unlockHint
-        : persona.primaryArc !== "money"
-          ? "Choose Money as your primary arc."
-          : `${Math.max(1, 30 - persona.streak)} more business-arc day${30 - persona.streak === 1 ? "" : "s"}`,
-    the_ghost:
-      persona.streak >= 7
-        ? candidate.unlockHint
-        : `${Math.max(1, 7 - persona.streak)} more check-in${7 - persona.streak === 1 ? "" : "s"} (and let divergence grow)`,
-    the_disappointed_healer:
-      persona.primaryArc === "health"
-        ? candidate.unlockHint
-        : "Choose Health as your primary arc.",
-    the_dissolver:
-      persona.streak >= 14
-        ? candidate.unlockHint
-        : `${Math.max(1, 14 - persona.streak)} more check-in${14 - persona.streak === 1 ? "" : "s"} (and make a release choice)`,
-  };
+  const requirement =
+    candidate.castMember === "shadow" && persona.timelineDivergenceScore < 4
+      ? "Let the line drift a little more before this voice appears."
+      : candidate.unlockHint;
 
   return {
     label: candidate.label,
-    requirement: requirements[candidate.castMember],
+    requirement,
     emotionalRegister: candidate.emotionalRegister,
   };
 }
@@ -960,6 +1145,23 @@ const styles = StyleSheet.create({
     gap: 9,
     flexWrap: "wrap",
   },
+  demoLockPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 8,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "rgba(247,211,139,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.22)",
+  },
+  demoLockText: {
+    color: "#F7D38B",
+    fontSize: 12,
+    fontWeight: "800",
+  },
   miniPromise: {
     flexDirection: "row",
     alignItems: "center",
@@ -1022,6 +1224,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(8,10,23,0.68)",
     paddingHorizontal: 24,
   },
+  transmissionArrivalSweep: {
+    position: "absolute",
+    width: 120,
+    height: "150%",
+    backgroundColor: "rgba(247,211,139,0.16)",
+    borderRadius: 999,
+  },
   transmissionArrivalGlow: {
     position: "absolute",
     width: 260,
@@ -1037,6 +1246,28 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(247,211,139,0.16)",
     borderWidth: 1,
     borderColor: "rgba(247,211,139,0.3)",
+  },
+  transmissionArrivalStars: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 2,
+  },
+  transmissionArrivalStar: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#F7D38B",
+    shadowColor: "#F7D38B",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+  },
+  transmissionArrivalStarSmall: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    opacity: 0.8,
   },
   transmissionArrivalBadge: {
     flexDirection: "row",
@@ -1212,10 +1443,79 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
+  threadTargetSection: {
+    gap: 8,
+  },
+  threadTargetGrid: {
+    gap: 10,
+  },
+  threadTargetChip: {
+    gap: 5,
+    padding: 12,
+    borderRadius: 18,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  threadTargetChipActive: {
+    backgroundColor: "rgba(247,211,139,0.14)",
+    borderColor: "rgba(247,211,139,0.3)",
+  },
+  threadTargetEyebrow: {
+    color: "#8F96B4",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  threadTargetEyebrowActive: {
+    color: "#F7D38B",
+  },
+  threadTargetTitle: {
+    color: "#D7DCEE",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "800",
+  },
+  threadTargetTitleActive: {
+    color: "#F8F0DE",
+  },
   choiceGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
+  },
+  choiceOutcomeCard: {
+    gap: 8,
+    padding: 14,
+    borderRadius: 20,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(247,211,139,0.09)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.18)",
+  },
+  choiceOutcomeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  choiceOutcomeTitle: {
+    color: "#F8F0DE",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  choiceOutcomeBody: {
+    color: "#D8DDF0",
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "700",
+  },
+  choiceOutcomeMeta: {
+    color: "#F6DDA9",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "700",
   },
   actionNudgeGrid: {
     gap: 8,
@@ -1307,6 +1607,45 @@ const styles = StyleSheet.create({
     color: "#F7D38B",
     fontSize: 12,
     fontWeight: "800",
+  },
+  systemSignalsCard: {
+    gap: 10,
+    padding: 14,
+    borderRadius: 20,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(255,255,255,0.045)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  systemSignalsTitle: {
+    color: "#F8F0DE",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  systemSignalsList: {
+    gap: 10,
+  },
+  systemSignalItem: {
+    gap: 4,
+  },
+  systemSignalEyebrow: {
+    color: "#8F96B4",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  systemSignalHeading: {
+    color: "#F6DDA9",
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "800",
+  },
+  systemSignalBody: {
+    color: "#D2D8EE",
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "700",
   },
   voiceGrid: {
     flexDirection: "row",

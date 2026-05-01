@@ -15,11 +15,16 @@ import {
   voicePresetIds,
   voicePresetLabels,
   voicePresetDescriptions,
-  defaultVoiceId,
   defaultVoiceSettings,
-  castMemberVoiceMap,
   castMemberVoiceSettings,
+  resolveTransmissionVoiceId,
 } from "./voice";
+import {
+  buildChoiceOutcome,
+  choiceRequiresThreadTarget,
+  getChoiceDivergenceDelta,
+  getNextChoiceCounts,
+} from "./choice-effects";
 import type { VoicePreset } from "./voice";
 import {
   buildConstellation,
@@ -27,6 +32,7 @@ import {
   chooseCastMember,
   getCastDirection,
 } from "./cast";
+import { buildStateSignals } from "./state-signals";
 
 const personaReturnValidator = v.object({
   id: v.id("personas"),
@@ -55,6 +61,10 @@ const personaReturnValidator = v.object({
   lastCheckInDateKey: v.optional(v.string()),
   lastTransmissionDateKey: v.optional(v.string()),
   timelineDivergenceScore: v.number(),
+  towardCount: v.number(),
+  steadyCount: v.number(),
+  releaseCount: v.number(),
+  repairCount: v.number(),
   activeUnchosenSelves: v.array(castMemberValidator),
 });
 
@@ -96,6 +106,23 @@ const constellationReturnValidator = v.object({
   emotionalRegister: v.string(),
 });
 
+const choiceOutcomeReturnValidator = v.object({
+  summary: v.string(),
+  detail: v.string(),
+  stabilityImpact: v.string(),
+  voiceShift: v.string(),
+  threadImpact: v.optional(v.string()),
+});
+
+const stateSignalsReturnValidator = v.object({
+  stabilityTitle: v.string(),
+  stabilityNote: v.string(),
+  voicePressureTitle: v.string(),
+  voicePressureNote: v.string(),
+  threadPressureTitle: v.string(),
+  threadPressureNote: v.string(),
+});
+
 const stateReturnValidator = v.object({
   persona: v.union(personaReturnValidator, v.null()),
   todayCheckIn: v.union(checkInReturnValidator, v.null()),
@@ -110,6 +137,7 @@ const stateReturnValidator = v.object({
       castMember: castMemberValidator,
     }),
   ),
+  systemSignals: stateSignalsReturnValidator,
 });
 
 const generationContextValidator = v.object({
@@ -184,6 +212,10 @@ interface PersonaReturn {
   lastCheckInDateKey?: string;
   lastTransmissionDateKey?: string;
   timelineDivergenceScore: number;
+  towardCount: number;
+  steadyCount: number;
+  releaseCount: number;
+  repairCount: number;
   activeUnchosenSelves: Array<CastMember>;
 }
 
@@ -241,9 +273,6 @@ interface GeneratedTransmission {
   cliffhanger: string;
 }
 
-
-
-
 function toPersonaReturn(persona: {
   _id: Id<"personas">;
   name: string;
@@ -271,6 +300,10 @@ function toPersonaReturn(persona: {
   lastCheckInDateKey?: string;
   lastTransmissionDateKey?: string;
   timelineDivergenceScore: number;
+  towardCount: number;
+  steadyCount: number;
+  releaseCount: number;
+  repairCount: number;
   activeUnchosenSelves: Array<CastMember>;
 }): PersonaReturn {
   return {
@@ -300,6 +333,10 @@ function toPersonaReturn(persona: {
     lastCheckInDateKey: persona.lastCheckInDateKey,
     lastTransmissionDateKey: persona.lastTransmissionDateKey,
     timelineDivergenceScore: persona.timelineDivergenceScore,
+    towardCount: persona.towardCount,
+    steadyCount: persona.steadyCount,
+    releaseCount: persona.releaseCount,
+    repairCount: persona.repairCount,
     activeUnchosenSelves: persona.activeUnchosenSelves ?? [],
   };
 }
@@ -352,8 +389,6 @@ async function toTransmissionReturn(
     createdAt: transmission.createdAt,
   };
 }
-
-
 
 function extractTerms(text: string): Array<string> {
   return text
@@ -471,13 +506,6 @@ function clampScore(value: number): number {
   return Math.max(0, Math.min(6, value));
 }
 
-function getChoiceDivergenceDelta(choice: Choice): number {
-  if (choice === "toward") return -2;
-  if (choice === "repair") return -1;
-  if (choice === "release") return -1;
-  return 0;
-}
-
 export const completeOnboarding = authMutation({
   args: {
     name: v.string(),
@@ -553,6 +581,10 @@ export const completeOnboarding = authMutation({
       lastCheckInDateKey: existing?.lastCheckInDateKey,
       lastTransmissionDateKey: existing?.lastTransmissionDateKey,
       timelineDivergenceScore: existing?.timelineDivergenceScore ?? 0,
+      towardCount: existing?.towardCount ?? 0,
+      steadyCount: existing?.steadyCount ?? 0,
+      releaseCount: existing?.releaseCount ?? 0,
+      repairCount: existing?.repairCount ?? 0,
       activeUnchosenSelves,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -644,8 +676,12 @@ export const recordChoice = authMutation({
     dateKey: v.string(),
     choice: choiceValidator,
     prompt: v.string(),
+    targetThreadId: v.optional(v.id("narrativeThreads")),
   },
-  returns: v.id("choices"),
+  returns: v.object({
+    choiceId: v.id("choices"),
+    outcome: choiceOutcomeReturnValidator,
+  }),
   handler: async (ctx, args) => {
     const now = Date.now();
     const existing = await ctx.db
@@ -658,14 +694,23 @@ export const recordChoice = authMutation({
       .query("personas")
       .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
       .unique();
-    const openThreads = await ctx.db
-      .query("narrativeThreads")
-      .withIndex("by_userId_and_status", (q) =>
-        q.eq("userId", ctx.user._id).eq("status", "open"),
-      )
-      .take(3);
 
-    const selectedThread = openThreads[0] ?? null;
+    const selectedThread = args.targetThreadId
+      ? await ctx.db.get(args.targetThreadId)
+      : null;
+
+    if (
+      selectedThread &&
+      (selectedThread.userId !== ctx.user._id ||
+        selectedThread.status !== "open")
+    ) {
+      throw new Error("That thread is no longer available.");
+    }
+
+    if (choiceRequiresThreadTarget(args.choice) && !selectedThread) {
+      throw new Error("Choose a thread to aim that move at.");
+    }
+
     if (selectedThread && args.choice === "repair") {
       await ctx.db.patch(selectedThread._id, {
         status: "resolved",
@@ -679,30 +724,51 @@ export const recordChoice = authMutation({
       });
     }
     if (persona) {
+      const nextCounts = getNextChoiceCounts(
+        {
+          towardCount: persona.towardCount,
+          steadyCount: persona.steadyCount,
+          releaseCount: persona.releaseCount,
+          repairCount: persona.repairCount,
+        },
+        existing?.choice ?? null,
+        args.choice,
+      );
+
       await ctx.db.patch(persona._id, {
         timelineDivergenceScore: clampScore(
           persona.timelineDivergenceScore +
-            getChoiceDivergenceDelta(args.choice),
+            getChoiceDivergenceDelta(args.choice) -
+            (existing ? getChoiceDivergenceDelta(existing.choice) : 0),
         ),
+        towardCount: nextCounts.towardCount,
+        steadyCount: nextCounts.steadyCount,
+        releaseCount: nextCounts.releaseCount,
+        repairCount: nextCounts.repairCount,
         updatedAt: now,
       });
     }
+
+    const outcome = buildChoiceOutcome(args.choice, selectedThread?.title);
 
     if (existing) {
       await ctx.db.patch(existing._id, {
         choice: args.choice,
         prompt: args.prompt,
+        targetThreadId: args.targetThreadId,
         createdAt: now,
       });
-      return existing._id;
+      return { choiceId: existing._id, outcome };
     }
-    return await ctx.db.insert("choices", {
+    const choiceId = await ctx.db.insert("choices", {
       userId: ctx.user._id,
       dateKey: args.dateKey,
       choice: args.choice,
       prompt: args.prompt,
+      targetThreadId: args.targetThreadId,
       createdAt: now,
     });
+    return { choiceId, outcome };
   },
 });
 
@@ -725,6 +791,16 @@ export const getState = authQuery({
         recentTransmissions: [],
         constellation: [],
         openThreads: [],
+        systemSignals: {
+          stabilityTitle: "The line is waiting",
+          stabilityNote: "Complete onboarding to establish the first signal.",
+          voicePressureTitle: "No voice pressure yet",
+          voicePressureNote:
+            "Once the ritual begins, the cast will start reacting to your choices.",
+          threadPressureTitle: "No live threads yet",
+          threadPressureNote:
+            "Threads begin forming after the first transmissions land.",
+        },
       };
     }
     const persona = toPersonaReturn(personaDoc);
@@ -751,6 +827,11 @@ export const getState = authQuery({
         q.eq("userId", ctx.user._id).eq("status", "open"),
       )
       .take(3);
+    const recentChoiceDocs = await ctx.db
+      .query("choices")
+      .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
+      .order("desc")
+      .take(6);
 
     return {
       persona,
@@ -770,6 +851,13 @@ export const getState = authQuery({
         seed: thread.seed,
         castMember: thread.castMember,
       })),
+      systemSignals: buildStateSignals({
+        persona,
+        openThreadsCount: openThreadDocs.length,
+        recentChoices: recentChoiceDocs.map((choice) => ({
+          choice: choice.choice,
+        })),
+      }),
     };
   },
 });
@@ -941,6 +1029,7 @@ export const generateDailyTransmission = authAction({
   args: {
     dateKey: v.string(),
     localNow: v.string(),
+    forcedCastMember: v.optional(castMemberValidator),
   },
   returns: v.object({
     transmissionId: v.union(v.id("transmissions"), v.null()),
@@ -970,7 +1059,11 @@ export const generateDailyTransmission = authAction({
     }
     const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
 
-    const castMember = chooseCastMember(context);
+    if (args.forcedCastMember && !process.env.DEBUG_MODE) {
+      throw new Error("Forced demo voices are disabled in production");
+    }
+
+    const castMember = args.forcedCastMember ?? chooseCastMember(context);
     const transmissionId = await ctx.runMutation(
       internal.game.beginTransmissionGeneration,
       {
@@ -1002,7 +1095,10 @@ export const generateDailyTransmission = authAction({
       let audioStorageId: Id<"_storage"> | undefined;
       if (elevenLabsKey) {
         try {
-          const voiceId = castMemberVoiceMap[castMember] ?? defaultVoiceId;
+          const voiceId = resolveTransmissionVoiceId(
+            castMember,
+            context.persona.selectedVoiceId,
+          );
           const settings =
             castMemberVoiceSettings[castMember] ?? defaultVoiceSettings;
           const ttsResponse = await fetch(
@@ -1073,7 +1169,8 @@ function isPreviousDateKey(previous: string, current: string): boolean {
 export const debugResetPersona = authMutation({
   args: {},
   handler: async (ctx) => {
-    if (!process.env.DEBUG_MODE) throw new Error("Debug mutations are disabled in production");
+    if (!process.env.DEBUG_MODE)
+      throw new Error("Debug mutations are disabled in production");
     const persona = await ctx.db
       .query("personas")
       .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
@@ -1111,7 +1208,8 @@ export const debugSetGameState = authMutation({
     clearToday: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    if (!process.env.DEBUG_MODE) throw new Error("Debug mutations are disabled in production");
+    if (!process.env.DEBUG_MODE)
+      throw new Error("Debug mutations are disabled in production");
     const persona = await ctx.db
       .query("personas")
       .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
