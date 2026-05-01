@@ -236,6 +236,24 @@ export function FutureselfSettingsSheet({
               title="Trust and account"
               copy="Small, explicit controls. Nothing here resets your ritual unless you choose to leave the session."
             >
+              <View style={styles.accountModesSummary}>
+                <View style={styles.accountModeCard}>
+                  <Text style={styles.accountModeEyebrow}>Quick start</Text>
+                  <Text style={styles.accountModeTitle}>Anonymous-first is valid</Text>
+                  <Text style={styles.accountModeBody}>
+                    You can begin the ritual without committing to an account
+                    first.
+                  </Text>
+                </View>
+                <View style={styles.accountModeCard}>
+                  <Text style={styles.accountModeEyebrow}>Account-backed</Text>
+                  <Text style={styles.accountModeTitle}>Use sign-in for continuity</Text>
+                  <Text style={styles.accountModeBody}>
+                    Return with the same account when you want a longer-running
+                    timeline.
+                  </Text>
+                </View>
+              </View>
               <View style={styles.infoCard}>
                 <Ionicons name="shield-checkmark-outline" size={18} color="#F7D38B" />
                 <Text style={styles.infoText}>
@@ -435,6 +453,35 @@ const styles = StyleSheet.create({
     color: "#F8F0DE",
     fontSize: 12,
     fontWeight: "800",
+  },
+  accountModesSummary: {
+    gap: 10,
+  },
+  accountModeCard: {
+    gap: 5,
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  accountModeEyebrow: {
+    color: "#F7D38B",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
+  },
+  accountModeTitle: {
+    color: "#F8F0DE",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  accountModeBody: {
+    color: "#BFC6DE",
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "700",
   },
   section: {
     gap: 8,

@@ -268,6 +268,23 @@ export function AuthScreen() {
               persistence and a safer long-running timeline.
             </Text>
 
+            <View style={styles.accountModesSummary}>
+              <View style={styles.accountModeCard}>
+                <Text style={styles.accountModeEyebrow}>Quick start</Text>
+                <Text style={styles.accountModeTitle}>Anonymous session</Text>
+                <Text style={styles.accountModeBody}>
+                  Start immediately. Best for trying the ritual first.
+                </Text>
+              </View>
+              <View style={styles.accountModeCard}>
+                <Text style={styles.accountModeEyebrow}>Account-backed</Text>
+                <Text style={styles.accountModeTitle}>Email or Google</Text>
+                <Text style={styles.accountModeBody}>
+                  Better for returning to the same timeline across sessions.
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.modeRow}>
               <Pressable
                 onPress={() => setMode("signUp")}
@@ -542,6 +559,36 @@ const styles = StyleSheet.create({
     color: "#9CA4C3",
     fontSize: 13,
     lineHeight: 19,
+  },
+  accountModesSummary: {
+    gap: 10,
+  },
+  accountModeCard: {
+    gap: 5,
+    padding: 12,
+    borderRadius: 18,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  accountModeEyebrow: {
+    color: "#F7D38B",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
+  },
+  accountModeTitle: {
+    color: "#F8F0DE",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  accountModeBody: {
+    color: "#BFC6DE",
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "700",
   },
   modeRow: {
     flexDirection: "row",
