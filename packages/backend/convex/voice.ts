@@ -1,22 +1,4 @@
-type CastMember =
-  | "future_self"
-  | "future_best_friend"
-  | "future_mentor"
-  | "future_partner"
-  | "future_employee"
-  | "future_customer"
-  | "future_child"
-  | "future_stranger"
-  | "alternate_self"
-  | "shadow"
-  | "the_ceiling"
-  | "the_flatlined"
-  | "the_resentee"
-  | "the_grandfather"
-  | "the_exhausted_winner"
-  | "the_ghost"
-  | "the_disappointed_healer"
-  | "the_dissolver";
+import type { CastMember } from "../../domain/src";
 
 export type VoicePreset = "ember" | "atlas" | "sol";
 
@@ -69,7 +51,7 @@ export const voicePresetDescriptions: Record<VoicePreset, string> = {
 export const defaultVoiceId = voicePresetIds.ember;
 export const defaultVoiceSettings = voicePresetDefaults.ember;
 
-export const futureSelfPlusVoiceCastMembers: Array<CastMember> = [
+export const castMembersWithDedicatedVoiceIds: Array<CastMember> = [
   "future_mentor",
   "future_partner",
   "future_customer",
@@ -225,7 +207,7 @@ export function resolveTransmissionVoiceId(
 ): string {
   const preferredVoiceId = selectedVoiceId?.trim();
 
-  if (futureSelfPlusVoiceCastMembers.includes(castMember)) {
+  if (castMembersWithDedicatedVoiceIds.includes(castMember)) {
     return castMemberVoiceMap[castMember] ?? preferredVoiceId ?? defaultVoiceId;
   }
 

@@ -1,24 +1,4 @@
-type Arc = "money" | "love" | "purpose" | "health";
-type CastMember =
-  | "future_self"
-  | "future_best_friend"
-  | "future_mentor"
-  | "future_partner"
-  | "future_employee"
-  | "future_customer"
-  | "future_child"
-  | "future_stranger"
-  | "alternate_self"
-  | "shadow"
-  | "the_ceiling"
-  | "the_flatlined"
-  | "the_resentee"
-  | "the_grandfather"
-  | "the_exhausted_winner"
-  | "the_ghost"
-  | "the_disappointed_healer"
-  | "the_dissolver";
-type Choice = "toward" | "steady" | "release" | "repair";
+import type { Arc, CastMember, Choice } from "../../domain/src";
 
 interface PersonaSignalsInput {
   primaryArc: Arc;

@@ -1,4 +1,4 @@
-type Choice = "toward" | "steady" | "release" | "repair";
+import type { Choice } from "../../domain/src";
 
 export interface ChoiceOutcome {
   summary: string;

@@ -42,7 +42,6 @@ export default defineSchema({
     releaseCount: v.optional(v.number()),
     repairCount: v.optional(v.number()),
     unchosenVoices: v.optional(v.array(castMemberValidator)),
-    activeUnchosenSelves: v.optional(v.array(castMemberValidator)),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_userId", ["userId"]),

@@ -1,30 +1,15 @@
-type Arc = "money" | "love" | "purpose" | "health";
-type Archetype = "healed" | "wealthy" | "wise" | "builder" | "wanderer";
-type CastMember =
-  | "future_self"
-  | "future_best_friend"
-  | "future_mentor"
-  | "future_partner"
-  | "future_employee"
-  | "future_customer"
-  | "future_child"
-  | "future_stranger"
-  | "alternate_self"
-  | "shadow"
-  | "the_ceiling"
-  | "the_flatlined"
-  | "the_resentee"
-  | "the_grandfather"
-  | "the_exhausted_winner"
-  | "the_ghost"
-  | "the_disappointed_healer"
-  | "the_dissolver";
-type Choice = "toward" | "steady" | "release" | "repair";
+import type {
+  Arc,
+  Archetype,
+  CastMember,
+  Choice,
+  Timeline,
+} from "../../domain/src";
 
 interface PersonaFields {
   name: string;
   primaryArc: Arc;
-  timeline: "6_months" | "5_years" | "10_years";
+  timeline: Timeline;
   archetype: Archetype;
   firstVoice: CastMember;
   futureChildOptIn: boolean;
@@ -34,8 +19,7 @@ interface PersonaFields {
   steadyCount: number;
   releaseCount: number;
   repairCount: number;
-  unchosenVoices?: Array<CastMember>;
-  activeUnchosenSelves: Array<CastMember>;
+  unchosenVoices: Array<CastMember>;
   avoiding: string;
   draining: string;
 }
@@ -361,8 +345,7 @@ export function chooseCastMember(context: GenerationContext): CastMember {
   }
 
   // Unchosen Selves override — rare, condition-driven
-  const activeUnchosen =
-    context.persona.unchosenVoices ?? context.persona.activeUnchosenSelves ?? [];
+  const activeUnchosen = context.persona.unchosenVoices ?? [];
   if (activeUnchosen.length > 0) {
     const triggeredUnchosen = activeUnchosen.find((u) =>
       isUnchosenSelfTriggered(
