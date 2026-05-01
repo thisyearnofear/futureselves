@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -121,6 +121,9 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
   const [debugTapCount, setDebugTapCount] = useState(0);
   const [celebrateNextTransmission, setCelebrateNextTransmission] =
     useState(false);
+  const [showMilestone, setShowMilestone] = useState(false);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const milestoneShownRef = useRef(false);
   const [showTransmissionArrival, setShowTransmissionArrival] = useState(false);
   const [forcedCastMember, setForcedCastMember] = useState<CastMember | null>(
     null,
@@ -216,6 +219,64 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
     celebrateNextTransmission,
     state.todayTransmission,
   ]);
+
+  // Streak milestone detection
+  const streakMilestones = [3, 7, 14, 30, 60, 100];
+  const currentStreak = persona?.streak ?? 0;
+  const isMilestone = streakMilestones.includes(currentStreak);
+
+  useEffect(() => {
+    if (isMilestone && hasTransmissionToday && !milestoneShownRef.current) {
+      milestoneShownRef.current = true;
+      const timer = setTimeout(() => setShowMilestone(true), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isMilestone, hasTransmissionToday]);
+
+  const handleShare = useCallback(async () => {
+    if (!state.todayTransmission || !persona) return;
+    const t = state.todayTransmission;
+    const teaser = t.text.length > 120 ? `${t.text.slice(0, 117)}...` : t.text;
+    const shareText = `"${teaser}"\n\n— ${formatCastMember(t.castMember)}, Day ${persona.streak}\n\n🔮 futureself.app`;
+
+    if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: "FutureSelf — A signal from the timeline", text: shareText });
+        setShareStatus("Shared");
+      } catch {
+        setShareStatus(null);
+      }
+    } else if (Platform.OS === "web") {
+      try {
+        await navigator.clipboard.writeText(shareText);
+        setShareStatus("Copied to clipboard");
+      } catch {
+        setShareStatus("Could not share");
+      }
+    } else {
+      // Native: use Share API from react-native
+      const { Share: RNShare } = await import("react-native");
+      try {
+        await RNShare.share({ message: shareText, title: "FutureSelf" });
+        setShareStatus("Shared");
+      } catch {
+        setShareStatus(null);
+      }
+    }
+    if (shareStatus) setTimeout(() => setShareStatus(null), 2500);
+  }, [state.todayTransmission, persona, shareStatus]);
+
+  const handleShareMilestone = useCallback(async () => {
+    const shareText = `I've listened to my future self for ${currentStreak} days straight. 🔮\n\nfutureself.app`;
+    if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.share) {
+      try { await navigator.share({ title: "FutureSelf Streak", text: shareText }); } catch { /* cancelled */ }
+    } else if (Platform.OS === "web") {
+      try { await navigator.clipboard.writeText(shareText); } catch { /* noop */ }
+    } else {
+      const { Share: RNShare } = await import("react-native");
+      try { await RNShare.share({ message: shareText }); } catch { /* cancelled */ }
+    }
+  }, [currentStreak]);
 
   useEffect(() => {
     if (state.openThreads.length === 0) {
@@ -460,6 +521,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
         </Animated.View>
 
         {state.todayTransmission ? (
+        <>
           <Animated.View
             entering={ZoomIn.duration(400).springify().damping(15)}
             style={styles.transmissionShell}
@@ -537,6 +599,20 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
               </Animated.View>
             ) : null}
           </Animated.View>
+
+          {/* Share this signal */}
+          <Animated.View entering={FadeInUp.delay(200)} style={styles.shareRow}>
+            <Pressable
+              onPress={handleShare}
+              style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}
+            >
+              <Ionicons name="share-outline" size={18} color="#F7D38B" />
+              <Text style={styles.shareButtonText}>
+                {shareStatus ?? "Share this signal"}
+              </Text>
+            </Pressable>
+          </Animated.View>
+        </>
         ) : (
           <Animated.View
             entering={
@@ -963,6 +1039,54 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
         ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
+
+      {/* Streak Milestone Celebration */}
+      {showMilestone && (
+        <Animated.View
+          entering={FadeIn.duration(400)}
+          exiting={FadeOut.duration(600)}
+          style={styles.milestoneOverlay}
+        >
+          <Pressable
+            style={styles.milestoneBackdrop}
+            onPress={() => setShowMilestone(false)}
+          />
+          <Animated.View
+            entering={ZoomIn.duration(400).springify().damping(14)}
+            style={styles.milestoneCard}
+          >
+            <Text style={styles.milestoneEmoji}>🔮</Text>
+            <Text style={styles.milestoneTitle}>
+              {currentStreak}-day streak
+            </Text>
+            <Text style={styles.milestoneCopy}>
+              You've listened to your future self for {currentStreak} days
+              straight. The timeline remembers.
+            </Text>
+            <View style={styles.milestoneActions}>
+              <Pressable
+                onPress={handleShareMilestone}
+                style={({ pressed }) => [
+                  styles.milestoneShareButton,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Ionicons name="share-outline" size={16} color="#101320" />
+                <Text style={styles.milestoneShareText}>Share achievement</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowMilestone(false)}
+                style={({ pressed }) => [
+                  styles.milestoneDismiss,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.milestoneDismissText}>Continue</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </Animated.View>
+      )}
 
       {/* Timeline Flare Overlay */}
       {showFlare && (
@@ -1925,5 +2049,90 @@ const styles = StyleSheet.create({
     borderWidth: 40,
     borderRadius: 999,
     opacity: 0.3,
+  },
+  shareRow: {
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(247,211,139,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.18)",
+  },
+  shareButtonText: {
+    color: "#F7D38B",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  milestoneOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  milestoneBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(8,10,23,0.85)",
+  },
+  milestoneCard: {
+    width: 300,
+    padding: 32,
+    borderRadius: 28,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(14,17,34,0.96)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.22)",
+    alignItems: "center",
+    gap: 14,
+    zIndex: 1,
+  },
+  milestoneEmoji: {
+    fontSize: 48,
+  },
+  milestoneTitle: {
+    color: "#F7D38B",
+    fontSize: 24,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+  },
+  milestoneCopy: {
+    color: "#BFC6DE",
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  milestoneActions: {
+    gap: 10,
+    width: "100%",
+    marginTop: 6,
+  },
+  milestoneShareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 16,
+    backgroundColor: "#F7D38B",
+  },
+  milestoneShareText: {
+    color: "#101320",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  milestoneDismiss: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  milestoneDismissText: {
+    color: "#8F96B4",
+    fontSize: 13,
+    fontWeight: "700",
   },
 });

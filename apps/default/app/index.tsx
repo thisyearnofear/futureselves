@@ -11,6 +11,7 @@ import { FutureselfHome } from "@/components/futureself-home";
 import { OnboardingFlow } from "@/components/onboarding-flow";
 import type { GameState } from "@/lib/futureself";
 import { getLocalDateKey } from "@/lib/futureself";
+import { useDailyReminder } from "@/lib/use-daily-reminder";
 
 export default function Index() {
     return (
@@ -35,6 +36,7 @@ function GameShell() {
     const [dateKey] = useState(() => getLocalDateKey());
     const [now] = useState(() => Date.now());
     const state = useQuery(api.game.getState, { dateKey, now });
+    useDailyReminder();
 
     if (state === undefined) return <LoadingState label="Tuning the constellation..." />;
 
