@@ -24,7 +24,7 @@ import {
   choiceRequiresThreadTarget,
   getChoiceDivergenceDelta,
   getNextChoiceCounts,
-} from "./choice-effects";
+} from "./choice_effects";
 import type { VoicePreset } from "./voice";
 import {
   buildConstellation,
@@ -32,7 +32,7 @@ import {
   chooseCastMember,
   getCastDirection,
 } from "./cast";
-import { buildStateSignals } from "./state-signals";
+import { buildStateSignals } from "./state_signals";
 
 const personaReturnValidator = v.object({
   id: v.id("personas"),
@@ -307,11 +307,11 @@ function toPersonaReturn(persona: {
   lastCheckInDateKey?: string;
   lastTransmissionDateKey?: string;
   timelineDivergenceScore: number;
-  towardCount: number;
-  steadyCount: number;
-  releaseCount: number;
-  repairCount: number;
-  activeUnchosenSelves: Array<CastMember>;
+  towardCount?: number;
+  steadyCount?: number;
+  releaseCount?: number;
+  repairCount?: number;
+  activeUnchosenSelves?: Array<CastMember>;
 }): PersonaReturn {
   return {
     id: persona._id,
@@ -340,10 +340,10 @@ function toPersonaReturn(persona: {
     lastCheckInDateKey: persona.lastCheckInDateKey,
     lastTransmissionDateKey: persona.lastTransmissionDateKey,
     timelineDivergenceScore: persona.timelineDivergenceScore,
-    towardCount: persona.towardCount,
-    steadyCount: persona.steadyCount,
-    releaseCount: persona.releaseCount,
-    repairCount: persona.repairCount,
+    towardCount: persona.towardCount ?? 0,
+    steadyCount: persona.steadyCount ?? 0,
+    releaseCount: persona.releaseCount ?? 0,
+    repairCount: persona.repairCount ?? 0,
     activeUnchosenSelves: persona.activeUnchosenSelves ?? [],
   };
 }
@@ -733,10 +733,10 @@ export const recordChoice = authMutation({
     if (persona) {
       const nextCounts = getNextChoiceCounts(
         {
-          towardCount: persona.towardCount,
-          steadyCount: persona.steadyCount,
-          releaseCount: persona.releaseCount,
-          repairCount: persona.repairCount,
+          towardCount: persona.towardCount ?? 0,
+          steadyCount: persona.steadyCount ?? 0,
+          releaseCount: persona.releaseCount ?? 0,
+          repairCount: persona.repairCount ?? 0,
         },
         existing?.choice ?? null,
         args.choice,

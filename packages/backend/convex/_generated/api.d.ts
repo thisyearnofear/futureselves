@@ -8,10 +8,19 @@
  * @module
  */
 
+import type * as ai from "../ai.js";
 import type * as auth from "../auth.js";
+import type * as cast from "../cast.js";
+import type * as choice_effects from "../choice_effects.js";
 import type * as functions from "../functions.js";
 import type * as game from "../game.js";
 import type * as http from "../http.js";
+import type * as migrations from "../migrations.js";
+import type * as rateLimit from "../rateLimit.js";
+import type * as seed from "../seed.js";
+import type * as state_signals from "../state_signals.js";
+import type * as validators from "../validators.js";
+import type * as voice from "../voice.js";
 
 import type {
   ApiFromModules,
@@ -20,10 +29,19 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  ai: typeof ai;
   auth: typeof auth;
+  cast: typeof cast;
+  choice_effects: typeof choice_effects;
   functions: typeof functions;
   game: typeof game;
   http: typeof http;
+  migrations: typeof migrations;
+  rateLimit: typeof rateLimit;
+  seed: typeof seed;
+  state_signals: typeof state_signals;
+  validators: typeof validators;
+  voice: typeof voice;
 }>;
 
 /**
@@ -53,14 +71,14 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
-  actionCache: any;
-  migrations: any;
-  rateLimiter: any;
-  pushNotifications: any;
-  workflow: any;
-  agent: any;
-  rag: any;
-  crons: any;
-  shardedCounter: any;
-  aggregate: any;
+  actionCache: import("@convex-dev/action-cache/_generated/component.js").ComponentApi<"actionCache">;
+  migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+  pushNotifications: import("@convex-dev/expo-push-notifications/_generated/component.js").ComponentApi<"pushNotifications">;
+  workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
+  agent: import("@convex-dev/agent/_generated/component.js").ComponentApi<"agent">;
+  rag: import("@convex-dev/rag/_generated/component.js").ComponentApi<"rag">;
+  crons: import("@convex-dev/crons/_generated/component.js").ComponentApi<"crons">;
+  shardedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"shardedCounter">;
+  aggregate: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"aggregate">;
 };
