@@ -65,6 +65,7 @@ const personaReturnValidator = v.object({
   steadyCount: v.number(),
   releaseCount: v.number(),
   repairCount: v.number(),
+  unchosenVoices: v.array(castMemberValidator),
   activeUnchosenSelves: v.array(castMemberValidator),
 });
 
@@ -223,6 +224,7 @@ interface PersonaReturn {
   steadyCount: number;
   releaseCount: number;
   repairCount: number;
+  unchosenVoices: Array<CastMember>;
   activeUnchosenSelves: Array<CastMember>;
 }
 
@@ -311,8 +313,12 @@ function toPersonaReturn(persona: {
   steadyCount?: number;
   releaseCount?: number;
   repairCount?: number;
+  unchosenVoices?: Array<CastMember>;
   activeUnchosenSelves?: Array<CastMember>;
 }): PersonaReturn {
+  const unchosenVoices =
+    persona.unchosenVoices ?? persona.activeUnchosenSelves ?? [];
+
   return {
     id: persona._id,
     name: persona.name,
@@ -344,7 +350,8 @@ function toPersonaReturn(persona: {
     steadyCount: persona.steadyCount ?? 0,
     releaseCount: persona.releaseCount ?? 0,
     repairCount: persona.repairCount ?? 0,
-    activeUnchosenSelves: persona.activeUnchosenSelves ?? [],
+    unchosenVoices,
+    activeUnchosenSelves: unchosenVoices,
   };
 }
 
@@ -549,6 +556,7 @@ export const completeOnboarding = authMutation({
       .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
       .unique();
     const activeUnchosenSelves =
+      existing?.unchosenVoices ??
       existing?.activeUnchosenSelves ??
       deriveUnchosenSelves(
         args.avoiding,
@@ -592,6 +600,7 @@ export const completeOnboarding = authMutation({
       steadyCount: existing?.steadyCount ?? 0,
       releaseCount: existing?.releaseCount ?? 0,
       repairCount: existing?.repairCount ?? 0,
+      unchosenVoices: activeUnchosenSelves,
       activeUnchosenSelves,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,

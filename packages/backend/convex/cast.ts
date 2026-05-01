@@ -34,6 +34,7 @@ interface PersonaFields {
   steadyCount: number;
   releaseCount: number;
   repairCount: number;
+  unchosenVoices?: Array<CastMember>;
   activeUnchosenSelves: Array<CastMember>;
   avoiding: string;
   draining: string;
@@ -360,7 +361,8 @@ export function chooseCastMember(context: GenerationContext): CastMember {
   }
 
   // Unchosen Selves override — rare, condition-driven
-  const activeUnchosen = context.persona.activeUnchosenSelves ?? [];
+  const activeUnchosen =
+    context.persona.unchosenVoices ?? context.persona.activeUnchosenSelves ?? [];
   if (activeUnchosen.length > 0) {
     const triggeredUnchosen = activeUnchosen.find((u) =>
       isUnchosenSelfTriggered(

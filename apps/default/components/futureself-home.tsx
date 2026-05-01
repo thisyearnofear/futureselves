@@ -61,14 +61,7 @@ const choiceColors: Record<Choice, string> = {
   repair: "#A9F7B5",
 };
 
-const wordNudges = [
-  "threshold",
-  "brave",
-  "lighter",
-  "repair",
-  "momentum",
-  "honest",
-];
+const wordNudges = ["threshold", "brave", "lighter"];
 const noteNudges = [
   "I almost did the hard thing today.",
   "There is one conversation I keep replaying.",
@@ -117,6 +110,9 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
 
   const [word, setWord] = useState(state.todayCheckIn?.word ?? "");
   const [note, setNote] = useState(state.todayCheckIn?.note ?? "");
+  const [showDetailInput, setShowDetailInput] = useState(
+    Boolean(state.todayCheckIn?.note),
+  );
   const [isReceiving, setIsReceiving] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<Choice | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -154,6 +150,14 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
         .slice(0, 3),
     [state.recentTransmissions, state.todayTransmission],
   );
+  const transmissionCount = state.recentTransmissions.length;
+  const hasTransmissionToday = Boolean(state.todayTransmission);
+  // Progressive disclosure: reveal layers only as engagement deepens
+  const shouldShowProgression = hasTransmissionToday;
+  const shouldShowSystemDepth = transmissionCount >= 5;
+  const shouldShowStoryDepth = hasTransmissionToday && transmissionCount >= 3;
+  const shouldShowPremiumDepth =
+    transmissionCount >= 10 || (persona?.streak ?? 0) >= 10;
 
   const transmissionArrivalGlow = useAnimatedStyle(() => ({
     transform: [{ scale: 1 + arrivalPulse.value * 0.08 }],
@@ -412,12 +416,14 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
           </View>
 
           <Text style={styles.heroTitle}>
-            Your future self has one message for today.
+            {hasTransmissionToday
+              ? "The voice has arrived."
+              : "One word is enough."}
           </Text>
           <Text style={styles.heroCopy}>
-            {persona?.name ? `${persona.name}, ` : ""}open the transmission,
-            hear the voice when it arrives, make one small choice, and let
-            tomorrow respond.
+            {hasTransmissionToday
+              ? "Make one small choice. Tomorrow responds."
+              : "Give today one word. The signal will find the rest."}
           </Text>
 
           {forcedCastMember ? (
@@ -429,13 +435,15 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
             </View>
           ) : null}
 
-          <View style={styles.heroPromiseRow}>
-            <MiniPromise icon="mic" label="spoken" />
-            <MiniPromise icon="book" label="serial" />
-            <MiniPromise icon="sparkles" label="personal" />
-          </View>
+          {shouldShowSystemDepth ? (
+            <View style={styles.heroPromiseRow}>
+              <MiniPromise icon="mic" label="spoken" />
+              <MiniPromise icon="book" label="serial" />
+              <MiniPromise icon="sparkles" label="personal" />
+            </View>
+          ) : null}
 
-          {persona ? (
+          {shouldShowSystemDepth && persona ? (
             <View style={styles.heroStatsGrid}>
               <HeroStat
                 icon="flame-outline"
@@ -543,10 +551,9 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                 <Ionicons name="key-outline" size={22} color="#F7D38B" />
               </View>
               <View style={styles.receiveHeaderCopy}>
-                <Text style={styles.sectionTitle}>First, a key word.</Text>
+                <Text style={styles.sectionTitle}>Give today one word.</Text>
                 <Text style={styles.sectionCopy}>
-                  Not journaling. Just one word that colors the voice and
-                  sharpens the next transmission.
+                  One word is enough. Future-you will find the rest.
                 </Text>
               </View>
             </View>
@@ -559,42 +566,48 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
               value={word}
             />
             <NudgeRow
-              label="Borrow a word"
+              label="Suggested words"
               options={wordNudges}
               onSelect={setWord}
               selected={word}
             />
-            <TextInput
-              multiline
-              onChangeText={setNote}
-              placeholder="Optional: one detail future-you should remember."
-              placeholderTextColor="#6F7591"
-              style={styles.noteInput}
-              textAlignVertical="top"
-              value={note}
-            />
-            <NudgeRow
-              label="Or start with a detail"
-              options={noteNudges}
-              onSelect={setNote}
-              selected={note}
-            />
-            <View style={styles.payoffRow}>
-              <PayoffPill icon="mic-outline" label="voice adapts" />
-              <PayoffPill icon="sparkles-outline" label="story sharpens" />
-              <PayoffPill icon="trail-sign-outline" label="tomorrow changes" />
-            </View>
-            <View style={styles.contextNote}>
+
+            <Pressable
+              onPress={() => setShowDetailInput((current) => !current)}
+              style={({ pressed }) => [
+                styles.detailToggle,
+                pressed && styles.pressed,
+              ]}
+            >
               <Ionicons
-                name="information-circle-outline"
+                name={showDetailInput ? "remove-outline" : "add-outline"}
                 size={16}
-                color="#AEB6D4"
+                color="#F7D38B"
               />
-              <Text style={styles.contextNoteText}>
-                If audio keys are missing, the game still delivers a full
-                written transmission so the ritual never stalls.
+              <Text style={styles.detailToggleText}>
+                {showDetailInput ? "Hide detail" : "Add detail"}
               </Text>
-            </View>
+            </Pressable>
+
+            {showDetailInput ? (
+              <View style={styles.detailWrap}>
+                <TextInput
+                  multiline
+                  onChangeText={setNote}
+                  placeholder="Optional: one detail future-you should remember."
+                  placeholderTextColor="#6F7591"
+                  style={styles.noteInput}
+                  textAlignVertical="top"
+                  value={note}
+                />
+                <NudgeRow
+                  label="Detail starters"
+                  options={noteNudges}
+                  onSelect={setNote}
+                  selected={note}
+                />
+              </View>
+            ) : null}
 
             <Pressable
               disabled={isReceiving}
@@ -706,9 +719,12 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                 </Text>
               </View>
             ) : null}
-            <Text style={styles.nudgeLabel}>
-              If you're blank, borrow a tiny move:
-            </Text>
+            {shouldShowStoryDepth ? (
+              <Text style={styles.nudgeLabel}>
+                If you're blank, borrow a tiny move:
+              </Text>
+            ) : null}
+            {shouldShowStoryDepth ? (
             <View style={styles.actionNudgeGrid}>
               {actionNudges.map((nudge) => (
                 <Pressable
@@ -724,6 +740,8 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                 </Pressable>
               ))}
             </View>
+            ) : null}
+            {shouldShowSystemDepth ? (
             <View style={styles.contextNote}>
               <Ionicons name="git-compare-outline" size={16} color="#AEB6D4" />
               <Text style={styles.contextNoteText}>
@@ -731,122 +749,147 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                 the lean leaves more room for the shadow later.
               </Text>
             </View>
+            ) : null}
           </Animated.View>
         ) : null}
 
-        <View style={styles.unlockCard}>
-          <View style={styles.unlockHeader}>
-            <Text style={styles.sectionTitle}>The cast is gathering.</Text>
-            <Text style={styles.sectionCopy}>
-              Every check-in and choice changes who can speak next.
-            </Text>
-          </View>
+        {shouldShowStoryDepth ? (
+          <View style={styles.unlockCard}>
+            <View style={styles.unlockHeader}>
+              <Text style={styles.sectionTitle}>A voice is moving closer.</Text>
+              <Text style={styles.sectionCopy}>
+                You do not need the whole map yet. One nearby signal is enough.
+              </Text>
+            </View>
 
-          {nextUnlock ? (
-            <View style={styles.nextUnlockCard}>
-              <View style={styles.nextUnlockHeader}>
-                <View style={styles.nextUnlockBadge}>
-                  <Ionicons name="sparkles-outline" size={15} color="#101320" />
+            {nextUnlock ? (
+              <View style={styles.nextUnlockCard}>
+                <View style={styles.nextUnlockHeader}>
+                  <View style={styles.nextUnlockBadge}>
+                    <Ionicons
+                      name="sparkles-outline"
+                      size={15}
+                      color="#101320"
+                    />
+                  </View>
+                  <View style={styles.nextUnlockCopy}>
+                    <Text style={styles.nextUnlockTitle}>
+                      Nearing: {nextUnlock.label}
+                    </Text>
+                    <Text style={styles.nextUnlockText}>
+                      {nextUnlock.requirement}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.nextUnlockCopy}>
-                  <Text style={styles.nextUnlockTitle}>
-                    Next likely voice: {nextUnlock.label}
+                <Text style={styles.nextUnlockMood}>
+                  {nextUnlock.emotionalRegister}
+                </Text>
+              </View>
+            ) : null}
+
+            {shouldShowSystemDepth ? (
+              <View
+                style={[
+                  styles.systemSignalsCard,
+                  state.systemSignals.approachingEventTone === "warning"
+                    ? styles.systemSignalsCardWarning
+                    : state.systemSignals.approachingEventTone === "rare"
+                      ? styles.systemSignalsCardRare
+                      : null,
+                ]}
+              >
+                <Text style={styles.systemSignalsTitle}>
+                  What the system sees
+                </Text>
+                <View style={styles.systemSignalsEventCard}>
+                  <Text style={styles.systemSignalEyebrow}>
+                    Approaching event
                   </Text>
-                  <Text style={styles.nextUnlockText}>
-                    {nextUnlock.requirement}
+                  <Text style={styles.systemSignalsEventTitle}>
+                    {state.systemSignals.approachingEventTitle}
+                  </Text>
+                  <Text style={styles.systemSignalsEventBody}>
+                    {state.systemSignals.approachingEventNote}
                   </Text>
                 </View>
-              </View>
-              <Text style={styles.nextUnlockMood}>
-                {nextUnlock.emotionalRegister}
-              </Text>
-            </View>
-          ) : null}
-
-          <View
-            style={[
-              styles.systemSignalsCard,
-              state.systemSignals.approachingEventTone === "warning"
-                ? styles.systemSignalsCardWarning
-                : state.systemSignals.approachingEventTone === "rare"
-                  ? styles.systemSignalsCardRare
-                  : null,
-            ]}
-          >
-            <Text style={styles.systemSignalsTitle}>What the system sees</Text>
-            <View style={styles.systemSignalsEventCard}>
-              <Text style={styles.systemSignalEyebrow}>Approaching event</Text>
-              <Text style={styles.systemSignalsEventTitle}>
-                {state.systemSignals.approachingEventTitle}
-              </Text>
-              <Text style={styles.systemSignalsEventBody}>
-                {state.systemSignals.approachingEventNote}
-              </Text>
-            </View>
-            <View style={styles.systemSignalsList}>
-              <View style={styles.systemSignalItem}>
-                <Text style={styles.systemSignalEyebrow}>Stability</Text>
-                <Text style={styles.systemSignalHeading}>
-                  {state.systemSignals.stabilityTitle}
-                </Text>
-                <Text style={styles.systemSignalBody}>
-                  {state.systemSignals.stabilityNote}
-                </Text>
-              </View>
-              <View style={styles.systemSignalItem}>
-                <Text style={styles.systemSignalEyebrow}>Voice pressure</Text>
-                <Text style={styles.systemSignalHeading}>
-                  {state.systemSignals.voicePressureTitle}
-                </Text>
-                <Text style={styles.systemSignalBody}>
-                  {state.systemSignals.voicePressureNote}
-                </Text>
-              </View>
-              <View style={styles.systemSignalItem}>
-                <Text style={styles.systemSignalEyebrow}>Threads</Text>
-                <Text style={styles.systemSignalHeading}>
-                  {state.systemSignals.threadPressureTitle}
-                </Text>
-                <Text style={styles.systemSignalBody}>
-                  {state.systemSignals.threadPressureNote}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.voiceGrid}>
-            {state.constellation.map((star) => (
-              <VoiceOrb key={star.castMember} star={star} />
-            ))}
-          </View>
-
-          <View style={styles.futureSelfPlusCard}>
-            <View style={styles.futureSelfPlusHeader}>
-              <View style={styles.futureSelfPlusBadge}>
-                <Text style={styles.futureSelfPlusBadgeText}>FutureSelf+</Text>
-              </View>
-              <Text style={styles.futureSelfPlusTitle}>
-                The wider constellation
-              </Text>
-            </View>
-            <Text style={styles.futureSelfPlusCopy}>
-              The core ritual stays clean and free. FutureSelf+ is where the
-              wider mythology can expand later: rarer voices, stranger
-              timelines, and richer atmospheres that deepen the world without
-              interrupting the daily practice.
-            </Text>
-            <View style={styles.futureSelfPlusList}>
-              {futureSelfPlusPreview.constellation.map((item) => (
-                <View key={item} style={styles.futureSelfPlusItem}>
-                  <Ionicons name="sparkles-outline" size={14} color="#F7D38B" />
-                  <Text style={styles.futureSelfPlusItemText}>{item}</Text>
+                <View style={styles.systemSignalsList}>
+                  <View style={styles.systemSignalItem}>
+                    <Text style={styles.systemSignalEyebrow}>Stability</Text>
+                    <Text style={styles.systemSignalHeading}>
+                      {state.systemSignals.stabilityTitle}
+                    </Text>
+                    <Text style={styles.systemSignalBody}>
+                      {state.systemSignals.stabilityNote}
+                    </Text>
+                  </View>
+                  <View style={styles.systemSignalItem}>
+                    <Text style={styles.systemSignalEyebrow}>
+                      Voice pressure
+                    </Text>
+                    <Text style={styles.systemSignalHeading}>
+                      {state.systemSignals.voicePressureTitle}
+                    </Text>
+                    <Text style={styles.systemSignalBody}>
+                      {state.systemSignals.voicePressureNote}
+                    </Text>
+                  </View>
+                  <View style={styles.systemSignalItem}>
+                    <Text style={styles.systemSignalEyebrow}>Threads</Text>
+                    <Text style={styles.systemSignalHeading}>
+                      {state.systemSignals.threadPressureTitle}
+                    </Text>
+                    <Text style={styles.systemSignalBody}>
+                      {state.systemSignals.threadPressureNote}
+                    </Text>
+                  </View>
                 </View>
-              ))}
-            </View>
-          </View>
-        </View>
+              </View>
+            ) : null}
 
-        {state.openThreads.length > 0 ? (
+            {shouldShowSystemDepth ? (
+              <View style={styles.voiceGrid}>
+                {state.constellation.map((star) => (
+                  <VoiceOrb key={star.castMember} star={star} />
+                ))}
+              </View>
+            ) : null}
+
+            {shouldShowPremiumDepth ? (
+              <View style={styles.futureSelfPlusCard}>
+                <View style={styles.futureSelfPlusHeader}>
+                  <View style={styles.futureSelfPlusBadge}>
+                    <Text style={styles.futureSelfPlusBadgeText}>
+                      FutureSelf+
+                    </Text>
+                  </View>
+                  <Text style={styles.futureSelfPlusTitle}>
+                    The wider constellation
+                  </Text>
+                </View>
+                <Text style={styles.futureSelfPlusCopy}>
+                  The core ritual stays clean and free. FutureSelf+ is where the
+                  wider mythology can expand later: rarer voices, stranger
+                  timelines, and richer atmospheres that deepen the world
+                  without interrupting the daily practice.
+                </Text>
+                <View style={styles.futureSelfPlusList}>
+                  {futureSelfPlusPreview.constellation.map((item) => (
+                    <View key={item} style={styles.futureSelfPlusItem}>
+                      <Ionicons
+                        name="sparkles-outline"
+                        size={14}
+                        color="#F7D38B"
+                      />
+                      <Text style={styles.futureSelfPlusItemText}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {shouldShowStoryDepth && state.openThreads.length > 0 ? (
           <View style={styles.storyCard}>
             <Text style={styles.sectionTitle}>Open threads</Text>
             <Text style={styles.sectionCopy}>
@@ -866,7 +909,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
           </View>
         ) : null}
 
-        {previousTransmissions.length > 0 ? (
+        {shouldShowStoryDepth && previousTransmissions.length > 0 ? (
           <View style={styles.storyCard}>
             <Text style={styles.sectionTitle}>Previously in your timeline</Text>
             <Text style={styles.sectionCopy}>
@@ -885,33 +928,35 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
                 </View>
               ))}
             </View>
-            <View style={styles.archivePreviewCard}>
-              <View style={styles.futureSelfPlusHeader}>
-                <View style={styles.futureSelfPlusBadge}>
-                  <Text style={styles.futureSelfPlusBadgeText}>
-                    FutureSelf+
-                  </Text>
-                </View>
-                <Text style={styles.futureSelfPlusTitle}>Archive depth</Text>
-              </View>
-              <Text style={styles.futureSelfPlusCopy}>
-                The premium logic is depth, not interruption: a full archive,
-                persistent memory across threads, and replayable transmissions
-                that make the relationship feel cumulative over time.
-              </Text>
-              <View style={styles.futureSelfPlusList}>
-                {futureSelfPlusPreview.archive.map((item) => (
-                  <View key={item} style={styles.futureSelfPlusItem}>
-                    <Ionicons name="time-outline" size={14} color="#F7D38B" />
-                    <Text style={styles.futureSelfPlusItemText}>{item}</Text>
+            {shouldShowPremiumDepth ? (
+              <View style={styles.archivePreviewCard}>
+                <View style={styles.futureSelfPlusHeader}>
+                  <View style={styles.futureSelfPlusBadge}>
+                    <Text style={styles.futureSelfPlusBadgeText}>
+                      FutureSelf+
+                    </Text>
                   </View>
-                ))}
+                  <Text style={styles.futureSelfPlusTitle}>Archive depth</Text>
+                </View>
+                <Text style={styles.futureSelfPlusCopy}>
+                  The premium logic is depth, not interruption: a full archive,
+                  persistent memory across threads, and replayable transmissions
+                  that make the relationship feel cumulative over time.
+                </Text>
+                <View style={styles.futureSelfPlusList}>
+                  {futureSelfPlusPreview.archive.map((item) => (
+                    <View key={item} style={styles.futureSelfPlusItem}>
+                      <Ionicons name="time-outline" size={14} color="#F7D38B" />
+                      <Text style={styles.futureSelfPlusItemText}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
+            ) : null}
           </View>
         ) : null}
 
-        {litVoices.length > 1 ? (
+        {shouldShowSystemDepth && litVoices.length > 1 ? (
           <Text style={styles.footnote}>
             {litVoices.length} voices are close enough to hear you right now.
           </Text>
@@ -1008,19 +1053,6 @@ function NudgeRow({ label, options, selected, onSelect }: NudgeRowProps) {
   );
 }
 
-interface PayoffPillProps {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-}
-
-function PayoffPill({ icon, label }: PayoffPillProps) {
-  return (
-    <View style={styles.payoffPill}>
-      <Ionicons name={icon} size={14} color="#101320" />
-      <Text style={styles.payoffText}>{label}</Text>
-    </View>
-  );
-}
 
 interface VoiceOrbProps {
   star: ConstellationStar;
@@ -1384,6 +1416,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 21,
   },
+  detailToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    paddingVertical: 6,
+  },
+  detailToggleText: {
+    color: "#F7D38B",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  detailWrap: {
+    gap: 10,
+  },
   nudgeWrap: {
     gap: 8,
   },
@@ -1418,26 +1465,6 @@ const styles = StyleSheet.create({
   },
   nudgeTextActive: {
     color: "#F7D38B",
-  },
-  payoffRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  payoffPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: "#F7D38B",
-  },
-  payoffText: {
-    color: "#101320",
-    fontSize: 11,
-    fontWeight: "900",
-    textTransform: "uppercase",
   },
   receiveButton: {
     minHeight: 56,

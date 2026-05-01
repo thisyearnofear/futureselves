@@ -41,6 +41,7 @@ export default defineSchema({
     steadyCount: v.optional(v.number()),
     releaseCount: v.optional(v.number()),
     repairCount: v.optional(v.number()),
+    unchosenVoices: v.optional(v.array(castMemberValidator)),
     activeUnchosenSelves: v.optional(v.array(castMemberValidator)),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -36,6 +36,7 @@ export const seedFounderPersona = internalMutation({
       steadyCount: 2,
       releaseCount: 1,
       repairCount: 1,
+      unchosenVoices: [],
       activeUnchosenSelves: [],
       createdAt: now,
       updatedAt: now,

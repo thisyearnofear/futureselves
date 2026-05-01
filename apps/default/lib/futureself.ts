@@ -55,6 +55,7 @@ export interface PersonaState {
   steadyCount: number;
   releaseCount: number;
   repairCount: number;
+  unchosenVoices: Array<CastMember>;
   activeUnchosenSelves: Array<CastMember>;
 }
 
