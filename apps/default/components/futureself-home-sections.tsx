@@ -47,7 +47,7 @@ interface HeroSectionProps {
   forcedCastMember: CastMember | null;
   divergenceLabel: string;
   onDebugTap: () => void;
-  onSignOut: () => void;
+  onOpenSettings: () => void;
 }
 
 export function HeroSection({
@@ -58,7 +58,7 @@ export function HeroSection({
   forcedCastMember,
   divergenceLabel,
   onDebugTap,
-  onSignOut,
+  onOpenSettings,
 }: HeroSectionProps) {
   return (
     <Animated.View
@@ -72,8 +72,9 @@ export function HeroSection({
             <Text style={styles.signalBadgeText}>daily signal</Text>
           </View>
         </Pressable>
-        <Pressable onPress={onSignOut} style={styles.signOutButton}>
-          <Ionicons name="log-out-outline" size={18} color="#C5CCE6" />
+        <Pressable onPress={onOpenSettings} style={styles.settingsEntry}>
+          <Ionicons name="settings-outline" size={16} color="#F8F0DE" />
+          <Text style={styles.settingsEntryText}>Ritual settings</Text>
         </Pressable>
       </View>
 
@@ -579,6 +580,41 @@ export function StorySection({ title, description, items }: StorySectionProps) {
           </View>
         ))}
       </View>
+    </View>
+  );
+}
+
+interface RitualRefinementPromptProps {
+  title?: string;
+  body?: string;
+  buttonLabel?: string;
+  onOpenSettings: () => void;
+}
+
+export function RitualRefinementPrompt({
+  title = "Your first signal is in motion.",
+  body = "Refine the ritual when you’re ready: voice tone, timeline depth, and rare-voice consent now live in settings.",
+  buttonLabel = "Refine your ritual",
+  onOpenSettings,
+}: RitualRefinementPromptProps) {
+  return (
+    <View style={styles.refinementCard}>
+      <View style={styles.refinementHeader}>
+        <View style={styles.refinementBadge}>
+          <Ionicons name="sparkles-outline" size={15} color="#F7D38B" />
+        </View>
+        <View style={styles.refinementCopy}>
+          <Text style={styles.refinementTitle}>{title}</Text>
+          <Text style={styles.refinementBody}>{body}</Text>
+        </View>
+      </View>
+      <Pressable
+        onPress={onOpenSettings}
+        style={({ pressed }) => [styles.refinementButton, pressed && styles.pressed]}
+      >
+        <Ionicons name="settings-outline" size={16} color="#101320" />
+        <Text style={styles.refinementButtonText}>{buttonLabel}</Text>
+      </Pressable>
     </View>
   );
 }

@@ -141,9 +141,34 @@ export interface OnboardingDraft {
   timeline: Timeline;
   archetype: Archetype;
   firstVoice: FirstVoiceCastMember;
-  voicePreset: "ember" | "atlas" | "sol";
+  voicePreset: VoicePreset;
   futureChildOptIn: boolean;
   significantDates: Array<string>;
+}
+
+export type VoicePreset = "ember" | "atlas" | "sol";
+
+export const voicePresetValues = ["ember", "atlas", "sol"] as const;
+
+export const voicePresetLabels: Record<VoicePreset, string> = {
+  ember: "Ember",
+  atlas: "Atlas",
+  sol: "Sol",
+};
+
+export const voicePresetDescriptions: Record<VoicePreset, string> = {
+  ember: "warm, intimate, certain",
+  atlas: "grounded, spacious, steady",
+  sol: "bright, cinematic, gently prophetic",
+};
+
+export function inferVoicePresetFromSelectedVoice(
+  selectedVoiceName?: string,
+): VoicePreset {
+  const normalized = selectedVoiceName?.trim().toLowerCase();
+  if (normalized === "atlas") return "atlas";
+  if (normalized === "sol") return "sol";
+  return "ember";
 }
 
 export function getLocalDateKey(date = new Date()): string {

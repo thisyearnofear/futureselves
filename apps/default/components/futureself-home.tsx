@@ -24,10 +24,12 @@ import type {
   Choice,
   ChoiceOutcome,
   ConstellationStar,
+  FirstVoiceCastMember,
   GameState,
   PersonaState,
+  VoicePreset,
 } from "@/lib/futureself";
-import { formatCastMember } from "@/lib/futureself";
+import { formatCastMember, inferVoicePresetFromSelectedVoice } from "@/lib/futureself";
 import {
   ChoiceSection,
   FlareOverlay,
@@ -35,9 +37,12 @@ import {
   MilestoneOverlay,
   ProgressionSection,
   ReceiveSignalSection,
+  RitualRefinementPrompt,
   StorySection,
   TransmissionSection,
 } from "@/components/futureself-home-sections";
+import { FutureselfProfileSheet } from "@/components/futureself-profile-sheet";
+import { FutureselfSettingsSheet } from "@/components/futureself-settings-sheet";
 import { styles } from "@/components/futureself-home.styles";
 
 interface FutureselfHomeProps {
@@ -100,6 +105,7 @@ const isDebugMode = process.env.EXPO_PUBLIC_DEBUG_MODE === "true";
 
 export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
   const { signOut } = useAuthActions();
+  const completeOnboarding = useMutation(api.game.completeOnboarding);
   const saveCheckIn = useMutation(api.game.saveCheckIn);
   const recordChoice = useMutation(api.game.recordChoice);
   const generateTransmission = useAction(api.game.generateDailyTransmission);
@@ -125,6 +131,11 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const milestoneShownRef = useRef(false);
   const [showTransmissionArrival, setShowTransmissionArrival] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [showProfileSheet, setShowProfileSheet] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profilePromptDismissed, setProfilePromptDismissed] = useState(false);
   const [forcedCastMember, setForcedCastMember] = useState<CastMember | null>(
     null,
   );
@@ -155,6 +166,18 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
   );
   const transmissionCount = state.recentTransmissions.length;
   const hasTransmissionToday = Boolean(state.todayTransmission);
+  const isProfileIncomplete = Boolean(
+    persona && (!persona.age || !persona.draining.trim() || persona.significantDates.length === 0),
+  );
+  const shouldShowRefinementPrompt =
+    hasTransmissionToday &&
+    transmissionCount <= 2 &&
+    Boolean(persona);
+  const shouldShowProfilePrompt =
+    hasTransmissionToday &&
+    transmissionCount >= 3 &&
+    isProfileIncomplete &&
+    !profilePromptDismissed;
   // Progressive disclosure: reveal layers only as engagement deepens
   const shouldShowProgression = hasTransmissionToday;
   const shouldShowSystemDepth = transmissionCount >= 5;
@@ -282,6 +305,96 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
       try { await RNShare.share({ message: shareText }); } catch { /* cancelled */ }
     }
   }, [currentStreak]);
+
+  async function handleSaveSettings(preferences: {
+    timeline: PersonaState["timeline"];
+    archetype: PersonaState["archetype"];
+    firstVoice: FirstVoiceCastMember;
+    voicePreset: VoicePreset;
+    futureChildOptIn: boolean;
+  }) {
+    if (!persona) return;
+
+    try {
+      setIsSavingSettings(true);
+      await completeOnboarding({
+        name: persona.name,
+        age: persona.age,
+        city: persona.city,
+        currentChapter: persona.currentChapter,
+        primaryArc: persona.primaryArc,
+        miraculousYear: persona.miraculousYear,
+        avoiding: persona.avoiding,
+        afraidWontHappen: persona.afraidWontHappen,
+        draining: persona.draining,
+        timeline: preferences.timeline,
+        archetype: preferences.archetype,
+        firstVoice: preferences.firstVoice,
+        voicePreset: preferences.voicePreset,
+        futureChildOptIn: preferences.futureChildOptIn,
+        significantDates: persona.significantDates,
+      });
+      if (Platform.OS !== "web") {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      setShowSettings(false);
+    } catch (caught) {
+      const message =
+        caught instanceof Error
+          ? caught.message
+          : "Could not save your ritual settings just now.";
+      Alert.alert("Could not save settings", message);
+    } finally {
+      setIsSavingSettings(false);
+    }
+  }
+
+  async function handleSignOutFromSettings() {
+    setShowSettings(false);
+    await signOut();
+  }
+
+  async function handleSaveProfile(values: {
+    age?: string;
+    draining: string;
+    significantDates: Array<string>;
+  }) {
+    if (!persona) return;
+
+    try {
+      setIsSavingProfile(true);
+      await completeOnboarding({
+        name: persona.name,
+        age: values.age,
+        city: persona.city,
+        currentChapter: persona.currentChapter,
+        primaryArc: persona.primaryArc,
+        miraculousYear: persona.miraculousYear,
+        avoiding: persona.avoiding,
+        afraidWontHappen: persona.afraidWontHappen,
+        draining: values.draining,
+        timeline: persona.timeline,
+        archetype: persona.archetype,
+        firstVoice: persona.firstVoice as FirstVoiceCastMember,
+        voicePreset: inferVoicePresetFromSelectedVoice(persona.selectedVoiceName),
+        futureChildOptIn: persona.futureChildOptIn,
+        significantDates: values.significantDates,
+      });
+      setProfilePromptDismissed(true);
+      setShowProfileSheet(false);
+      if (Platform.OS !== "web") {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (caught) {
+      const message =
+        caught instanceof Error
+          ? caught.message
+          : "Could not save your signal profile just now.";
+      Alert.alert("Could not save profile", message);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
 
   useEffect(() => {
     if (state.openThreads.length === 0) {
@@ -474,7 +587,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
           hasTransmissionToday={hasTransmissionToday}
           isDebugMode={isDebugMode}
           onDebugTap={handleDebugTap}
-          onSignOut={() => signOut()}
+          onOpenSettings={() => setShowSettings(true)}
           persona={persona}
           shouldShowSystemDepth={shouldShowSystemDepth}
         />
@@ -517,6 +630,19 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
             shouldShowStoryDepth={shouldShowStoryDepth}
             shouldShowSystemDepth={shouldShowSystemDepth}
             transmission={state.todayTransmission}
+          />
+        ) : null}
+
+        {shouldShowRefinementPrompt ? (
+          <RitualRefinementPrompt onOpenSettings={() => setShowSettings(true)} />
+        ) : null}
+
+        {shouldShowProfilePrompt ? (
+          <RitualRefinementPrompt
+            body="A few extra details make later transmissions feel more grounded. Add what’s draining you, plus one date worth remembering."
+            buttonLabel="Complete signal profile"
+            onOpenSettings={() => setShowProfileSheet(true)}
+            title="Ready to deepen the line?"
           />
         ) : null}
 
@@ -569,6 +695,24 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
         visible={showMilestone}
       />
       <FlareOverlay flareColor={flareColor} visible={showFlare} />
+      <FutureselfSettingsSheet
+        isSaving={isSavingSettings}
+        onClose={() => setShowSettings(false)}
+        onSave={handleSaveSettings}
+        onSignOut={handleSignOutFromSettings}
+        persona={persona}
+        visible={showSettings}
+      />
+      <FutureselfProfileSheet
+        isSaving={isSavingProfile}
+        onClose={() => {
+          setShowProfileSheet(false);
+          setProfilePromptDismissed(true);
+        }}
+        onSave={handleSaveProfile}
+        persona={persona}
+        visible={showProfileSheet}
+      />
     </View>
   );
 }

@@ -7,7 +7,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -19,20 +18,14 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type {
   Arc,
-  Archetype,
   FirstVoiceCastMember,
   OnboardingDraft,
-  Timeline,
 } from "@/lib/futureself";
 import {
-  archetypeLabels,
-  archetypeValues,
   arcLabels,
   arcValues,
   firstVoiceCastMembers,
   firstVoiceLabels,
-  timelineLabels,
-  timelineValues,
 } from "@/lib/futureself";
 
 const initialDraft: OnboardingDraft = {
@@ -88,7 +81,7 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
   const [error, setError] = useState<string | null>(null);
 
   const chapters = useMemo(
-    () => ["The knock", "The pull", "The shadow", "The timeline", "The voice"],
+    () => ["The signal", "The pull", "The voice"],
     [],
   );
 
@@ -128,9 +121,13 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
         draft.name.trim() && draft.city.trim() && draft.currentChapter.trim(),
       );
     }
-    if (chapter === 1) return Boolean(draft.miraculousYear.trim());
-    if (chapter === 2)
-      return Boolean(draft.avoiding.trim() && draft.afraidWontHappen.trim());
+    if (chapter === 1) {
+      return Boolean(
+        draft.miraculousYear.trim() &&
+          draft.avoiding.trim() &&
+          draft.afraidWontHappen.trim(),
+      );
+    }
     return true;
   }
 
@@ -194,7 +191,7 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
 
         <View style={styles.panelHint}>
           <Text style={styles.panelHintText}>
-            One question at a time. Keep it honest, not polished.
+            About 60 seconds. Three short steps. You can refine the rest later.
           </Text>
         </View>
 
@@ -290,7 +287,7 @@ function renderChapter(
           multiline
           value={draft.currentChapter}
           onChangeText={(value) => updateDraft("currentChapter", value)}
-          placeholder="A transition, a rebuild, a quiet beginning..."
+          placeholder="A transition, a rebuild, a quiet beginning, a hard truth..."
           suggestions={chapterNudges.currentChapter}
         />
       </View>
@@ -314,12 +311,6 @@ function renderChapter(
           placeholder="The sentence your future self would be proud to say."
           suggestions={chapterNudges.miraculousYear}
         />
-      </View>
-    );
-  }
-  if (chapter === 2) {
-    return (
-      <View style={styles.formStack}>
         <Field
           label="What door are you not opening?"
           multiline
@@ -339,23 +330,9 @@ function renderChapter(
       </View>
     );
   }
-  if (chapter === 3) {
+  if (chapter === 2) {
     return (
       <View style={styles.formStack}>
-        <Text style={styles.optionLabel}>Choose your timeline</Text>
-        <ChipGrid
-          values={timelineValues}
-          selected={draft.timeline}
-          labels={timelineLabels}
-          onSelect={(value) => updateDraft("timeline", value)}
-        />
-        <Text style={styles.optionLabel}>Choose your archetype</Text>
-        <ChipGrid
-          values={archetypeValues}
-          selected={draft.archetype}
-          labels={archetypeLabels}
-          onSelect={(value) => updateDraft("archetype", value)}
-        />
         <Text style={styles.optionLabel}>First voice</Text>
         <ChipGrid
           values={firstVoiceCastMembers}
@@ -363,46 +340,12 @@ function renderChapter(
           labels={firstVoiceLabels}
           onSelect={(value) => updateDraft("firstVoice", value)}
         />
-        <View style={styles.switchRow}>
-          <View style={styles.switchCopy}>
-            <Text style={styles.switchTitle}>
-              Let Future Child exist someday
-            </Text>
-            <Text style={styles.switchText}>
-              Rare, opt-in, and never used casually.
-            </Text>
-          </View>
-          <Switch
-            value={draft.futureChildOptIn}
-            onValueChange={(value) => updateDraft("futureChildOptIn", value)}
-          />
-        </View>
-      </View>
-    );
-  }
-  if (chapter === 4) {
-    return (
-      <View style={styles.formStack}>
-        <Text style={styles.optionLabel}>Choose the voice that returns</Text>
-        <View style={styles.voiceSelectionRow}>
-          <VoiceChoice
-            active={draft.voicePreset === "ember"}
-            description="Warm, close, certain. The voice that sounds like a hand on your shoulder."
-            name="Ember"
-            onPress={() => updateDraft("voicePreset", "ember")}
-          />
-          <VoiceChoice
-            active={draft.voicePreset === "atlas"}
-            description="Grounded and older. Slow enough that the room changes around each sentence."
-            name="Atlas"
-            onPress={() => updateDraft("voicePreset", "atlas")}
-          />
-          <VoiceChoice
-            active={draft.voicePreset === "sol"}
-            description="Soft, bright, quietly prophetic. The signal before dawn."
-            name="Sol"
-            onPress={() => updateDraft("voicePreset", "sol")}
-          />
+        <View style={styles.deferCard}>
+          <Text style={styles.deferTitle}>We’ll keep the rest lightweight for now.</Text>
+          <Text style={styles.deferText}>
+            Timeline depth, voice tone, and rare-voice consent can all be refined
+            after your first transmission in settings.
+          </Text>
         </View>
       </View>
     );
@@ -508,41 +451,11 @@ function ChipGrid<T extends string>({
   );
 }
 
-interface VoiceChoiceProps {
-  name: string;
-  description: string;
-  active: boolean;
-  onPress: () => void;
-}
-
-function VoiceChoice({ name, description, active, onPress }: VoiceChoiceProps) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.voiceCard, active && styles.voiceCardActive]}
-    >
-      <View style={styles.voiceIcon}>
-        <Ionicons
-          name="radio"
-          size={18}
-          color={active ? "#101320" : "#F7D38B"}
-        />
-      </View>
-      <View style={styles.voiceCopy}>
-        <Text style={styles.voiceName}>{name}</Text>
-        <Text style={styles.voiceDescription}>{description}</Text>
-      </View>
-    </Pressable>
-  );
-}
-
 function getChapterTitle(chapter: number): string {
   const titles = [
     "Someone has been trying to reach you.",
-    "Tell the signal what you're pulling toward.",
-    "Every good story has a locked room.",
-    "Set the distance of the echo.",
-    "Choose the voice that returns.",
+    "Tell the signal what you want and what you’re avoiding.",
+    "Choose the voice of your first reply.",
   ];
   return titles[chapter];
 }
@@ -550,10 +463,8 @@ function getChapterTitle(chapter: number): string {
 function getChapterSubtitle(chapter: number): string {
   const subtitles = [
     "A transmission cannot find a stranger. Give it just enough texture to recognize you.",
-    "Name the life-force the signal should organize itself around.",
-    "The shadow is not punishment. It is the part of the story that makes the voice feel real.",
-    "Your future self can stand close enough to be practical or far enough to feel mythic.",
-    "This becomes the voice of your first transmission. If audio is configured, ElevenLabs speaks it. If not, the signal still arrives in text.",
+    "Keep it brief and honest. The first signal only needs the emotional direction, not your full autobiography.",
+    "We’ll start simple. The deeper settings can wait until after you feel the ritual work.",
   ];
   return subtitles[chapter];
 }
@@ -709,66 +620,25 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: "700",
   },
-
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 14,
+  deferCard: {
+    gap: 6,
+    padding: 14,
     borderRadius: 20,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    padding: 14,
-  },
-  switchCopy: {
-    flex: 1,
-  },
-  switchTitle: {
-    color: "#F8F0DE",
-    fontWeight: "900",
-  },
-  switchText: {
-    color: "#8F96B4",
-    marginTop: 3,
-  },
-  voiceSelectionRow: {
-    gap: 10,
-  },
-  voiceCard: {
-    flexDirection: "row",
-    gap: 13,
-    padding: 14,
-    borderRadius: 22,
-    borderCurve: "continuous",
+    backgroundColor: "rgba(247,211,139,0.1)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(247,211,139,0.16)",
   },
-  voiceCardActive: {
-    borderColor: "rgba(247,211,139,0.52)",
-    backgroundColor: "rgba(247,211,139,0.14)",
-  },
-  voiceIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(247,211,139,0.14)",
-  },
-  voiceCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  voiceName: {
+  deferTitle: {
     color: "#F8F0DE",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "900",
   },
-  voiceDescription: {
-    color: "#AEB6D4",
+  deferText: {
+    color: "#D7DCEE",
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 19,
+    fontWeight: "700",
   },
   footerRow: {
     width: "100%",

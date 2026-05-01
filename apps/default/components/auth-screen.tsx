@@ -196,8 +196,8 @@ export function AuthScreen() {
             entering={isWeb ? undefined : FadeInDown.delay(800).duration(600)}
             style={styles.subtitle}
           >
-            A daily narrative ritual. One minute to begin. Your choices shape
-            who answers next.
+            A daily narrative ritual. Three short steps to begin. Your choices
+            shape who answers next.
           </Animated.Text>
 
           <Animated.View
@@ -234,7 +234,7 @@ export function AuthScreen() {
               )}
             </Pressable>
             <Text style={styles.ctaSubtext}>
-              No sign-up required — receive your first signal instantly
+              No sign-up required — about a minute to your first signal
             </Text>
           </Animated.View>
 
