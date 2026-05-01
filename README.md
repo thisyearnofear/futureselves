@@ -1,15 +1,13 @@
-# FutureSelf
+# Future Selves
 
 A voice-driven narrative ritual where your future selves send daily transmissions, and your smallest choices reshape who gets to speak tomorrow.
-
-Built for the **Zed + ElevenLabs Hackathon**.
 
 ## Start here
 
 If you just landed in the repo, use this path:
 
 1. Read this file for the project overview
-2. Read `demo/DEMO.md` for the intended judge/demo flow
+2. Read `apps/default/README.md` for the client app
 3. Run the backend with `packages/backend`
 4. Run the client with `apps/default`
 
@@ -116,9 +114,9 @@ Optional keys unlock the full audio + AI flow:
 - `ANTHROPIC_API_KEY`
 - `ELEVENLABS_API_KEY`
 
-Without those, the app can still run in a text-first mode for demo and development.
+Without those, the app can still run in a text-first mode for development and testing.
 
-## Demo and submission materials
+## Demo materials
 
 Everything demo-specific now lives under `demo/`.
 
@@ -143,4 +141,4 @@ See `scripts/README.md`.
 
 - If diagnostics look noisy on a fresh clone, run `bun install` first.
 - Some hidden directories in the root are tool-specific local metadata; the important project-owned entry points are the directories listed above.
-- The current focus is a polished vertical slice for hackathon judging, not a huge feature surface.
+- The current focus is hardening the core ritual for real users before expanding feature surface area.

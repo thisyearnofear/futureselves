@@ -1,6 +1,6 @@
 # `packages/backend`
 
-This workspace contains the shared **FutureSelf** backend.
+This workspace contains the shared **Future Selves** backend.
 
 ## What lives here
 

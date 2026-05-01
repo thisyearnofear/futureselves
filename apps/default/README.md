@@ -1,6 +1,6 @@
 # `apps/default`
 
-This workspace contains the playable **FutureSelf** client.
+This workspace contains the playable **Future Selves** client.
 
 ## What lives here
 

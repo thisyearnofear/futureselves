@@ -1,6 +1,6 @@
 # `packages/backend/convex`
 
-This directory contains the Convex source for **FutureSelf**.
+This directory contains the Convex source for **Future Selves**.
 
 ## Main responsibilities
 
