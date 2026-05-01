@@ -38,6 +38,9 @@ export interface StateSignals {
   voicePressureNote: string;
   threadPressureTitle: string;
   threadPressureNote: string;
+  approachingEventTitle: string;
+  approachingEventNote: string;
+  approachingEventTone: "warning" | "rare" | "opportunity";
 }
 
 export function buildStateSignals({
@@ -49,10 +52,18 @@ export function buildStateSignals({
   openThreadsCount: number;
   recentChoices: Array<RecentChoiceInput>;
 }): StateSignals {
-  const towardCount = recentChoices.filter((choice) => choice.choice === "toward").length;
-  const repairCount = recentChoices.filter((choice) => choice.choice === "repair").length;
-  const releaseCount = recentChoices.filter((choice) => choice.choice === "release").length;
-  const steadyCount = recentChoices.filter((choice) => choice.choice === "steady").length;
+  const towardCount = recentChoices.filter(
+    (choice) => choice.choice === "toward",
+  ).length;
+  const repairCount = recentChoices.filter(
+    (choice) => choice.choice === "repair",
+  ).length;
+  const releaseCount = recentChoices.filter(
+    (choice) => choice.choice === "release",
+  ).length;
+  const steadyCount = recentChoices.filter(
+    (choice) => choice.choice === "steady",
+  ).length;
 
   return {
     stabilityTitle: getStabilityTitle(persona.timelineDivergenceScore),
@@ -73,6 +84,14 @@ export function buildStateSignals({
     }),
     threadPressureTitle: getThreadPressureTitle(openThreadsCount),
     threadPressureNote: getThreadPressureNote(openThreadsCount),
+    ...getApproachingEvent({
+      persona,
+      openThreadsCount,
+      towardCount,
+      repairCount,
+      releaseCount,
+      steadyCount,
+    }),
   };
 }
 
@@ -109,7 +128,8 @@ function getVoicePressureTitle({
   releaseCount: number;
   steadyCount: number;
 }): string {
-  if (persona.timelineDivergenceScore >= 5) return "The Shadow is pressing closer";
+  if (persona.timelineDivergenceScore >= 5)
+    return "The Shadow is pressing closer";
   if (persona.primaryArc === "love" && repairCount >= 1) {
     return "Future Partner is getting louder";
   }
@@ -182,4 +202,82 @@ function getThreadPressureNote(openThreadsCount: number): string {
     return "You can now deliberately repair, release, or hold that thread instead of letting it drift forward unchanged.";
   }
   return "With no major live threads open, the next voice is more likely to respond to overall drift and arc rather than a single unresolved scene.";
+}
+
+function getApproachingEvent({
+  persona,
+  openThreadsCount,
+  towardCount,
+  repairCount,
+  releaseCount,
+}: {
+  persona: PersonaSignalsInput;
+  openThreadsCount: number;
+  towardCount: number;
+  repairCount: number;
+  releaseCount: number;
+  steadyCount: number;
+}): Pick<
+  StateSignals,
+  "approachingEventTitle" | "approachingEventNote" | "approachingEventTone"
+> {
+  if (persona.timelineDivergenceScore >= 5) {
+    return {
+      approachingEventTitle: "Shadow event approaching",
+      approachingEventNote:
+        "If the line keeps drifting, tomorrow is likely to answer with a confronting voice instead of a comforting one.",
+      approachingEventTone: "warning",
+    };
+  }
+
+  if (openThreadsCount >= 3) {
+    return {
+      approachingEventTitle: "Thread overload approaching",
+      approachingEventNote:
+        "Too many live threads are competing for the next signal. Repairing or releasing one now will keep tomorrow from feeling scattered.",
+      approachingEventTone: "warning",
+    };
+  }
+
+  if (
+    persona.futureChildOptIn &&
+    persona.streak >= 24 &&
+    (repairCount >= 2 || towardCount >= 3)
+  ) {
+    return {
+      approachingEventTitle: "A rarer family voice is near",
+      approachingEventNote:
+        "The line is becoming stable and intimate enough that a rare Future Child transmission could arrive soon.",
+      approachingEventTone: "rare",
+    };
+  }
+
+  if (
+    persona.primaryArc === "money" &&
+    persona.streak >= 12 &&
+    towardCount >= 3
+  ) {
+    return {
+      approachingEventTitle: "A builder-world voice is near",
+      approachingEventNote:
+        "Your recent moves are making Future Customer or Future Employee feel much more plausible to the system.",
+      approachingEventTone: "opportunity",
+    };
+  }
+
+  if (releaseCount >= 2 && persona.timelineDivergenceScore >= 2) {
+    return {
+      approachingEventTitle: "A stranger signal is forming",
+      approachingEventNote:
+        "Release plus drift creates the conditions for rarer and less familiar futures to start speaking.",
+      approachingEventTone: "rare",
+    };
+  }
+
+  return {
+    approachingEventTitle: "No major event is pressing yet",
+    approachingEventNote:
+      "The line is still responsive, but not yet close to a rupture, rare arrival, or special intrusion.",
+    approachingEventTone: "opportunity",
+  };
 }

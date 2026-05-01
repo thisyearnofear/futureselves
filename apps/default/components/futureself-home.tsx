@@ -763,8 +763,26 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
             </View>
           ) : null}
 
-          <View style={styles.systemSignalsCard}>
+          <View
+            style={[
+              styles.systemSignalsCard,
+              state.systemSignals.approachingEventTone === "warning"
+                ? styles.systemSignalsCardWarning
+                : state.systemSignals.approachingEventTone === "rare"
+                  ? styles.systemSignalsCardRare
+                  : null,
+            ]}
+          >
             <Text style={styles.systemSignalsTitle}>What the system sees</Text>
+            <View style={styles.systemSignalsEventCard}>
+              <Text style={styles.systemSignalEyebrow}>Approaching event</Text>
+              <Text style={styles.systemSignalsEventTitle}>
+                {state.systemSignals.approachingEventTitle}
+              </Text>
+              <Text style={styles.systemSignalsEventBody}>
+                {state.systemSignals.approachingEventNote}
+              </Text>
+            </View>
             <View style={styles.systemSignalsList}>
               <View style={styles.systemSignalItem}>
                 <Text style={styles.systemSignalEyebrow}>Stability</Text>
@@ -1616,6 +1634,35 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.045)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
+  },
+  systemSignalsCardWarning: {
+    borderColor: "rgba(255,154,154,0.2)",
+    backgroundColor: "rgba(255,154,154,0.05)",
+  },
+  systemSignalsCardRare: {
+    borderColor: "rgba(247,211,139,0.22)",
+    backgroundColor: "rgba(247,211,139,0.06)",
+  },
+  systemSignalsEventCard: {
+    gap: 5,
+    padding: 12,
+    borderRadius: 16,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(14,17,34,0.42)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  systemSignalsEventTitle: {
+    color: "#F8F0DE",
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "900",
+  },
+  systemSignalsEventBody: {
+    color: "#D7DCEE",
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "700",
   },
   systemSignalsTitle: {
     color: "#F8F0DE",

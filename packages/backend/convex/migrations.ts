@@ -6,7 +6,7 @@ import { components } from "./_generated/api";
 // Convex codegen exposes installed components as generic component references here;
 // the migrations client requires its package-specific component API shape.
 const migrations = new Migrations<DataModel>(
-    components.migrations as MigrationsComponentApi<"migrations">
+  components.migrations as MigrationsComponentApi<"migrations">,
 );
 
 export const run = migrations.runner();
@@ -38,3 +38,22 @@ export const run = migrations.runner();
 //   args: {}                                          // run all pending
 //   args: { fn: "migrations:backfillCreatedAt" }      // run specific
 //   args: { dryRun: true }                            // dry run (one batch, no commit)
+
+export const backfillPersonaChoiceCounts = migrations.define({
+  table: "personas",
+  migrateOne: async (_ctx, doc) => {
+    if (
+      doc.towardCount === undefined ||
+      doc.steadyCount === undefined ||
+      doc.releaseCount === undefined ||
+      doc.repairCount === undefined
+    ) {
+      return {
+        towardCount: doc.towardCount ?? 0,
+        steadyCount: doc.steadyCount ?? 0,
+        releaseCount: doc.releaseCount ?? 0,
+        repairCount: doc.repairCount ?? 0,
+      };
+    }
+  },
+});

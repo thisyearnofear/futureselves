@@ -109,6 +109,9 @@ export interface StateSignals {
   voicePressureNote: string;
   threadPressureTitle: string;
   threadPressureNote: string;
+  approachingEventTitle: string;
+  approachingEventNote: string;
+  approachingEventTone: "warning" | "rare" | "opportunity";
 }
 
 export interface GameState {

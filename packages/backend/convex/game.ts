@@ -121,6 +121,13 @@ const stateSignalsReturnValidator = v.object({
   voicePressureNote: v.string(),
   threadPressureTitle: v.string(),
   threadPressureNote: v.string(),
+  approachingEventTitle: v.string(),
+  approachingEventNote: v.string(),
+  approachingEventTone: v.union(
+    v.literal("warning"),
+    v.literal("rare"),
+    v.literal("opportunity"),
+  ),
 });
 
 const stateReturnValidator = v.object({
@@ -800,6 +807,10 @@ export const getState = authQuery({
           threadPressureTitle: "No live threads yet",
           threadPressureNote:
             "Threads begin forming after the first transmissions land.",
+          approachingEventTitle: "No event approaching yet",
+          approachingEventNote:
+            "The ritual has not accumulated enough state for a major event.",
+          approachingEventTone: "opportunity" as const,
         },
       };
     }
