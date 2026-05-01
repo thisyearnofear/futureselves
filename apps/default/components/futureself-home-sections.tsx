@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -65,7 +66,7 @@ export function HeroSection({
       entering={Platform.OS === "web" ? undefined : FadeInUp.duration(260)}
       style={styles.hero}
     >
-      <View style={styles.heroTopRow}>
+      <View style={styles.heroTopStack}>
         <Pressable disabled={!isDebugMode} onPress={onDebugTap}>
           <View style={styles.signalBadge}>
             <View style={styles.liveDot} />
@@ -617,6 +618,21 @@ export function RitualRefinementPrompt({
       </Pressable>
     </View>
   );
+}
+
+function formatDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split("-");
+  if (!year || !month || !day) return dateKey;
+  const date = new Date(`${year}-${month}-${day}T12:00:00`);
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function getMemoryExcerpt(text: string) {
+  if (text.length <= 220) return text;
+  return `${text.slice(0, 217).trimEnd()}...`;
 }
 
 interface MilestoneOverlayProps {

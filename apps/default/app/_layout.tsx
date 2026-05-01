@@ -19,7 +19,20 @@ const isNative = Platform.OS === "ios" || Platform.OS === "android";
 export default function RootLayout() {
     return (
         <ConvexAuthProvider client={convex} storage={isNative ? secureStorage : undefined}>
-            <Stack screenOptions={{ headerShown: false }} />
+            <Stack>
+                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen
+                    name="archive"
+                    options={{
+                        title: "Archive",
+                        headerShown: true,
+                        headerTransparent: true,
+                        headerShadowVisible: false,
+                        headerTintColor: "#F8F0DE",
+                        headerBackButtonDisplayMode: "minimal",
+                    }}
+                />
+            </Stack>
         </ConvexAuthProvider>
     );
 }

@@ -271,7 +271,7 @@ export const getState = authQuery({
       .query("transmissions")
       .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", ctx.user._id))
       .order("desc")
-      .take(5);
+      .take(12);
     const openThreadDocs = await ctx.db
       .query("narrativeThreads")
       .withIndex("by_userId_and_status", (q) =>

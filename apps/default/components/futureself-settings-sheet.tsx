@@ -18,6 +18,7 @@ import type {
   Timeline,
   VoicePreset,
 } from "@/lib/futureself";
+import type { ReminderPreferences } from "@/lib/reminder-preferences";
 import {
   archetypeLabels,
   archetypeValues,
@@ -37,12 +38,15 @@ interface SettingsPreferences {
   firstVoice: FirstVoiceCastMember;
   voicePreset: VoicePreset;
   futureChildOptIn: boolean;
+  reminderEnabled: boolean;
+  reminderHour: number;
 }
 
 interface FutureselfSettingsSheetProps {
   visible: boolean;
   persona: PersonaState | null;
   isSaving: boolean;
+  reminderPreferences: ReminderPreferences;
   onClose: () => void;
   onSignOut: () => void;
   onSave: (preferences: SettingsPreferences) => Promise<void>;
@@ -52,6 +56,7 @@ export function FutureselfSettingsSheet({
   visible,
   persona,
   isSaving,
+  reminderPreferences,
   onClose,
   onSignOut,
   onSave,
@@ -62,6 +67,8 @@ export function FutureselfSettingsSheet({
     useState<FirstVoiceCastMember>("future_self");
   const [voicePreset, setVoicePreset] = useState<VoicePreset>("ember");
   const [futureChildOptIn, setFutureChildOptIn] = useState(false);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderHour, setReminderHour] = useState(9);
 
   useEffect(() => {
     if (!visible || !persona) return;
@@ -70,7 +77,9 @@ export function FutureselfSettingsSheet({
     setFirstVoice((persona.firstVoice as FirstVoiceCastMember) ?? "future_self");
     setVoicePreset(inferVoicePresetFromSelectedVoice(persona.selectedVoiceName));
     setFutureChildOptIn(persona.futureChildOptIn);
-  }, [visible, persona]);
+    setReminderEnabled(reminderPreferences.enabled);
+    setReminderHour(reminderPreferences.hour);
+  }, [visible, persona, reminderPreferences.enabled, reminderPreferences.hour]);
 
   const hasChanges = useMemo(() => {
     if (!persona) return false;
@@ -79,13 +88,19 @@ export function FutureselfSettingsSheet({
       archetype !== persona.archetype ||
       firstVoice !== persona.firstVoice ||
       voicePreset !== inferVoicePresetFromSelectedVoice(persona.selectedVoiceName) ||
-      futureChildOptIn !== persona.futureChildOptIn
+      futureChildOptIn !== persona.futureChildOptIn ||
+      reminderEnabled !== reminderPreferences.enabled ||
+      reminderHour !== reminderPreferences.hour
     );
   }, [
     archetype,
     firstVoice,
     futureChildOptIn,
     persona,
+    reminderEnabled,
+    reminderHour,
+    reminderPreferences.enabled,
+    reminderPreferences.hour,
     timeline,
     voicePreset,
   ]);
@@ -99,6 +114,8 @@ export function FutureselfSettingsSheet({
       firstVoice,
       voicePreset,
       futureChildOptIn,
+      reminderEnabled,
+      reminderHour,
     });
   }
 
@@ -133,6 +150,14 @@ export function FutureselfSettingsSheet({
                 <Ionicons name="git-branch-outline" size={14} color="#F7D38B" />
                 <Text style={styles.summaryPillText}>
                   {timelineLabels[timeline]}
+                </Text>
+              </View>
+              <View style={styles.summaryPill}>
+                <Ionicons name="notifications-outline" size={14} color="#F7D38B" />
+                <Text style={styles.summaryPillText}>
+                  {reminderEnabled
+                    ? `${reminderHour === 20 ? "8 PM" : `${reminderHour} AM`} reminder`
+                    : "Reminders off"}
                 </Text>
               </View>
             </View>
@@ -205,6 +230,64 @@ export function FutureselfSettingsSheet({
                     </Pressable>
                   );
                 })}
+              </View>
+            </Section>
+
+            <Section
+              title="Reminder rhythm"
+              copy="Reminders are local to this device. They only turn on if you choose them here."
+            >
+              <View style={styles.toggleRow}>
+                <View style={styles.toggleCopy}>
+                  <Text style={styles.toggleTitle}>Daily reminder</Text>
+                  <Text style={styles.toggleBody}>
+                    A gentle nudge that your signal is waiting.
+                  </Text>
+                </View>
+                <Switch
+                  onValueChange={setReminderEnabled}
+                  thumbColor={reminderEnabled ? "#F7D38B" : "#F8F0DE"}
+                  trackColor={{
+                    false: "rgba(255,255,255,0.18)",
+                    true: "rgba(247,211,139,0.45)",
+                  }}
+                  value={reminderEnabled}
+                />
+              </View>
+              <View style={styles.chipGrid}>
+                {[
+                  { label: "8 AM", hour: 8 },
+                  { label: "9 AM", hour: 9 },
+                  { label: "8 PM", hour: 20 },
+                ].map((option) => (
+                  <Pressable
+                    key={option.label}
+                    disabled={!reminderEnabled}
+                    onPress={() => setReminderHour(option.hour)}
+                    style={[
+                      styles.chip,
+                      reminderHour === option.hour && styles.chipSelected,
+                      !reminderEnabled && styles.disabledChip,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        reminderHour === option.hour && styles.chipTextSelected,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.infoCard}>
+                <Ionicons name="notifications-outline" size={18} color="#F7D38B" />
+                <Text style={styles.infoText}>
+                  We only ask the device for notification permission if you turn
+                  reminders on. This reminder stays local to this device, and web
+                  does not schedule push reminders in this version.
+                </Text>
               </View>
             </Section>
 
@@ -526,6 +609,9 @@ const styles = StyleSheet.create({
   chipSelected: {
     backgroundColor: "rgba(247,211,139,0.16)",
     borderColor: "rgba(247,211,139,0.34)",
+  },
+  disabledChip: {
+    opacity: 0.45,
   },
   chipText: {
     color: "#AEB6D4",

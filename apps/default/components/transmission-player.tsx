@@ -246,6 +246,7 @@ const styles = StyleSheet.create({
         fontWeight: "800",
         letterSpacing: 1.3,
         textTransform: "uppercase",
+        textAlign: "center",
     },
     title: {
         color: "#F8F0DE",
@@ -254,6 +255,7 @@ const styles = StyleSheet.create({
         letterSpacing: -0.6,
         marginTop: 4,
         maxWidth: 220,
+        textAlign: "center",
     },
     livePill: {
         flexDirection: "row",
@@ -347,20 +349,24 @@ const styles = StyleSheet.create({
     progressColumn: {
         flex: 1,
         gap: 8,
+        alignItems: "center",
     },
     pendingTitle: {
         color: "#F8F0DE",
         fontWeight: "800",
+        textAlign: "center",
     },
     pendingText: {
         color: "#8F96B4",
         fontSize: 12,
         lineHeight: 17,
+        textAlign: "center",
     },
     body: {
         color: "#E8E1D3",
         fontSize: 17,
         lineHeight: 27,
+        textAlign: "center",
     },
     cliffhangerCard: {
         flexDirection: "row",
@@ -376,6 +382,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         lineHeight: 20,
         fontWeight: "700",
+        textAlign: "center",
     },
     pressed: {
         opacity: 0.78,

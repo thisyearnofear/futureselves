@@ -17,6 +17,7 @@ import {
   withTiming,
 } from "react-native-reanimated";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useRouter } from "expo-router";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type {
@@ -29,6 +30,7 @@ import type {
   PersonaState,
   VoicePreset,
 } from "@/lib/futureself";
+import { useSavedSignalPins } from "@/lib/saved-signal-pins";
 import { formatCastMember, inferVoicePresetFromSelectedVoice } from "@/lib/futureself";
 import {
   ChoiceSection,
@@ -41,6 +43,11 @@ import {
   StorySection,
   TransmissionSection,
 } from "@/components/futureself-home-sections";
+import {
+  MemoryArchiveSection,
+  sortMemoryTransmissions,
+  type MemoryArchiveFilter,
+} from "@/components/memory-archive-section";
 import { FutureselfProfileSheet } from "@/components/futureself-profile-sheet";
 import { FutureselfSettingsSheet } from "@/components/futureself-settings-sheet";
 import { styles } from "@/components/futureself-home.styles";
@@ -104,6 +111,7 @@ const demoCastOptions: Array<{ castMember: CastMember; label: string }> = [
 const isDebugMode = process.env.EXPO_PUBLIC_DEBUG_MODE === "true";
 
 export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
+  const router = useRouter();
   const { signOut } = useAuthActions();
   const completeOnboarding = useMutation(api.game.completeOnboarding);
   const saveCheckIn = useMutation(api.game.saveCheckIn);
@@ -144,10 +152,12 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
   const [choiceOutcome, setChoiceOutcome] = useState<ChoiceOutcome | null>(
     null,
   );
+  const [archiveFilter, setArchiveFilter] = useState<MemoryArchiveFilter>("all");
   const arrivalPulse = useSharedValue(0);
   const arrivalSweep = useSharedValue(-280);
 
   const persona = state.persona;
+  const { pinnedSignalIds, togglePinnedSignal } = useSavedSignalPins();
   const litVoices = state.constellation.filter(
     (star) => star.state === "lit" || star.state === "dim",
   );
@@ -157,12 +167,18 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
   );
   const previousTransmissions = useMemo(
     () =>
-      state.recentTransmissions
-        .filter(
-          (transmission) => transmission.id !== state.todayTransmission?.id,
-        )
-        .slice(0, 3),
+      state.recentTransmissions.filter(
+        (transmission) => transmission.id !== state.todayTransmission?.id,
+      ),
     [state.recentTransmissions, state.todayTransmission],
+  );
+  const memoryTransmissions = useMemo(
+    () => sortMemoryTransmissions(previousTransmissions, pinnedSignalIds),
+    [pinnedSignalIds, previousTransmissions],
+  );
+  const homeMemoryTransmissions = useMemo(
+    () => memoryTransmissions.slice(0, 3),
+    [memoryTransmissions],
   );
   const transmissionCount = state.recentTransmissions.length;
   const hasTransmissionToday = Boolean(state.todayTransmission);
@@ -668,15 +684,30 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
         ) : null}
 
         {shouldShowStoryDepth ? (
-          <StorySection
-            description="A quick memory trail so the story feels serial, not disposable."
-            items={previousTransmissions.map((transmission) => ({
-              id: transmission.id,
-              castMember: transmission.castMember,
-              title: transmission.title,
-              body: transmission.cliffhanger,
-            }))}
-            title="Previously in your timeline"
+          <View style={styles.memoryArchiveEntryRow}>
+            <Text style={styles.memoryArchiveEntryCopy}>
+              Build a fuller memory practice with pinned signals and recent lines in one place.
+            </Text>
+            <Pressable
+              onPress={() => router.push("/archive")}
+              style={({ pressed }) => [styles.memoryArchiveEntryButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.memoryArchiveEntryButtonText}>Open archive</Text>
+              <Ionicons name="arrow-forward-outline" size={14} color="#101320" />
+            </Pressable>
+          </View>
+        ) : null}
+
+        {shouldShowStoryDepth ? (
+          <MemoryArchiveSection
+            expandedByDefault
+            filter={archiveFilter}
+            onFilterChange={setArchiveFilter}
+            onOpenArchive={() => router.push("/archive")}
+            onTogglePin={togglePinnedSignal}
+            pinnedSignalIds={pinnedSignalIds}
+            showHeaderCta
+            transmissions={homeMemoryTransmissions}
           />
         ) : null}
 

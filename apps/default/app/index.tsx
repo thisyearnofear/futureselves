@@ -11,6 +11,7 @@ import { FutureselfHome } from "@/components/futureself-home";
 import { OnboardingFlow } from "@/components/onboarding-flow";
 import type { GameState } from "@/lib/futureself";
 import { getLocalDateKey } from "@/lib/futureself";
+import { useReminderPreferences } from "@/lib/reminder-preferences";
 import { useDailyReminder } from "@/lib/use-daily-reminder";
 
 export default function Index() {
@@ -36,13 +37,21 @@ function GameShell() {
     const [dateKey] = useState(() => getLocalDateKey());
     const [now] = useState(() => Date.now());
     const state = useQuery(api.game.getState, { dateKey, now });
-    useDailyReminder();
+    const reminderPreferences = useReminderPreferences();
+    useDailyReminder(reminderPreferences.preferences, reminderPreferences.isLoaded);
 
     if (state === undefined) return <LoadingState label="Tuning the constellation..." />;
 
     const gameState = state as GameState;
     if (!gameState.persona) return <OnboardingFlow />;
-    return <FutureselfHome state={gameState} dateKey={dateKey} />;
+    return (
+        <FutureselfHome
+            state={gameState}
+            dateKey={dateKey}
+            reminderPreferences={reminderPreferences.preferences}
+            saveReminderPreferences={reminderPreferences.savePreferences}
+        />
+    );
 }
 
 interface LoadingStateProps {
