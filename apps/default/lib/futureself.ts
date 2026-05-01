@@ -1,28 +1,32 @@
 import type { Id } from "@/convex/_generated/dataModel";
+import type {
+  Arc,
+  Archetype,
+  CastMember,
+  Choice,
+  FirstVoiceCastMember,
+  Timeline,
+} from "../../../packages/domain/src";
 
-export type Arc = "money" | "love" | "purpose" | "health";
-export type Timeline = "6_months" | "5_years" | "10_years";
-export type Archetype = "healed" | "wealthy" | "wise" | "builder" | "wanderer";
-export type CastMember =
-  | "future_self"
-  | "future_best_friend"
-  | "future_mentor"
-  | "future_partner"
-  | "future_employee"
-  | "future_customer"
-  | "future_child"
-  | "future_stranger"
-  | "alternate_self"
-  | "shadow"
-  | "the_ceiling"
-  | "the_flatlined"
-  | "the_resentee"
-  | "the_grandfather"
-  | "the_exhausted_winner"
-  | "the_ghost"
-  | "the_disappointed_healer"
-  | "the_dissolver";
-export type Choice = "toward" | "steady" | "release" | "repair";
+export type {
+  Arc,
+  Archetype,
+  CastMember,
+  Choice,
+  FirstVoiceCastMember,
+  Timeline,
+} from "../../../packages/domain/src";
+export {
+  arcValues,
+  arcLabels,
+  archetypeValues,
+  archetypeLabels,
+  firstVoiceCastMembers,
+  firstVoiceLabels,
+  formatCastMember,
+  timelineValues,
+  timelineLabels,
+} from "../../../packages/domain/src";
 
 export interface PersonaState {
   id: string;
@@ -56,7 +60,6 @@ export interface PersonaState {
   releaseCount: number;
   repairCount: number;
   unchosenVoices: Array<CastMember>;
-  activeUnchosenSelves: Array<CastMember>;
 }
 
 export interface CheckInState {
@@ -137,7 +140,7 @@ export interface OnboardingDraft {
   draining: string;
   timeline: Timeline;
   archetype: Archetype;
-  firstVoice: "future_self" | "future_partner" | "future_mentor";
+  firstVoice: FirstVoiceCastMember;
   voicePreset: "ember" | "atlas" | "sol";
   futureChildOptIn: boolean;
   significantDates: Array<string>;
@@ -148,84 +151,4 @@ export function getLocalDateKey(date = new Date()): string {
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-export function formatCastMember(castMember: CastMember): string {
-  const labels: Record<CastMember, string> = {
-    future_self: "Future Self",
-    future_best_friend: "Future Best Friend",
-    future_mentor: "Future Mentor",
-    future_partner: "Future Partner",
-    future_employee: "Future Employee",
-    future_customer: "Future Customer",
-    future_child: "Future Child",
-    future_stranger: "Future Stranger",
-    alternate_self: "Alternate Self",
-    shadow: "The Shadow",
-    the_ceiling: "The Ceiling",
-    the_flatlined: "The Flatlined",
-    the_resentee: "The Resentee",
-    the_grandfather: "The Grandfather",
-    the_exhausted_winner: "The Exhausted Winner",
-    the_ghost: "The Ghost",
-    the_disappointed_healer: "The Disappointed Healer",
-    the_dissolver: "The Dissolver",
-  };
-  return labels[castMember];
-}
-
-export const arcLabels: Record<Arc, string> = {
-  money: "Money",
-  love: "Love",
-  purpose: "Purpose",
-  health: "Health",
-};
-
-export const timelineLabels: Record<Timeline, string> = {
-  "6_months": "6 months ahead",
-  "5_years": "5 years ahead",
-  "10_years": "10 years ahead",
-};
-
-export const archetypeLabels: Record<Archetype, string> = {
-  healed: "Healed",
-  wealthy: "Wealthy",
-  wise: "Wise",
-  builder: "Builder",
-  wanderer: "Wanderer",
-};
-
-export const futureSelfPlusCastMembers: Array<CastMember> = [
-  "future_mentor",
-  "future_partner",
-  "future_customer",
-  "future_child",
-  "future_stranger",
-  "alternate_self",
-  "shadow",
-  "the_ceiling",
-  "the_flatlined",
-  "the_resentee",
-  "the_grandfather",
-  "the_exhausted_winner",
-  "the_ghost",
-  "the_disappointed_healer",
-  "the_dissolver",
-];
-
-export const futureSelfPlusPreview = {
-  constellation: [
-    "rarer voices from alternate timelines",
-    "cinematic ambient sound worlds",
-    "special event and seasonal transmissions",
-  ],
-  archive: [
-    "full transmission archive",
-    "searchable memory and timeline history",
-    "replayable voices and returning threads",
-  ],
-} as const;
-
-export function isFutureSelfPlusCastMember(castMember: CastMember): boolean {
-  return futureSelfPlusCastMembers.includes(castMember);
 }

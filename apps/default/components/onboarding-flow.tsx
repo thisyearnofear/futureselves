@@ -20,11 +20,20 @@ import { api } from "@/convex/_generated/api";
 import type {
   Arc,
   Archetype,
-  CastMember,
+  FirstVoiceCastMember,
   OnboardingDraft,
   Timeline,
 } from "@/lib/futureself";
-import { archetypeLabels, arcLabels, timelineLabels } from "@/lib/futureself";
+import {
+  archetypeLabels,
+  archetypeValues,
+  arcLabels,
+  arcValues,
+  firstVoiceCastMembers,
+  firstVoiceLabels,
+  timelineLabels,
+  timelineValues,
+} from "@/lib/futureself";
 
 const initialDraft: OnboardingDraft = {
   name: "",
@@ -42,20 +51,6 @@ const initialDraft: OnboardingDraft = {
   voicePreset: "ember",
   futureChildOptIn: false,
   significantDates: [],
-};
-
-type FirstVoiceOption = "future_self" | "future_partner" | "future_mentor";
-
-const firstVoiceValues: Array<FirstVoiceOption> = [
-  "future_self",
-  "future_partner",
-  "future_mentor",
-];
-
-const firstVoiceLabels: Record<FirstVoiceOption, string> = {
-  future_self: "Future Self",
-  future_partner: "Future Partner",
-  future_mentor: "Future Mentor",
 };
 
 const chapterNudges = {
@@ -306,7 +301,7 @@ function renderChapter(
       <View style={styles.formStack}>
         <Text style={styles.optionLabel}>The gravitational pull</Text>
         <ChipGrid
-          values={Object.keys(arcLabels) as Array<Arc>}
+          values={arcValues}
           selected={draft.primaryArc}
           labels={arcLabels}
           onSelect={(value) => updateDraft("primaryArc", value)}
@@ -349,21 +344,21 @@ function renderChapter(
       <View style={styles.formStack}>
         <Text style={styles.optionLabel}>Choose your timeline</Text>
         <ChipGrid
-          values={Object.keys(timelineLabels) as Array<Timeline>}
+          values={timelineValues}
           selected={draft.timeline}
           labels={timelineLabels}
           onSelect={(value) => updateDraft("timeline", value)}
         />
         <Text style={styles.optionLabel}>Choose your archetype</Text>
         <ChipGrid
-          values={Object.keys(archetypeLabels) as Array<Archetype>}
+          values={archetypeValues}
           selected={draft.archetype}
           labels={archetypeLabels}
           onSelect={(value) => updateDraft("archetype", value)}
         />
         <Text style={styles.optionLabel}>First voice</Text>
         <ChipGrid
-          values={firstVoiceValues}
+          values={firstVoiceCastMembers}
           selected={draft.firstVoice}
           labels={firstVoiceLabels}
           onSelect={(value) => updateDraft("firstVoice", value)}
@@ -479,7 +474,7 @@ function SuggestionRow({ suggestions, onSelect }: SuggestionRowProps) {
 }
 
 interface ChipGridProps<T extends string> {
-  values: Array<T>;
+  values: ReadonlyArray<T>;
   selected: T;
   labels: Record<T, string>;
   onSelect: (value: T) => void;
