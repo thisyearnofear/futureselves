@@ -79,6 +79,19 @@ export interface TransmissionResponseState {
   createdAt: number;
 }
 
+export interface TransmissionContinuityState {
+  callbackLine?: string;
+  responseEcho?: string;
+  rewardLabel?: string;
+  audioArrivalNote?: string;
+}
+
+export interface TransmissionMemoryState {
+  resurfacedTransmissionId?: string;
+  resurfacedTitle?: string;
+  resurfacedReason?: string;
+}
+
 export interface TransmissionState {
   id: string;
   dateKey: string;
@@ -90,6 +103,8 @@ export interface TransmissionState {
   audioUrl: string | null;
   status: "generating" | "text_ready" | "ready" | "failed";
   response: TransmissionResponseState | null;
+  continuity: TransmissionContinuityState | null;
+  memory: TransmissionMemoryState | null;
   createdAt: number;
 }
 

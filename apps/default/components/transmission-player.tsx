@@ -72,6 +72,7 @@ export function TransmissionPlayer({
           audioUrl={transmission.audioUrl}
           title={transmission.title}
           castMember={transmission.castMember}
+          transmission={transmission}
         />
       ) : (
         <TransmissionFallback status={transmission.status} />
@@ -83,11 +84,33 @@ export function TransmissionPlayer({
         <Text style={styles.cliffhanger}>{transmission.cliffhanger}</Text>
       </View>
 
+      {transmission.continuity?.rewardLabel ? (
+        <View style={styles.rewardBadge}>
+          <Ionicons name="sparkles" size={12} color="#C8A84B" />
+          <Text style={styles.rewardBadgeText}>{transmission.continuity.rewardLabel}</Text>
+        </View>
+      ) : null}
+
+      {transmission.memory?.resurfacedTitle ? (
+        <View style={styles.memoryBanner}>
+          <Ionicons name="git-commit-outline" size={13} color="#A0B4D0" />
+          <Text style={styles.memoryBannerText}>
+            <Text style={styles.memoryBannerTitle}>{transmission.memory.resurfacedTitle}</Text>
+            {transmission.memory.resurfacedReason
+              ? ` · ${transmission.memory.resurfacedReason}`
+              : ""}
+          </Text>
+        </View>
+      ) : null}
+
       <View style={styles.responseCard}>
         <Text style={styles.responseTitle}>Answer the signal back.</Text>
         <Text style={styles.responseCopy}>
           Let the line become a correspondence, not just a message.
         </Text>
+        {transmission.continuity?.callbackLine ? (
+          <Text style={styles.continuityHint}>{transmission.continuity.callbackLine}</Text>
+        ) : null}
         <View style={styles.reactionGrid}>
           {reactionOptions.map((option) => {
             const active = transmission.response?.reaction === option.key;
@@ -176,12 +199,13 @@ interface AudioPlayerProps {
   audioUrl: string;
   title: string;
   castMember?: string;
+  transmission?: TransmissionState;
 }
 
-function AudioPlayer({ audioUrl, title, castMember }: AudioPlayerProps) {
+function AudioPlayer({ audioUrl, title, castMember, transmission }: AudioPlayerProps) {
   if (Platform.OS === "web")
     return <WebAudioPlayer audioUrl={audioUrl} title={title} castMember={castMember} />;
-  return <NativeAudioPlayer audioUrl={audioUrl} castMember={castMember ?? ""} />;
+  return <NativeAudioPlayer audioUrl={audioUrl} castMember={castMember ?? ""} transmission={transmission} />;
 }
 
 function WebAudioPlayer({ audioUrl }: AudioPlayerProps) {
@@ -259,6 +283,8 @@ function NativeAudioPlayer({ audioUrl, castMember }: { audioUrl: string; castMem
   const player = useAudioPlayer(audioUrl);
   const status = useAudioPlayerStatus(player);
   const [hasStarted, setHasStarted] = useState(false);
+  const [audioArrived, setAudioArrived] = useState(false);
+  const [showArrivalNote, setShowArrivalNote] = useState(false);
 
   const ambientSource = getAmbientSource(castMember);
   const ambientPlayer = useAudioPlayer(ambientSource);
@@ -274,10 +300,17 @@ function NativeAudioPlayer({ audioUrl, castMember }: { audioUrl: string; castMem
     if (status.playbackState === "playing") {
       setHasStarted(true);
       ambientPlayer?.play();
+      if (!audioArrived) {
+        setAudioArrived(true);
+        if (transmission.status === "text_ready") {
+          setShowArrivalNote(true);
+          setTimeout(() => setShowArrivalNote(false), 3000);
+        }
+      }
     } else {
       ambientPlayer?.pause();
     }
-  }, [status.playbackState, ambientPlayer]);
+  }, [status.playbackState, ambientPlayer, audioArrived, transmission.status]);
 
   async function togglePlayback() {
     if (status.playbackState === "playing") {
@@ -291,37 +324,46 @@ function NativeAudioPlayer({ audioUrl, castMember }: { audioUrl: string; castMem
   const progress = status.duration > 0 ? status.currentTime / status.duration : 0;
 
   return (
-    <View style={styles.nativePlayerShell}>
-      <Pressable
-        onPress={togglePlayback}
-        style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
-      >
-        <Ionicons
-          name={status.playbackState === "playing" ? "pause" : "play"}
-          size={28}
-          color="#101320"
-        />
-      </Pressable>
+    <>
+      <View style={styles.nativePlayerShell}>
+        <Pressable
+          onPress={togglePlayback}
+          style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
+        >
+          <Ionicons
+            name={status.playbackState === "playing" ? "pause" : "play"}
+            size={28}
+            color="#101320"
+          />
+        </Pressable>
 
-      <View style={styles.playerControls}>
-        <View style={styles.playerStatusRowCentered}>
-          <Text style={styles.playerStatusText}>
-            {status.playbackState === "playing"
-              ? "Listening to the future..."
-              : hasStarted
-                ? "Transmission paused"
-                : "Signal ready"}
-          </Text>
-          <Text style={styles.timeText}>
-            {formatTime(status.currentTime)} / {formatTime(status.duration)}
-          </Text>
-        </View>
+        <View style={styles.playerControls}>
+          <View style={styles.playerStatusRowCentered}>
+            <Text style={styles.playerStatusText}>
+              {status.playbackState === "playing"
+                ? "Listening to the future..."
+                : hasStarted
+                  ? "Transmission paused"
+                  : "Signal ready"}
+            </Text>
+            <Text style={styles.timeText}>
+              {formatTime(status.currentTime)} / {formatTime(status.duration)}
+            </Text>
+          </View>
 
-        <View style={styles.progressBarBg}>
-          <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+          <View style={styles.progressBarBg}>
+            <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+          </View>
         </View>
       </View>
-    </View>
+
+      {showArrivalNote ? (
+        <View style={styles.arrivalToast}>
+          <Ionicons name="volume-high-outline" size={13} color="#C8D4E8" />
+          <Text style={styles.arrivalToastText}>The voice caught up.</Text>
+        </View>
+      ) : null}
+    </>
   );
 }
 
@@ -556,6 +598,54 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
   },
+  rewardBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(247,211,139,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(200,168,75,0.28)",
+  },
+  rewardBadgeText: {
+    color: "#C8A84B",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+  },
+  memoryBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 16,
+    backgroundColor: "rgba(160,180,208,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(160,180,208,0.15)",
+  },
+  memoryBannerText: {
+    flex: 1,
+    color: "#8FA4C4",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600",
+  },
+  memoryBannerTitle: {
+    color: "#A0B4D0",
+    fontStyle: "italic",
+    fontWeight: "700",
+  },
+  continuityHint: {
+    color: "#AEB6D4",
+    fontSize: 12,
+    lineHeight: 18,
+    fontStyle: "italic",
+    textAlign: "center",
+    maxWidth: 280,
+  },
   responseCard: {
     width: "100%",
     gap: 12,
@@ -646,10 +736,19 @@ const styles = StyleSheet.create({
   replySubmitDisabled: {
     opacity: 0.45,
   },
-  replySubmitText: {
-    color: "#101320",
-    fontSize: 13,
-    fontWeight: "900",
+  arrivalToast: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingVertical: 8,
+    width: "100%",
+  },
+  arrivalToastText: {
+    color: "#C8D4E8",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   pressed: {
     opacity: 0.78,

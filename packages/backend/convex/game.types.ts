@@ -233,6 +233,19 @@ export interface TransmissionResponseReturn {
   createdAt: number;
 }
 
+export interface TransmissionContinuityReturn {
+  callbackLine?: string;
+  responseEcho?: string;
+  rewardLabel?: string;
+  audioArrivalNote?: string;
+}
+
+export interface TransmissionMemoryReturn {
+  resurfacedTransmissionId?: Id<"transmissions">;
+  resurfacedTitle?: string;
+  resurfacedReason?: string;
+}
+
 export interface TransmissionReturn {
   id: Id<"transmissions">;
   dateKey: string;
@@ -244,6 +257,8 @@ export interface TransmissionReturn {
   audioUrl: string | null;
   status: "generating" | "text_ready" | "ready" | "failed";
   response: TransmissionResponseReturn | null;
+  continuity: TransmissionContinuityReturn | null;
+  memory: TransmissionMemoryReturn | null;
   createdAt: number;
 }
 

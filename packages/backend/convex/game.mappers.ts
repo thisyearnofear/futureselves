@@ -114,6 +114,8 @@ export async function toTransmissionReturn(
     status: "generating" | "text_ready" | "ready" | "failed";
     createdAt: number;
     response?: TransmissionResponseReturn | null;
+    continuity?: TransmissionReturn["continuity"];
+    memory?: TransmissionReturn["memory"];
   },
 ): Promise<TransmissionReturn> {
   return {
@@ -129,6 +131,8 @@ export async function toTransmissionReturn(
       : null,
     status: transmission.status,
     response: transmission.response ?? null,
+    continuity: transmission.continuity ?? null,
+    memory: transmission.memory ?? null,
     createdAt: transmission.createdAt,
   };
 }
