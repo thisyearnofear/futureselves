@@ -339,7 +339,6 @@ export const saveTransmissionResponse = authMutation({
 export const getState = authQuery({
   args: {
     dateKey: v.string(),
-    now: v.number(),
   },
   returns: stateReturnValidator,
   handler: async (ctx, args) => {
@@ -386,6 +385,19 @@ export const getState = authQuery({
       .order("desc")
       .take(6);
 
+    function mapResponse(transmissionId: Id<"transmissions">) {
+      const r = responseByTransmissionId.get(transmissionId);
+      if (!r) return null;
+      return {
+        id: r._id,
+        transmissionId: r.transmissionId,
+        dateKey: r.dateKey,
+        reaction: r.reaction,
+        replyNote: r.replyNote,
+        createdAt: r.createdAt,
+      };
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return buildStateReturn({
       persona,
@@ -393,35 +405,15 @@ export const getState = authQuery({
       todayTransmission: todayTransmissionDoc
         ? await toTransmissionReturn(ctx, {
             ...todayTransmissionDoc,
-            response: responseByTransmissionId.get(todayTransmissionDoc._id)
-              ? {
-                  id: responseByTransmissionId.get(todayTransmissionDoc._id)!._id,
-                  transmissionId:
-                    responseByTransmissionId.get(todayTransmissionDoc._id)!.transmissionId,
-                  dateKey: responseByTransmissionId.get(todayTransmissionDoc._id)!.dateKey,
-                  reaction: responseByTransmissionId.get(todayTransmissionDoc._id)!.reaction,
-                  replyNote: responseByTransmissionId.get(todayTransmissionDoc._id)!.replyNote,
-                  createdAt: responseByTransmissionId.get(todayTransmissionDoc._id)!.createdAt,
-                }
-              : null,
+            response: mapResponse(todayTransmissionDoc._id),
           })
         : null,
       recentTransmissions: await Promise.all(
         recentTransmissionDocs.map((transmission) =>
           toTransmissionReturn(ctx, {
             ...transmission,
-            response: responseByTransmissionId.get(transmission._id)
-              ? {
-                  id: responseByTransmissionId.get(transmission._id)!._id,
-                  transmissionId:
-                    responseByTransmissionId.get(transmission._id)!.transmissionId,
-                  dateKey: responseByTransmissionId.get(transmission._id)!.dateKey,
-                  reaction: responseByTransmissionId.get(transmission._id)!.reaction,
-                  replyNote: responseByTransmissionId.get(transmission._id)!.replyNote,
-                  createdAt: responseByTransmissionId.get(transmission._id)!.createdAt,
-                }
-              : null,
-          }),
+            response: mapResponse(transmission._id),
+          }, { skipAudioUrl: true }),
         ),
       ),
       openThreads: openThreadDocs,
@@ -484,7 +476,7 @@ export const getGenerationContext = internalQuery({
       checkIn: checkInDoc ? toCheckInReturn(checkInDoc) : null,
       recentTransmissions: await Promise.all(
         recentTransmissionDocs.map((transmission) =>
-          toTransmissionReturn(ctx, transmission),
+          toTransmissionReturn(ctx, transmission, { skipAudioUrl: true }),
         ),
       ),
       recentChoices: recentChoiceDocs.map((choice) => ({

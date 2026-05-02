@@ -100,7 +100,6 @@ describe("game flow", () => {
 
     const state = await asUser.query(api.game.getState, {
       dateKey: "2026-05-01",
-      now: Date.now(),
     });
 
     expect(state.persona?.name).toBe("Amani");

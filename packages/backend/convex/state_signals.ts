@@ -1,14 +1,10 @@
-import type { Arc, CastMember, Choice } from "../../domain/src";
+import type { Arc } from "../../domain/src";
 
 interface PersonaSignalsInput {
   primaryArc: Arc;
   streak: number;
   timelineDivergenceScore: number;
   futureChildOptIn: boolean;
-}
-
-interface RecentChoiceInput {
-  choice: Choice;
 }
 
 export interface StateSignals {
@@ -26,24 +22,13 @@ export interface StateSignals {
 export function buildStateSignals({
   persona,
   openThreadsCount,
-  recentChoices,
+  recentChoiceCounts,
 }: {
   persona: PersonaSignalsInput;
   openThreadsCount: number;
-  recentChoices: Array<RecentChoiceInput>;
+  recentChoiceCounts: { toward: number; repair: number; release: number; steady: number };
 }): StateSignals {
-  const towardCount = recentChoices.filter(
-    (choice) => choice.choice === "toward",
-  ).length;
-  const repairCount = recentChoices.filter(
-    (choice) => choice.choice === "repair",
-  ).length;
-  const releaseCount = recentChoices.filter(
-    (choice) => choice.choice === "release",
-  ).length;
-  const steadyCount = recentChoices.filter(
-    (choice) => choice.choice === "steady",
-  ).length;
+  const { toward: towardCount, repair: repairCount, release: releaseCount, steady: steadyCount } = recentChoiceCounts;
 
   return {
     stabilityTitle: getStabilityTitle(persona.timelineDivergenceScore),

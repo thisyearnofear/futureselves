@@ -14,9 +14,8 @@ import { useSavedSignalPins } from "@/lib/saved-signal-pins";
 
 export default function ArchiveScreen() {
   const [dateKey] = useState(() => getLocalDateKey());
-  const [now] = useState(() => Date.now());
   const [archiveFilter, setArchiveFilter] = useState<MemoryArchiveFilter>("all");
-  const state = useQuery(api.game.getState, { dateKey, now });
+  const state = useQuery(api.game.getState, { dateKey });
   const { pinnedSignalIds, togglePinnedSignal, isLoaded } = useSavedSignalPins();
 
   if (state === undefined || !isLoaded) {

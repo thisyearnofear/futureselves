@@ -77,7 +77,12 @@ export function buildStateReturn(params: {
     systemSignals: buildStateSignals({
       persona: params.persona,
       openThreadsCount: params.openThreads.length,
-      recentChoices: params.recentChoices,
+      recentChoiceCounts: {
+        toward: params.recentChoices.filter((c) => c.choice === "toward").length,
+        repair: params.recentChoices.filter((c) => c.choice === "repair").length,
+        release: params.recentChoices.filter((c) => c.choice === "release").length,
+        steady: params.recentChoices.filter((c) => c.choice === "steady").length,
+      },
     }),
   };
 }

@@ -117,6 +117,7 @@ export async function toTransmissionReturn(
     continuity?: TransmissionReturn["continuity"];
     memory?: TransmissionReturn["memory"];
   },
+  options?: { skipAudioUrl?: boolean },
 ): Promise<TransmissionReturn> {
   return {
     id: transmission._id,
@@ -126,9 +127,10 @@ export async function toTransmissionReturn(
     text: transmission.text,
     actionPrompt: transmission.actionPrompt,
     cliffhanger: transmission.cliffhanger,
-    audioUrl: transmission.audioStorageId
-      ? await ctx.storage.getUrl(transmission.audioStorageId)
-      : null,
+    audioUrl:
+      options?.skipAudioUrl || !transmission.audioStorageId
+        ? null
+        : await ctx.storage.getUrl(transmission.audioStorageId),
     status: transmission.status,
     response: transmission.response ?? null,
     continuity: transmission.continuity ?? null,

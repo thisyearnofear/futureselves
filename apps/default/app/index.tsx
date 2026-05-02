@@ -35,8 +35,7 @@ export default function Index() {
 
 function GameShell() {
     const [dateKey] = useState(() => getLocalDateKey());
-    const [now] = useState(() => Date.now());
-    const state = useQuery(api.game.getState, { dateKey, now });
+    const state = useQuery(api.game.getState, { dateKey });
     const reminderPreferences = useReminderPreferences();
     useDailyReminder(reminderPreferences.preferences, reminderPreferences.isLoaded);
 
