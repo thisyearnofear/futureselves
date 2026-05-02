@@ -496,7 +496,11 @@ export function FutureselfHome({
         replyNote: payload.replyNote?.trim() || undefined,
       });
       if (Platform.OS !== "web") {
-        void Haptics.selectionAsync();
+        if (payload.reaction === "did_it" || payload.reaction === "keep_close") {
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } else {
+          void Haptics.selectionAsync();
+        }
       }
     } catch (caught) {
       const message =

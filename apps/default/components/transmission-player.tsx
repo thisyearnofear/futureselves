@@ -14,6 +14,15 @@ import { useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { useRouter } from "expo-router";
+import AnimatedReanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+  FadeInUp,
+} from "react-native-reanimated";
 import type { TransmissionState } from "@/lib/futureself";
 import { formatCastMember } from "@/lib/futureself";
 
@@ -44,6 +53,7 @@ export function TransmissionPlayer({
 }: TransmissionPlayerProps) {
   const [isReplyOpen, setIsReplyOpen] = useState(Boolean(transmission.response?.replyNote));
   const [replyNote, setReplyNote] = useState(transmission.response?.replyNote ?? "");
+  const router = useRouter();
 
   useEffect(() => {
     setReplyNote(transmission.response?.replyNote ?? "");
@@ -57,9 +67,21 @@ export function TransmissionPlayer({
     return "text signal";
   }, [transmission.audioUrl, transmission.status]);
 
+  const driftY = useSharedValue(0);
+  useEffect(() => {
+    driftY.value = withRepeat(
+      withTiming(-3, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+  }, []);
+  const cliffhangerDrift = useAnimatedStyle(() => ({
+    transform: [{ translateY: driftY.value }],
+  }));
+
   return (
     <View style={styles.card}>
-      <View style={styles.headerWrap}>
+      <AnimatedReanimated.View entering={FadeInUp.duration(260)} style={styles.headerWrap}>
         <View style={styles.headerCopy}>
           <Text style={styles.cast}>{formatCastMember(transmission.castMember)}</Text>
           <Text style={styles.title}>{transmission.title}</Text>
@@ -68,45 +90,58 @@ export function TransmissionPlayer({
           <View style={styles.liveDot} />
           <Text style={styles.liveText}>{statusLabel}</Text>
         </View>
-      </View>
+      </AnimatedReanimated.View>
 
-      {transmission.audioUrl ? (
-        <AudioPlayer
-          audioUrl={transmission.audioUrl}
-          title={transmission.title}
-          castMember={transmission.castMember}
-          transmission={transmission}
-        />
-      ) : (
-        <TransmissionFallback status={transmission.status} />
-      )}
+      <AnimatedReanimated.View entering={FadeInUp.delay(80).duration(260)}>
+        {transmission.audioUrl ? (
+          <AudioPlayer
+            audioUrl={transmission.audioUrl}
+            title={transmission.title}
+            castMember={transmission.castMember}
+            transmission={transmission}
+          />
+        ) : (
+          <TransmissionFallback status={transmission.status} />
+        )}
+      </AnimatedReanimated.View>
 
-      <Text style={styles.body}>{transmission.text}</Text>
-      <View style={styles.cliffhangerCard}>
+      <AnimatedReanimated.Text entering={FadeInUp.delay(160).duration(280)} style={styles.body}>
+        {transmission.text}
+      </AnimatedReanimated.Text>
+      <AnimatedReanimated.View
+        entering={FadeInUp.delay(240).duration(280)}
+        style={[styles.cliffhangerCard, cliffhangerDrift]}
+      >
         <Ionicons name="moon" size={17} color="#F7D38B" />
         <Text style={styles.cliffhanger}>{transmission.cliffhanger}</Text>
-      </View>
+      </AnimatedReanimated.View>
 
       {transmission.continuity?.rewardLabel ? (
-        <View style={styles.rewardBadge}>
+        <AnimatedReanimated.View entering={FadeInUp.delay(320).duration(260)} style={styles.rewardBadge}>
           <Ionicons name="sparkles" size={12} color="#C8A84B" />
           <Text style={styles.rewardBadgeText}>{transmission.continuity.rewardLabel}</Text>
-        </View>
+        </AnimatedReanimated.View>
       ) : null}
 
       {transmission.memory?.resurfacedTitle ? (
-        <View style={styles.memoryBanner}>
-          <Ionicons name="git-commit-outline" size={13} color="#A0B4D0" />
-          <Text style={styles.memoryBannerText}>
-            <Text style={styles.memoryBannerTitle}>{transmission.memory.resurfacedTitle}</Text>
-            {transmission.memory.resurfacedReason
-              ? ` · ${transmission.memory.resurfacedReason}`
-              : ""}
-          </Text>
-        </View>
+        <Pressable
+          onPress={() => router.push("/archive" as never)}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <AnimatedReanimated.View entering={FadeInUp.delay(320).duration(260)} style={styles.memoryBanner}>
+            <Ionicons name="git-commit-outline" size={13} color="#A0B4D0" />
+            <Text style={styles.memoryBannerText}>
+              <Text style={styles.memoryBannerTitle}>{transmission.memory.resurfacedTitle}</Text>
+              {transmission.memory.resurfacedReason
+                ? ` · ${transmission.memory.resurfacedReason}`
+                : ""}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color="#7E86A6" />
+          </AnimatedReanimated.View>
+        </Pressable>
       ) : null}
 
-      <View style={styles.responseCard}>
+      <AnimatedReanimated.View entering={FadeInUp.delay(400).duration(280)} style={styles.responseCard}>
         <Text style={styles.responseTitle}>Answer the signal back.</Text>
         <Text style={styles.responseCopy}>
           Let the line become a correspondence, not just a message.
@@ -193,7 +228,7 @@ export function TransmissionPlayer({
             </Pressable>
           </View>
         ) : null}
-      </View>
+      </AnimatedReanimated.View>
     </View>
   );
 }
