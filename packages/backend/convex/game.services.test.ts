@@ -257,6 +257,8 @@ describe("game.state", () => {
         audioUrl: null,
         status: "ready",
         response: null,
+        continuity: null,
+        memory: null,
         createdAt: 11,
       },
       recentTransmissions: [],
@@ -269,6 +271,7 @@ describe("game.state", () => {
         },
       ],
       recentChoices: [{ choice: "repair" }],
+      reactionStreaks: null,
     });
 
     expect(state.persona.name).toBe("Amani");
@@ -331,6 +334,8 @@ describe("game.transmission", () => {
             audioUrl: null,
             status: "ready",
             response: null,
+            continuity: null,
+            memory: null,
             createdAt: 0,
           },
         ],

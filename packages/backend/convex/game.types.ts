@@ -144,6 +144,14 @@ export const stateReturnValidator = v.object({
     }),
   ),
   systemSignals: stateSignalsReturnValidator,
+  reactionStreaks: v.union(
+    v.object({
+      keepCloseCount: v.number(),
+      didItCount: v.number(),
+      landedCount: v.number(),
+    }),
+    v.null(),
+  ),
 });
 
 export const generationContextValidator = v.object({

@@ -279,7 +279,7 @@ function WebAudioPlayer({ audioUrl }: AudioPlayerProps) {
   );
 }
 
-function NativeAudioPlayer({ audioUrl, castMember }: { audioUrl: string; castMember: string }) {
+function NativeAudioPlayer({ audioUrl, castMember, transmission }: { audioUrl: string; castMember: string; transmission?: TransmissionState }) {
   const player = useAudioPlayer(audioUrl);
   const status = useAudioPlayerStatus(player);
   const [hasStarted, setHasStarted] = useState(false);
@@ -735,6 +735,11 @@ const styles = StyleSheet.create({
   },
   replySubmitDisabled: {
     opacity: 0.45,
+  },
+  replySubmitText: {
+    color: "#101320",
+    fontSize: 13,
+    fontWeight: "900",
   },
   arrivalToast: {
     flexDirection: "row",

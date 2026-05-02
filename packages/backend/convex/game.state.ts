@@ -32,6 +32,7 @@ export function buildEmptyState() {
         "The ritual has not accumulated enough state for a major event.",
       approachingEventTone: "opportunity" as const,
     },
+    reactionStreaks: null,
   };
 }
 
@@ -47,12 +48,18 @@ export function buildStateReturn(params: {
     castMember: ConstellationReturn["castMember"];
   }>;
   recentChoices: Array<{ choice: Choice }>;
+  reactionStreaks: {
+    keepCloseCount: number;
+    didItCount: number;
+    landedCount: number;
+  } | null;
 }) {
   const enhancedRecentTransmissions = enrichTransmissionsWithContinuity(
     params.recentTransmissions,
+    params.reactionStreaks,
   );
   const todayTransmission = params.todayTransmission
-    ? enhanceTransmission(params.todayTransmission, enhancedRecentTransmissions)
+    ? enhanceTransmission(params.todayTransmission, enhancedRecentTransmissions, params.reactionStreaks)
     : null;
 
   return {
@@ -110,19 +117,21 @@ export function buildGenerationContext(params: {
 
 function enrichTransmissionsWithContinuity(
   transmissions: Array<TransmissionReturn>,
+  reactionStreaks: { keepCloseCount: number; didItCount: number; landedCount: number } | null,
 ): Array<TransmissionReturn> {
   return transmissions.map((transmission, index) => {
     const olderTransmissions = transmissions.slice(index + 1);
-    return enhanceTransmission(transmission, olderTransmissions);
+    return enhanceTransmission(transmission, olderTransmissions, reactionStreaks);
   });
 }
 
 function enhanceTransmission(
   transmission: TransmissionReturn,
   olderTransmissions: Array<TransmissionReturn>,
+  reactionStreaks: { keepCloseCount: number; didItCount: number; landedCount: number } | null,
 ): TransmissionReturn {
-  const continuity = buildContinuityMetadata(transmission, olderTransmissions);
-  const memory = buildMemoryMetadata(transmission, olderTransmissions);
+  const continuity = buildContinuityMetadata(transmission, olderTransmissions, reactionStreaks);
+  const memory = buildMemoryMetadata(transmission, olderTransmissions, reactionStreaks);
   return {
     ...transmission,
     continuity,
@@ -133,14 +142,15 @@ function enhanceTransmission(
 function buildContinuityMetadata(
   transmission: TransmissionReturn,
   olderTransmissions: Array<TransmissionReturn>,
+  reactionStreaks: { keepCloseCount: number; didItCount: number; landedCount: number } | null,
 ): TransmissionReturn["continuity"] {
   const response = transmission.response;
   const previousResponse = olderTransmissions.find((item) => item.response)?.response;
 
   const callbackLine = response?.replyNote
-    ? `Tomorrow can answer the note you sent back: “${trimSnippet(response.replyNote, 72)}”`
+    ? `Tomorrow can answer the note you sent back: "${trimSnippet(response.replyNote, 72)}"`
     : previousResponse?.replyNote
-      ? `The line still remembers what you said back: “${trimSnippet(previousResponse.replyNote, 72)}”`
+      ? `The line still remembers what you said back: "${trimSnippet(previousResponse.replyNote, 72)}"`
       : undefined;
 
   const responseEcho = response?.reaction
@@ -149,7 +159,7 @@ function buildContinuityMetadata(
       ? `Earlier, you told the line: ${reactionEchoMap[previousResponse.reaction]}`
       : undefined;
 
-  const rewardLabel = getRewardLabel(transmission, olderTransmissions);
+  const rewardLabel = getRewardLabel(reactionStreaks);
 
   const audioArrivalNote =
     transmission.status === "text_ready"
@@ -173,28 +183,43 @@ function buildContinuityMetadata(
 function buildMemoryMetadata(
   transmission: TransmissionReturn,
   olderTransmissions: Array<TransmissionReturn>,
+  reactionStreaks: { keepCloseCount: number; didItCount: number; landedCount: number } | null,
 ): TransmissionReturn["memory"] {
-  const resurfaced = olderTransmissions.find((item) => {
-    if (!item.response?.reaction && !item.response?.replyNote) return false;
-    return item.castMember === transmission.castMember || item.response?.reaction === "keep_close";
-  });
+  const keepCloseResurfaced = olderTransmissions.find(
+    (item) => item.response?.reaction === "keep_close",
+  );
+  const sameVoiceResurfaced = olderTransmissions.find(
+    (item) =>
+      item.castMember === transmission.castMember &&
+      (item.response?.replyNote || item.response?.reaction),
+  );
+  const milestoneResurfaced =
+    reactionStreaks && reactionStreaks.keepCloseCount >= 3
+      ? olderTransmissions.find(
+          (item) =>
+            item.response?.reaction === "keep_close" &&
+            item.castMember === transmission.castMember,
+        )
+      : null;
 
+  const resurfaced = milestoneResurfaced ?? keepCloseResurfaced ?? sameVoiceResurfaced;
   if (!resurfaced) return null;
+
+  const reason =
+    resurfaced.response?.reaction === "keep_close"
+      ? "You kept this kind of signal close before."
+      : "This voice is picking up an older thread again.";
 
   return {
     resurfacedTransmissionId: resurfaced.id,
     resurfacedTitle: resurfaced.title,
-    resurfacedReason:
-      resurfaced.response?.reaction === "keep_close"
-        ? "You kept this kind of signal close before."
-        : "This voice is picking up an older thread again.",
+    resurfacedReason: reason,
   };
 }
 
-const reactionEchoMap: Record<
-  NonNullable<TransmissionReturn["response"]>["reaction"],
-  string
-> = {
+type Reaction = "landed" | "not_quite" | "did_it" | "keep_close";
+
+const reactionEchoMap: Record<Reaction, string> = {
   landed: "this landed.",
   not_quite: "not quite — try again with more truth.",
   did_it: "I did it.",
@@ -202,21 +227,13 @@ const reactionEchoMap: Record<
 };
 
 function getRewardLabel(
-  transmission: TransmissionReturn,
-  olderTransmissions: Array<TransmissionReturn>,
+  reactionStreaks: { keepCloseCount: number; didItCount: number; landedCount: number } | null,
 ) {
-  const reactions = [transmission, ...olderTransmissions]
-    .map((item) => item.response?.reaction)
-    .filter(Boolean);
+  const streaks = reactionStreaks ?? { keepCloseCount: 0, didItCount: 0, landedCount: 0 };
 
-  const keepCloseCount = reactions.filter((reaction) => reaction === "keep_close").length;
-  if (keepCloseCount >= 3) return "Archive instinct strengthening";
-
-  const didItCount = reactions.filter((reaction) => reaction === "did_it").length;
-  if (didItCount >= 2) return "Follow-through is compounding";
-
-  const landedCount = reactions.filter((reaction) => reaction === "landed").length;
-  if (landedCount >= 3) return "The line is learning your frequency";
+  if (streaks.keepCloseCount >= 3) return "Archive instinct strengthening";
+  if (streaks.didItCount >= 2) return "Follow-through is compounding";
+  if (streaks.landedCount >= 3) return "The line is learning your frequency";
 
   return undefined;
 }

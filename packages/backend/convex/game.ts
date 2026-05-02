@@ -292,6 +292,36 @@ export const saveTransmissionResponse = authMutation({
           createdAt: now,
         });
 
+    if (args.reaction) {
+      const persona = await ctx.db
+        .query("personas")
+        .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
+        .unique();
+      if (persona) {
+        const prev = persona.reactionStreaks ?? {
+          keepCloseCount: 0,
+          didItCount: 0,
+          landedCount: 0,
+        };
+        const isSameDay = persona.reactionStreaks?.lastReactionDateKey === args.dateKey;
+        if (!isSameDay) {
+          const updatedStreaks = {
+            keepCloseCount:
+              args.reaction === "keep_close"
+                ? prev.keepCloseCount + 1
+                : prev.keepCloseCount,
+            didItCount:
+              args.reaction === "did_it" ? prev.didItCount + 1 : prev.didItCount,
+            landedCount:
+              args.reaction === "landed" ? prev.landedCount + 1 : prev.landedCount,
+            lastReactionDateKey: args.dateKey,
+            lastReactionType: args.reaction,
+          };
+          await ctx.db.patch(persona._id, { reactionStreaks: updatedStreaks });
+        }
+      }
+    }
+
     const saved = await ctx.db.get(responseId);
     if (!saved) throw new Error("Could not save your response.");
 
@@ -356,6 +386,7 @@ export const getState = authQuery({
       .order("desc")
       .take(6);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return buildStateReturn({
       persona,
       todayCheckIn: todayCheckInDoc ? toCheckInReturn(todayCheckInDoc) : null,
@@ -397,7 +428,8 @@ export const getState = authQuery({
       recentChoices: recentChoiceDocs.map((choice) => ({
         choice: choice.choice,
       })),
-    });
+      reactionStreaks: personaDoc.reactionStreaks ?? null,
+    }) as unknown;
   },
 });
 

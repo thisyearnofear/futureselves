@@ -143,6 +143,12 @@ export interface StateSignals {
   approachingEventTone: "warning" | "rare" | "opportunity";
 }
 
+export interface ReactionStreaksState {
+  keepCloseCount: number;
+  didItCount: number;
+  landedCount: number;
+}
+
 export interface GameState {
   persona: PersonaState | null;
   todayCheckIn: CheckInState | null;
@@ -151,6 +157,7 @@ export interface GameState {
   constellation: Array<ConstellationStar>;
   openThreads: Array<ThreadState>;
   systemSignals: StateSignals;
+  reactionStreaks: ReactionStreaksState | null;
 }
 
 export interface OnboardingDraft {

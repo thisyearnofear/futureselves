@@ -37,6 +37,22 @@ export default defineSchema({
     lastCheckInDateKey: v.optional(v.string()),
     lastTransmissionDateKey: v.optional(v.string()),
     timelineDivergenceScore: v.number(),
+    reactionStreaks: v.optional(
+      v.object({
+        keepCloseCount: v.number(),
+        didItCount: v.number(),
+        landedCount: v.number(),
+        lastReactionDateKey: v.optional(v.string()),
+        lastReactionType: v.optional(
+          v.union(
+            v.literal("landed"),
+            v.literal("not_quite"),
+            v.literal("did_it"),
+            v.literal("keep_close"),
+          ),
+        ),
+      }),
+    ),
     towardCount: v.optional(v.number()),
     steadyCount: v.optional(v.number()),
     releaseCount: v.optional(v.number()),
