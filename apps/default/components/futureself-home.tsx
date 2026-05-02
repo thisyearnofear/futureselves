@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   View,
@@ -30,6 +31,7 @@ import type {
   PersonaState,
   VoicePreset,
 } from "@/lib/futureself";
+import type { ReminderPreferences } from "@/lib/reminder-preferences";
 import { useSavedSignalPins } from "@/lib/saved-signal-pins";
 import { formatCastMember, inferVoicePresetFromSelectedVoice } from "@/lib/futureself";
 import {
@@ -55,6 +57,8 @@ import { styles } from "@/components/futureself-home.styles";
 interface FutureselfHomeProps {
   state: GameState;
   dateKey: string;
+  reminderPreferences: ReminderPreferences;
+  saveReminderPreferences: (preferences: ReminderPreferences) => Promise<void>;
 }
 
 const choiceCopy: Record<Choice, string> = {
@@ -110,12 +114,18 @@ const demoCastOptions: Array<{ castMember: CastMember; label: string }> = [
 
 const isDebugMode = process.env.EXPO_PUBLIC_DEBUG_MODE === "true";
 
-export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
+export function FutureselfHome({
+  state,
+  dateKey,
+  reminderPreferences,
+  saveReminderPreferences,
+}: FutureselfHomeProps) {
   const router = useRouter();
   const { signOut } = useAuthActions();
   const completeOnboarding = useMutation(api.game.completeOnboarding);
   const saveCheckIn = useMutation(api.game.saveCheckIn);
   const recordChoice = useMutation(api.game.recordChoice);
+  const saveTransmissionResponse = useMutation(api.game.saveTransmissionResponse);
   const generateTransmission = useAction(api.game.generateDailyTransmission);
 
   // Debug mutations
@@ -128,6 +138,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
     Boolean(state.todayCheckIn?.note),
   );
   const [isReceiving, setIsReceiving] = useState(false);
+  const [isSavingResponse, setIsSavingResponse] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<Choice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showFlare, setShowFlare] = useState(false);
@@ -328,6 +339,8 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
     firstVoice: FirstVoiceCastMember;
     voicePreset: VoicePreset;
     futureChildOptIn: boolean;
+    reminderEnabled: boolean;
+    reminderHour: number;
   }) {
     if (!persona) return;
 
@@ -349,6 +362,11 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
         voicePreset: preferences.voicePreset,
         futureChildOptIn: preferences.futureChildOptIn,
         significantDates: persona.significantDates,
+      });
+      await saveReminderPreferences({
+        enabled: preferences.reminderEnabled,
+        hour: preferences.reminderHour,
+        minute: reminderPreferences.minute,
       });
       if (Platform.OS !== "web") {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -460,6 +478,34 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
       );
     } finally {
       setIsReceiving(false);
+    }
+  }
+
+  async function handleSaveTransmissionResponse(payload: {
+    reaction?: "landed" | "not_quite" | "did_it" | "keep_close";
+    replyNote?: string;
+  }) {
+    if (!state.todayTransmission) return;
+
+    try {
+      setIsSavingResponse(true);
+      await saveTransmissionResponse({
+        transmissionId: state.todayTransmission.id as Id<"transmissions">,
+        dateKey,
+        reaction: payload.reaction,
+        replyNote: payload.replyNote?.trim() || undefined,
+      });
+      if (Platform.OS !== "web") {
+        void Haptics.selectionAsync();
+      }
+    } catch (caught) {
+      const message =
+        caught instanceof Error
+          ? caught.message
+          : "Could not save your note back just now.";
+      Alert.alert("Could not save response", message);
+    } finally {
+      setIsSavingResponse(false);
     }
   }
 
@@ -610,6 +656,8 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
 
         {state.todayTransmission ? (
           <TransmissionSection
+            isSavingResponse={isSavingResponse}
+            onSaveResponse={handleSaveTransmissionResponse}
             onShare={handleShare}
             shareStatus={shareStatus}
             showTransmissionArrival={showTransmissionArrival}
@@ -689,7 +737,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
               Build a fuller memory practice with pinned signals and recent lines in one place.
             </Text>
             <Pressable
-              onPress={() => router.push("/archive")}
+              onPress={() => router.push("./archive")}
               style={({ pressed }) => [styles.memoryArchiveEntryButton, pressed && styles.pressed]}
             >
               <Text style={styles.memoryArchiveEntryButtonText}>Open archive</Text>
@@ -703,7 +751,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
             expandedByDefault
             filter={archiveFilter}
             onFilterChange={setArchiveFilter}
-            onOpenArchive={() => router.push("/archive")}
+            onOpenArchive={() => router.push("./archive")}
             onTogglePin={togglePinnedSignal}
             pinnedSignalIds={pinnedSignalIds}
             showHeaderCta
@@ -732,6 +780,7 @@ export function FutureselfHome({ state, dateKey }: FutureselfHomeProps) {
         onSave={handleSaveSettings}
         onSignOut={handleSignOutFromSettings}
         persona={persona}
+        reminderPreferences={reminderPreferences}
         visible={showSettings}
       />
       <FutureselfProfileSheet

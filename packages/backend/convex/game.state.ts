@@ -77,6 +77,11 @@ export function buildGenerationContext(params: {
     choice: Choice;
     prompt: string;
   }>;
+  recentResponses: Array<{
+    reaction?: "landed" | "not_quite" | "did_it" | "keep_close";
+    replyNote?: string;
+    createdAt: number;
+  }>;
   openThreads: Array<{
     title: string;
     seed: string;
@@ -89,6 +94,7 @@ export function buildGenerationContext(params: {
     checkIn: params.checkIn,
     recentTransmissions: params.recentTransmissions,
     recentChoices: params.recentChoices,
+    recentResponses: params.recentResponses,
     openThreads: params.openThreads,
     constellation: buildConstellation(params.persona),
     existingTransmissionId: params.existingTransmissionId,

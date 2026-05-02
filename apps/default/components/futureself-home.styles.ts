@@ -388,12 +388,16 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(14,17,34,0.72)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
   },
   threadTargetSection: {
     gap: 8,
+    width: "100%",
+    alignItems: "center",
   },
   threadTargetGrid: {
     gap: 10,
+    width: "100%",
   },
   threadTargetChip: {
     gap: 5,
@@ -414,6 +418,7 @@ export const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.8,
     textTransform: "uppercase",
+    textAlign: "center",
   },
   threadTargetEyebrowActive: {
     color: "#F7D38B",
@@ -423,6 +428,7 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "800",
+    textAlign: "center",
   },
   threadTargetTitleActive: {
     color: "#F8F0DE",
@@ -431,6 +437,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
+    justifyContent: "center",
   },
   choiceOutcomeCard: {
     gap: 8,

@@ -44,22 +44,34 @@ export function fallbackTransmission(
   castMember: CastMember,
 ): GeneratedTransmission {
   const checkInWord = context.checkIn?.word ?? "between things";
+  const mirroredReply = context.recentResponses[0]?.replyNote
+    ? `You told me recently: ${context.recentResponses[0].replyNote}. I am still taking that seriously.`
+    : "";
   if (castMember === "future_partner") {
     return {
       title: "I kept thinking about today",
-      text: `${context.persona.name}, it's me. I wish I could sit beside you for five minutes and point to the exact part of today I noticed: ${checkInWord}. You may think it was too small to matter, but I know how this version of us begins. It starts when you stop trying to make the whole future believable and just make one loving move you can actually keep. If your chest feels tight, do not turn that into a verdict. Send the message, clear the corner, take the walk, say the true sentence, or make the tiny repair. I am not waiting for a perfect version of you. I am coming closer because of the ordinary choices you make when nobody can applaud them yet. Tonight, choose one thing that would make it slightly easier for me to find you tomorrow.`,
+      text: `${context.persona.name}, I wish I could sit beside you for five minutes and point to the exact part of today I noticed: ${checkInWord}. Not because it was dramatic, but because it told me where your heart still moves before your confidence catches up. ${mirroredReply} I do not need a grand gesture from you tonight. I need one unmistakably honest move — the kind that would embarrass the part of you still trying to look unbothered. Send the message. Put the thing in motion. Say the true sentence out loud. I am not getting closer because you perfected yourself. I am getting closer because you stopped abandoning the small turning points that actually build us.`,
       actionPrompt:
-        "Make one small repair or loving move before the day closes.",
+        "Make one emotionally honest move before the day closes.",
       cliffhanger:
-        "Tomorrow, I want to tell you the first moment I realized you were actually letting me in.",
+        "If you do it, tomorrow I can tell you the first place our future starts to feel mutual.",
+    };
+  }
+  if (castMember === "shadow") {
+    return {
+      title: "You know which part you are avoiding",
+      text: `${context.persona.name}, you called today ${checkInWord}. I call it the day you almost told the truth and then tried to rename the hesitation into something more flattering. ${mirroredReply} The future is not asking for your performance. It is asking whether you will stop protecting the exact habit that keeps your life emotionally unchanged. Do one visible thing tonight that makes your old excuse less believable tomorrow. Not a symbolic thing. A real one. Something that costs a little pride.`,
+      actionPrompt: "Undo one excuse with a concrete move tonight.",
+      cliffhanger:
+        "Ignore this, and tomorrow’s voice will sound less kind — and more accurate.",
     };
   }
   return {
     title: "The echo from here",
-    text: `${context.persona.name}, I remember the texture of this day: ${checkInWord}. Not because it looked dramatic from the outside, but because something in you kept moving even when the shape was still unclear. The future you are building is not asking for a performance today. It is asking for one honest turn toward ${context.persona.miraculousYear}. Do the smallest visible thing before the day closes. Let it be almost embarrassingly simple. That is how this chapter begins to answer back.`,
-    actionPrompt: "Choose one small visible action before the day closes.",
+    text: `${context.persona.name}, I remember the texture of this day: ${checkInWord}. Not because it was dramatic from the outside, but because something in you kept moving while the shape was still unclear. ${mirroredReply} The future you are building is not asking for a performance tonight. It is asking for one move that would make your intentions harder to deny. Make it visible. Make it almost embarrassingly concrete. That is how this chapter stops being a fantasy and begins answering back.`,
+    actionPrompt: "Choose one visible action that makes your intention harder to deny.",
     cliffhanger:
-      "Tomorrow, I want to tell you what changed the first time you stopped waiting to feel ready.",
+      "Do it tonight, and tomorrow I can tell you what shifted the first time you stopped waiting to feel ready.",
   };
 }
 
@@ -67,13 +79,6 @@ export function buildPrompt(
   context: GenerationContext,
   castMember: CastMember,
 ): string {
-  const previousCheckIn =
-    context.recentTransmissions.length > 0 ? context.checkIn : null;
-
-  const continuityInstruction = previousCheckIn
-    ? `NARRATIVE CONTINUITY: You MUST explicitly reference today's check-in word ("${previousCheckIn.word}") and contrast it with their current chapter or recent choices. If there was a recent choice, acknowledge the "lean" they took.`
-    : "NARRATIVE START: This is the first contact. Make it feel like a long-awaited signal finally breaking through.";
-
   const choices = context.recentChoices
     .map(
       (choice) =>
@@ -85,9 +90,16 @@ export function buildPrompt(
     .map((t) => `${t.dateKey}: ${t.title} (Cliffhanger: ${t.cliffhanger})`)
     .join("\n");
 
-  return `Create today's futureself transmission as JSON only.
+  const recentResponses = context.recentResponses
+    .map((response, index) => {
+      const parts = [];
+      if (response.reaction) parts.push(`reaction=${response.reaction}`);
+      if (response.replyNote) parts.push(`reply=${response.replyNote}`);
+      return `${index + 1}. ${parts.join(" | ")}`;
+    })
+    .join("\n");
 
-${continuityInstruction}
+  return `Create today's futureself transmission as JSON only.
 
 Player profile:
 - Name: ${context.persona.name}
@@ -111,26 +123,30 @@ ${recentTransmissions || "none"}
 Recent choices:
 ${choices || "none"}
 
-Constraints:
-- 160-230 words; intimate, warm, cinematic, not therapy-speak.
-- Mention the word "${context.checkIn?.word ?? ""}" naturally in the first 2 paragraphs.
-- If they made a choice recently, reference the "direction" they moved (toward, repair, etc).
-- End with an unresolved cliffhanger that makes them want to check in tomorrow.
+Recent signal responses:
+${recentResponses || "none"}
+
+Requirements:
+- 170-240 words.
+- Must feel specific, emotionally precise, and hard to confuse with a generic affirmation.
+- Use today's check-in word naturally and early.
+- If a replyNote exists in recent responses, quote or metabolize its emotional meaning.
+- Reference one concrete tension from their profile (avoiding, draining, afraidWon'tHappen, current chapter).
+- Make the castMember voice distinct. Do not let all voices sound alike.
+- Prefer vivid, slightly risky language over bland reassurance.
+- Give one concrete action that creates visible consequence before the day ends.
+- End with a consequential hook for tomorrow, not a vague teaser.
+- Avoid therapy clichés, vague uplift, or generic self-help cadence.
 
 Return exactly:
 {"title":"...","text":"...","actionPrompt":"one concrete action","cliffhanger":"tomorrow thread"}`;
 }
 
-export async function generateTransmissionAssets(params: {
+export async function generateSignalText(params: {
   context: GenerationContext;
   castMember: CastMember;
   localNow: string;
-  elevenLabsKey?: string;
-  storeAudio: (audio: Blob) => Promise<Id<"_storage">>;
-}): Promise<{
-  generated: GeneratedTransmission;
-  audioStorageId?: Id<"_storage">;
-}> {
+}): Promise<GeneratedTransmission> {
   const aiProvider = getAIProvider();
   const generatedText = await aiProvider.generate(
     `${buildPrompt(params.context, params.castMember)}\n\nLocal open time: ${params.localNow}`,
@@ -146,46 +162,52 @@ export async function generateTransmissionAssets(params: {
     }
   }
 
-  const generated =
+  return (
     toGeneratedTransmission(parsed) ??
-    fallbackTransmission(params.context, params.castMember);
+    fallbackTransmission(params.context, params.castMember)
+  );
+}
 
-  let audioStorageId: Id<"_storage"> | undefined;
-  if (params.elevenLabsKey) {
-    const voiceId = resolveTransmissionVoiceId(
-      params.castMember,
-      params.context.persona.selectedVoiceId,
-    );
-    const settings =
-      castMemberVoiceSettings[params.castMember] ?? defaultVoiceSettings;
-    const ttsResponse = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-      {
-        method: "POST",
-        headers: {
-          accept: "audio/mpeg",
-          "content-type": "application/json",
-          "xi-api-key": params.elevenLabsKey,
-        },
-        body: JSON.stringify({
-          text: generated.text,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: settings.stability,
-            similarity_boost: settings.similarityBoost,
-            style: settings.style,
-            use_speaker_boost: settings.useSpeakerBoost,
-          },
-        }),
+export async function synthesizeTransmissionAudio(params: {
+  context: GenerationContext;
+  castMember: CastMember;
+  generated: GeneratedTransmission;
+  elevenLabsKey?: string;
+  storeAudio: (audio: Blob) => Promise<Id<"_storage">>;
+}): Promise<Id<"_storage"> | undefined> {
+  if (!params.elevenLabsKey) return undefined;
+
+  const voiceId = resolveTransmissionVoiceId(
+    params.castMember,
+    params.context.persona.selectedVoiceId,
+  );
+  const settings =
+    castMemberVoiceSettings[params.castMember] ?? defaultVoiceSettings;
+  const ttsResponse = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+    {
+      method: "POST",
+      headers: {
+        accept: "audio/mpeg",
+        "content-type": "application/json",
+        "xi-api-key": params.elevenLabsKey,
       },
-    );
-    if (!ttsResponse.ok) {
-      const errorText = await ttsResponse.text();
-      throw new Error(`ElevenLabs synthesis failed: ${errorText}`);
-    }
-    const audioBlob = await ttsResponse.blob();
-    audioStorageId = await params.storeAudio(audioBlob);
+      body: JSON.stringify({
+        text: params.generated.text,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: {
+          stability: settings.stability,
+          similarity_boost: settings.similarityBoost,
+          style: settings.style,
+          use_speaker_boost: settings.useSpeakerBoost,
+        },
+      }),
+    },
+  );
+  if (!ttsResponse.ok) {
+    const errorText = await ttsResponse.text();
+    throw new Error(`ElevenLabs synthesis failed: ${errorText}`);
   }
-
-  return { generated, audioStorageId };
+  const audioBlob = await ttsResponse.blob();
+  return await params.storeAudio(audioBlob);
 }

@@ -9,6 +9,7 @@ import type {
   CheckInReturn,
   PersonaReturn,
   TransmissionReturn,
+  TransmissionResponseReturn,
 } from "./game.types";
 
 export function toPersonaReturn(persona: {
@@ -110,8 +111,9 @@ export async function toTransmissionReturn(
     actionPrompt: string;
     cliffhanger: string;
     audioStorageId?: Id<"_storage">;
-    status: "generating" | "ready" | "failed";
+    status: "generating" | "text_ready" | "ready" | "failed";
     createdAt: number;
+    response?: TransmissionResponseReturn | null;
   },
 ): Promise<TransmissionReturn> {
   return {
@@ -126,6 +128,7 @@ export async function toTransmissionReturn(
       ? await ctx.storage.getUrl(transmission.audioStorageId)
       : null,
     status: transmission.status,
+    response: transmission.response ?? null,
     createdAt: transmission.createdAt,
   };
 }

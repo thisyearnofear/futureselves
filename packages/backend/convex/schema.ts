@@ -79,6 +79,7 @@ export default defineSchema({
     audioStorageId: v.optional(v.id("_storage")),
     status: v.union(
       v.literal("generating"),
+      v.literal("text_ready"),
       v.literal("ready"),
       v.literal("failed"),
     ),
@@ -86,6 +87,24 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_userId_and_dateKey", ["userId", "dateKey"])
+    .index("by_userId_and_createdAt", ["userId", "createdAt"]),
+  transmissionResponses: defineTable({
+    userId: v.id("users"),
+    transmissionId: v.id("transmissions"),
+    dateKey: v.string(),
+    reaction: v.optional(
+      v.union(
+        v.literal("landed"),
+        v.literal("not_quite"),
+        v.literal("did_it"),
+        v.literal("keep_close"),
+      ),
+    ),
+    replyNote: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId_and_transmissionId", ["userId", "transmissionId"])
     .index("by_userId_and_createdAt", ["userId", "createdAt"]),
   narrativeThreads: defineTable({
     userId: v.id("users"),

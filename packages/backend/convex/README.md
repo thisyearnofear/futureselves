@@ -7,8 +7,9 @@ This directory contains the Convex source for **Future Selves**.
 - define the database schema
 - expose authenticated game queries, mutations, and actions
 - coordinate AI-generated transmissions
-- store generated audio in Convex storage
-- support progression, unlocks, and narrative continuity
+- deliver transmissions in a text-first, audio-later flow
+- store generated audio in Convex storage when available
+- persist transmission responses, progression, unlocks, and narrative continuity
 
 ## Key files
 

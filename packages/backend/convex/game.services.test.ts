@@ -20,7 +20,7 @@ import { buildEmptyState, buildGenerationContext, buildStateReturn } from "./gam
 import {
   buildPrompt,
   fallbackTransmission,
-  generateTransmissionAssets,
+  generateSignalText,
 } from "./game.transmission";
 
 function createPersonaOverrides() {
@@ -256,6 +256,7 @@ describe("game.state", () => {
         cliffhanger: "Tomorrow opens",
         audioUrl: null,
         status: "ready",
+        response: null,
         createdAt: 11,
       },
       recentTransmissions: [],
@@ -284,6 +285,7 @@ describe("game.state", () => {
       checkIn: null,
       recentTransmissions: [],
       recentChoices: [],
+      recentResponses: [],
       openThreads: [
         {
           title: "Keep going",
@@ -328,6 +330,7 @@ describe("game.transmission", () => {
             cliffhanger: "A door stayed open",
             audioUrl: null,
             status: "ready",
+            response: null,
             createdAt: 0,
           },
         ],
@@ -338,6 +341,7 @@ describe("game.transmission", () => {
             prompt: "Make the repair",
           },
         ],
+        recentResponses: [],
         openThreads: [
           {
             title: "Say the real thing",
@@ -370,6 +374,7 @@ describe("game.transmission", () => {
         },
         recentTransmissions: [],
         recentChoices: [],
+        recentResponses: [],
         openThreads: [],
         constellation: [],
         existingTransmissionId: null,
@@ -392,7 +397,7 @@ describe("game.transmission", () => {
       }),
     );
 
-    const result = await generateTransmissionAssets({
+    const result = await generateSignalText({
       context: {
         persona: createPersonaReturn(),
         checkIn: {
@@ -404,24 +409,23 @@ describe("game.transmission", () => {
         },
         recentTransmissions: [],
         recentChoices: [],
+        recentResponses: [],
         openThreads: [],
         constellation: [],
         existingTransmissionId: null,
       },
       castMember: "future_self",
       localNow: "2026-05-01T08:00:00+03:00",
-      storeAudio: vi.fn(),
     });
 
-    expect(result.generated.title).toBe("A clean signal");
-    expect(result.generated.text).toBe("This is the generated transmission.");
-    expect(result.audioStorageId).toBeUndefined();
+    expect(result.title).toBe("A clean signal");
+    expect(result.text).toBe("This is the generated transmission.");
   });
 
   it("falls back to a deterministic transmission when AI JSON is invalid", async () => {
     mockGenerate.mockResolvedValue("not-json");
 
-    const result = await generateTransmissionAssets({
+    const result = await generateSignalText({
       context: {
         persona: createPersonaReturn(),
         checkIn: {
@@ -433,16 +437,16 @@ describe("game.transmission", () => {
         },
         recentTransmissions: [],
         recentChoices: [],
+        recentResponses: [],
         openThreads: [],
         constellation: [],
         existingTransmissionId: null,
       },
       castMember: "future_partner",
       localNow: "2026-05-01T08:00:00+03:00",
-      storeAudio: vi.fn(),
     });
 
-    expect(result.generated.title).toBe("I kept thinking about today");
-    expect(result.generated.text).toContain("threshold");
+    expect(result.title).toBe("I kept thinking about today");
+    expect(result.text).toContain("threshold");
   });
 });

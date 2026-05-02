@@ -37,7 +37,12 @@ describe("game flow", () => {
   });
 
   it("completes onboarding, saves a check-in, generates a transmission, records a choice, and returns updated state", async () => {
-    const t = convexTest(schema, import.meta.glob("./**/*.*s"));
+    const modules = (
+      import.meta as ImportMeta & {
+        glob: (pattern: string) => Record<string, () => Promise<any>>;
+      }
+    ).glob("./**/*.*s");
+    const t = convexTest(schema, modules);
     const { asUser } = await createAuthUser(t, "amani@test.com");
 
     mockGenerate.mockResolvedValue(

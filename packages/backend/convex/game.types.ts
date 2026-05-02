@@ -57,6 +57,22 @@ export const checkInReturnValidator = v.object({
   createdAt: v.number(),
 });
 
+export const transmissionResponseReturnValidator = v.object({
+  id: v.id("transmissionResponses"),
+  transmissionId: v.id("transmissions"),
+  dateKey: v.string(),
+  reaction: v.optional(
+    v.union(
+      v.literal("landed"),
+      v.literal("not_quite"),
+      v.literal("did_it"),
+      v.literal("keep_close"),
+    ),
+  ),
+  replyNote: v.optional(v.string()),
+  createdAt: v.number(),
+});
+
 export const transmissionReturnValidator = v.object({
   id: v.id("transmissions"),
   dateKey: v.string(),
@@ -68,9 +84,11 @@ export const transmissionReturnValidator = v.object({
   audioUrl: v.union(v.string(), v.null()),
   status: v.union(
     v.literal("generating"),
+    v.literal("text_ready"),
     v.literal("ready"),
     v.literal("failed"),
   ),
+  response: v.union(transmissionResponseReturnValidator, v.null()),
   createdAt: v.number(),
 });
 
@@ -139,6 +157,20 @@ export const generationContextValidator = v.object({
       prompt: v.string(),
     }),
   ),
+  recentResponses: v.array(
+    v.object({
+      reaction: v.optional(
+        v.union(
+          v.literal("landed"),
+          v.literal("not_quite"),
+          v.literal("did_it"),
+          v.literal("keep_close"),
+        ),
+      ),
+      replyNote: v.optional(v.string()),
+      createdAt: v.number(),
+    }),
+  ),
   openThreads: v.array(
     v.object({
       title: v.string(),
@@ -192,6 +224,15 @@ export interface CheckInReturn {
   createdAt: number;
 }
 
+export interface TransmissionResponseReturn {
+  id: Id<"transmissionResponses">;
+  transmissionId: Id<"transmissions">;
+  dateKey: string;
+  reaction?: "landed" | "not_quite" | "did_it" | "keep_close";
+  replyNote?: string;
+  createdAt: number;
+}
+
 export interface TransmissionReturn {
   id: Id<"transmissions">;
   dateKey: string;
@@ -201,7 +242,8 @@ export interface TransmissionReturn {
   actionPrompt: string;
   cliffhanger: string;
   audioUrl: string | null;
-  status: "generating" | "ready" | "failed";
+  status: "generating" | "text_ready" | "ready" | "failed";
+  response: TransmissionResponseReturn | null;
   createdAt: number;
 }
 
@@ -221,6 +263,11 @@ export interface GenerationContext {
     dateKey: string;
     choice: Choice;
     prompt: string;
+  }>;
+  recentResponses: Array<{
+    reaction?: "landed" | "not_quite" | "did_it" | "keep_close";
+    replyNote?: string;
+    createdAt: number;
   }>;
   openThreads: Array<{
     title: string;

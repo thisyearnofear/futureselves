@@ -26,9 +26,14 @@ import {
   choiceOutcomeReturnValidator,
   generationContextValidator,
   stateReturnValidator,
+  transmissionResponseReturnValidator,
 } from "./game.types";
 import type { GenerationContext } from "./game.types";
-import { generateTransmissionAssets, fallbackTransmission } from "./game.transmission";
+import {
+  fallbackTransmission,
+  generateSignalText,
+  synthesizeTransmissionAudio,
+} from "./game.transmission";
 import { buildOnboardingPayload } from "./game.onboarding";
 import {
   getCheckInProgressionUpdate,
@@ -242,6 +247,65 @@ export const recordChoice = authMutation({
   },
 });
 
+export const saveTransmissionResponse = authMutation({
+  args: {
+    transmissionId: v.id("transmissions"),
+    dateKey: v.string(),
+    reaction: v.optional(
+      v.union(
+        v.literal("landed"),
+        v.literal("not_quite"),
+        v.literal("did_it"),
+        v.literal("keep_close"),
+      ),
+    ),
+    replyNote: v.optional(v.string()),
+  },
+  returns: transmissionResponseReturnValidator,
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const transmission = await ctx.db.get(args.transmissionId);
+    if (!transmission || transmission.userId !== ctx.user._id) {
+      throw new Error("That signal is no longer available.");
+    }
+
+    const existing = await ctx.db
+      .query("transmissionResponses")
+      .withIndex("by_userId_and_transmissionId", (q) =>
+        q.eq("userId", ctx.user._id).eq("transmissionId", args.transmissionId),
+      )
+      .unique();
+
+    const payload = {
+      userId: ctx.user._id,
+      transmissionId: args.transmissionId,
+      dateKey: args.dateKey,
+      reaction: args.reaction,
+      replyNote: args.replyNote?.trim() || undefined,
+      updatedAt: now,
+    };
+
+    const responseId = existing
+      ? (await ctx.db.patch(existing._id, payload), existing._id)
+      : await ctx.db.insert("transmissionResponses", {
+          ...payload,
+          createdAt: now,
+        });
+
+    const saved = await ctx.db.get(responseId);
+    if (!saved) throw new Error("Could not save your response.");
+
+    return {
+      id: saved._id,
+      transmissionId: saved.transmissionId,
+      dateKey: saved.dateKey,
+      reaction: saved.reaction,
+      replyNote: saved.replyNote,
+      createdAt: saved.createdAt,
+    };
+  },
+});
+
 export const getState = authQuery({
   args: {
     dateKey: v.string(),
@@ -272,6 +336,14 @@ export const getState = authQuery({
       .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", ctx.user._id))
       .order("desc")
       .take(12);
+    const recentResponseDocs = await ctx.db
+      .query("transmissionResponses")
+      .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", ctx.user._id))
+      .order("desc")
+      .take(12);
+    const responseByTransmissionId = new Map(
+      recentResponseDocs.map((response) => [response.transmissionId, response]),
+    );
     const openThreadDocs = await ctx.db
       .query("narrativeThreads")
       .withIndex("by_userId_and_status", (q) =>
@@ -288,11 +360,37 @@ export const getState = authQuery({
       persona,
       todayCheckIn: todayCheckInDoc ? toCheckInReturn(todayCheckInDoc) : null,
       todayTransmission: todayTransmissionDoc
-        ? await toTransmissionReturn(ctx, todayTransmissionDoc)
+        ? await toTransmissionReturn(ctx, {
+            ...todayTransmissionDoc,
+            response: responseByTransmissionId.get(todayTransmissionDoc._id)
+              ? {
+                  id: responseByTransmissionId.get(todayTransmissionDoc._id)!._id,
+                  transmissionId:
+                    responseByTransmissionId.get(todayTransmissionDoc._id)!.transmissionId,
+                  dateKey: responseByTransmissionId.get(todayTransmissionDoc._id)!.dateKey,
+                  reaction: responseByTransmissionId.get(todayTransmissionDoc._id)!.reaction,
+                  replyNote: responseByTransmissionId.get(todayTransmissionDoc._id)!.replyNote,
+                  createdAt: responseByTransmissionId.get(todayTransmissionDoc._id)!.createdAt,
+                }
+              : null,
+          })
         : null,
       recentTransmissions: await Promise.all(
         recentTransmissionDocs.map((transmission) =>
-          toTransmissionReturn(ctx, transmission),
+          toTransmissionReturn(ctx, {
+            ...transmission,
+            response: responseByTransmissionId.get(transmission._id)
+              ? {
+                  id: responseByTransmissionId.get(transmission._id)!._id,
+                  transmissionId:
+                    responseByTransmissionId.get(transmission._id)!.transmissionId,
+                  dateKey: responseByTransmissionId.get(transmission._id)!.dateKey,
+                  reaction: responseByTransmissionId.get(transmission._id)!.reaction,
+                  replyNote: responseByTransmissionId.get(transmission._id)!.replyNote,
+                  createdAt: responseByTransmissionId.get(transmission._id)!.createdAt,
+                }
+              : null,
+          }),
         ),
       ),
       openThreads: openThreadDocs,
@@ -338,6 +436,11 @@ export const getGenerationContext = internalQuery({
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .order("desc")
       .take(10);
+    const recentResponseDocs = await ctx.db
+      .query("transmissionResponses")
+      .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .take(6);
     const openThreadDocs = await ctx.db
       .query("narrativeThreads")
       .withIndex("by_userId_and_status", (q) =>
@@ -356,6 +459,11 @@ export const getGenerationContext = internalQuery({
         dateKey: choice.dateKey,
         choice: choice.choice,
         prompt: choice.prompt,
+      })),
+      recentResponses: recentResponseDocs.map((response) => ({
+        reaction: response.reaction,
+        replyNote: response.replyNote,
+        createdAt: response.createdAt,
       })),
       openThreads: openThreadDocs.map((thread) => ({
         title: thread.title,
@@ -387,7 +495,7 @@ export const beginTransmissionGeneration = internalMutation({
       dateKey: args.dateKey,
       castMember: args.castMember,
       title: "Tuning the signal",
-      text: "Your transmission is being composed. The written message lands first, then the voice catches up if audio is available.",
+      text: "Your signal is arriving now. Read first. The voice can catch up in a moment.",
       actionPrompt: "",
       cliffhanger: "The next line is almost here.",
       status: "generating" as const,
@@ -413,7 +521,6 @@ export const storeGeneratedTransmission = internalMutation({
     text: v.string(),
     actionPrompt: v.string(),
     cliffhanger: v.string(),
-    audioStorageId: v.optional(v.id("_storage")),
   },
   returns: v.id("transmissions"),
   handler: async (ctx, args) => {
@@ -432,8 +539,7 @@ export const storeGeneratedTransmission = internalMutation({
       text: args.text,
       actionPrompt: args.actionPrompt,
       cliffhanger: args.cliffhanger,
-      audioStorageId: args.audioStorageId,
-      status: "ready" as const,
+      status: "text_ready" as const,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -448,20 +554,51 @@ export const storeGeneratedTransmission = internalMutation({
       });
     }
     if (existing) {
+      const wasGenerating = existing.status === "generating";
       await ctx.db.patch(existing._id, payload);
+      if (wasGenerating) {
+        await ensureNarrativeThread(ctx, args.userId, args.castMember, args.title, args.cliffhanger, now);
+      }
       return existing._id;
     }
     const transmissionId = await ctx.db.insert("transmissions", payload);
-    await ctx.db.insert("narrativeThreads", {
-      userId: args.userId,
-      title: args.title,
-      status: "open",
-      castMember: args.castMember,
-      seed: args.cliffhanger,
-      createdAt: now,
-      updatedAt: now,
-    });
+    await ensureNarrativeThread(ctx, args.userId, args.castMember, args.title, args.cliffhanger, now);
     return transmissionId;
+  },
+});
+
+export const attachTransmissionAudio = internalMutation({
+  args: {
+    transmissionId: v.id("transmissions"),
+    audioStorageId: v.id("_storage"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.transmissionId, {
+      audioStorageId: args.audioStorageId,
+      status: "ready",
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const markTransmissionAudioFailed = internalMutation({
+  args: {
+    transmissionId: v.id("transmissions"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const transmission = await ctx.db.get(args.transmissionId);
+    if (!transmission) return null;
+    if (transmission.status === "text_ready") {
+      return null;
+    }
+    await ctx.db.patch(args.transmissionId, {
+      status: "failed",
+      updatedAt: Date.now(),
+    });
+    return null;
   },
 });
 
@@ -512,39 +649,51 @@ export const generateDailyTransmission = authAction({
         castMember,
       },
     );
+
+    let generated;
     try {
-      const { generated, audioStorageId: generatedAudioStorageId } =
-        await generateTransmissionAssets({
+      generated = await generateSignalText({
+        context,
+        castMember,
+        localNow: args.localNow,
+      });
+    } catch {
+      generated = fallbackTransmission(context, castMember);
+    }
+
+    await ctx.runMutation(internal.game.storeGeneratedTransmission, {
+      userId: ctx.userId,
+      dateKey: args.dateKey,
+      castMember,
+      title: generated.title,
+      text: generated.text,
+      actionPrompt: generated.actionPrompt,
+      cliffhanger: generated.cliffhanger,
+    });
+
+    if (elevenLabsKey) {
+      try {
+        const generatedAudioStorageId = await synthesizeTransmissionAudio({
           context,
           castMember,
-          localNow: args.localNow,
+          generated,
           elevenLabsKey,
           storeAudio: async (audio) => ctx.storage.store(audio),
         });
-      await ctx.runMutation(internal.game.storeGeneratedTransmission, {
-        userId: ctx.userId,
-        dateKey: args.dateKey,
-        castMember,
-        title: generated.title,
-        text: generated.text,
-        actionPrompt: generated.actionPrompt,
-        cliffhanger: generated.cliffhanger,
-        audioStorageId: generatedAudioStorageId,
-      });
-      return { transmissionId, generated: true };
-    } catch {
-      const generated = fallbackTransmission(context, castMember);
-      await ctx.runMutation(internal.game.storeGeneratedTransmission, {
-        userId: ctx.userId,
-        dateKey: args.dateKey,
-        castMember,
-        title: generated.title,
-        text: generated.text,
-        actionPrompt: generated.actionPrompt,
-        cliffhanger: generated.cliffhanger,
-      });
-      return { transmissionId, generated: true };
+        if (generatedAudioStorageId) {
+          await ctx.runMutation(internal.game.attachTransmissionAudio, {
+            transmissionId,
+            audioStorageId: generatedAudioStorageId,
+          });
+        }
+      } catch {
+        await ctx.runMutation(internal.game.markTransmissionAudioFailed, {
+          transmissionId,
+        });
+      }
     }
+
+    return { transmissionId, generated: true };
   },
 });
 
@@ -569,6 +718,11 @@ export const debugResetPersona = authMutation({
         .filter((q) => q.eq(q.field("userId"), ctx.user._id))
         .collect();
       for (const t of transmissions) await ctx.db.delete(t._id);
+      const responses = await ctx.db
+        .query("transmissionResponses")
+        .filter((q) => q.eq(q.field("userId"), ctx.user._id))
+        .collect();
+      for (const response of responses) await ctx.db.delete(response._id);
       const threads = await ctx.db
         .query("narrativeThreads")
         .filter((q) => q.eq(q.field("userId"), ctx.user._id))
@@ -619,6 +773,15 @@ export const debugSetGameState = authMutation({
         )
         .unique();
       if (todayT) await ctx.db.delete(todayT._id);
+      const todayResponse = todayT
+        ? await ctx.db
+            .query("transmissionResponses")
+            .withIndex("by_userId_and_transmissionId", (q) =>
+              q.eq("userId", ctx.user._id).eq("transmissionId", todayT._id),
+            )
+            .unique()
+        : null;
+      if (todayResponse) await ctx.db.delete(todayResponse._id);
       const todayC = await ctx.db
         .query("checkIns")
         .withIndex("by_userId_and_dateKey", (q) =>
@@ -629,3 +792,37 @@ export const debugSetGameState = authMutation({
     }
   },
 });
+
+async function ensureNarrativeThread(
+  ctx: {
+    db: {
+      query: Function;
+      insert: Function;
+    };
+  },
+  userId: Id<"users">,
+  castMember: Id<"users"> extends never ? never : any,
+  title: string,
+  cliffhanger: string,
+  now: number,
+) {
+  const existingThread = await ctx.db
+    .query("narrativeThreads")
+    .withIndex("by_userId_and_createdAt", (q: any) => q.eq("userId", userId))
+    .order("desc")
+    .take(1);
+
+  if (existingThread[0]?.seed === cliffhanger && existingThread[0]?.title === title) {
+    return;
+  }
+
+  await ctx.db.insert("narrativeThreads", {
+    userId,
+    title,
+    status: "open",
+    castMember,
+    seed: cliffhanger,
+    createdAt: now,
+    updatedAt: now,
+  });
+}

@@ -70,6 +70,15 @@ export interface CheckInState {
   createdAt: number;
 }
 
+export interface TransmissionResponseState {
+  id: string;
+  transmissionId: string;
+  dateKey: string;
+  reaction?: "landed" | "not_quite" | "did_it" | "keep_close";
+  replyNote?: string;
+  createdAt: number;
+}
+
 export interface TransmissionState {
   id: string;
   dateKey: string;
@@ -79,7 +88,8 @@ export interface TransmissionState {
   actionPrompt: string;
   cliffhanger: string;
   audioUrl: string | null;
-  status: "generating" | "ready" | "failed";
+  status: "generating" | "text_ready" | "ready" | "failed";
+  response: TransmissionResponseState | null;
   createdAt: number;
 }
 

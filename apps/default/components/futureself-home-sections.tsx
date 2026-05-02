@@ -131,6 +131,11 @@ interface TransmissionSectionProps {
   transmissionArrivalCoreStyle: any;
   shareStatus: string | null;
   onShare: () => void;
+  isSavingResponse: boolean;
+  onSaveResponse: (payload: {
+    reaction?: "landed" | "not_quite" | "did_it" | "keep_close";
+    replyNote?: string;
+  }) => Promise<void>;
 }
 
 export function TransmissionSection({
@@ -141,6 +146,8 @@ export function TransmissionSection({
   transmissionArrivalCoreStyle,
   shareStatus,
   onShare,
+  isSavingResponse,
+  onSaveResponse,
 }: TransmissionSectionProps) {
   return (
     <>
@@ -148,7 +155,11 @@ export function TransmissionSection({
         entering={ZoomIn.duration(400).springify().damping(15)}
         style={styles.transmissionShell}
       >
-        <TransmissionPlayer transmission={transmission} />
+        <TransmissionPlayer
+          isSavingResponse={isSavingResponse}
+          onSaveResponse={onSaveResponse}
+          transmission={transmission}
+        />
         {showTransmissionArrival ? (
           <Animated.View
             entering={FadeIn.duration(240)}
