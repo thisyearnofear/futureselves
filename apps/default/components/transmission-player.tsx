@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import React from "react";
 import {
   ActivityIndicator,
+  Animated,
   Platform,
   Pressable,
   StyleSheet,
@@ -8,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
@@ -205,7 +208,7 @@ interface AudioPlayerProps {
 function AudioPlayer({ audioUrl, title, castMember, transmission }: AudioPlayerProps) {
   if (Platform.OS === "web")
     return <WebAudioPlayer audioUrl={audioUrl} title={title} castMember={castMember} />;
-  return <NativeAudioPlayer audioUrl={audioUrl} castMember={castMember ?? ""} transmission={transmission} />;
+  return <NativeAudioPlayer audioUrl={audioUrl} castMember={castMember ?? ""} transmission={transmission!} />;
 }
 
 function WebAudioPlayer({ audioUrl }: AudioPlayerProps) {
@@ -285,6 +288,7 @@ function NativeAudioPlayer({ audioUrl, castMember, transmission }: { audioUrl: s
   const [hasStarted, setHasStarted] = useState(false);
   const [audioArrived, setAudioArrived] = useState(false);
   const [showArrivalNote, setShowArrivalNote] = useState(false);
+  const arrivalOpacity = useRef(new Animated.Value(0)).current;
 
   const ambientSource = getAmbientSource(castMember);
   const ambientPlayer = useAudioPlayer(ambientSource);
@@ -302,15 +306,31 @@ function NativeAudioPlayer({ audioUrl, castMember, transmission }: { audioUrl: s
       ambientPlayer?.play();
       if (!audioArrived) {
         setAudioArrived(true);
-        if (transmission.status === "text_ready") {
+        if (transmission!.status === "text_ready") {
           setShowArrivalNote(true);
-          setTimeout(() => setShowArrivalNote(false), 3000);
+          arrivalOpacity.setValue(0);
+          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          Animated.sequence([
+            Animated.timing(arrivalOpacity, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+            Animated.delay(2200),
+            Animated.timing(arrivalOpacity, {
+              toValue: 0,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+          ]).start(({ finished }) => {
+            if (finished) setShowArrivalNote(false);
+          });
         }
       }
     } else {
       ambientPlayer?.pause();
     }
-  }, [status.playbackState, ambientPlayer, audioArrived, transmission.status]);
+  }, [status.playbackState, ambientPlayer, audioArrived, transmission?.status, arrivalOpacity]);
 
   async function togglePlayback() {
     if (status.playbackState === "playing") {
@@ -358,10 +378,10 @@ function NativeAudioPlayer({ audioUrl, castMember, transmission }: { audioUrl: s
       </View>
 
       {showArrivalNote ? (
-        <View style={styles.arrivalToast}>
+        <Animated.View style={[styles.arrivalToast, { opacity: arrivalOpacity }]}>
           <Ionicons name="volume-high-outline" size={13} color="#C8D4E8" />
           <Text style={styles.arrivalToastText}>The voice caught up.</Text>
-        </View>
+        </Animated.View>
       ) : null}
     </>
   );
