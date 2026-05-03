@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
-import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
+import { Authenticated, AuthLoading, Unauthenticated, useAction } from "convex/react";
 import { useQuery } from "convex/react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
@@ -36,13 +36,25 @@ export default function Index() {
 function GameShell() {
     const [dateKey] = useState(() => getLocalDateKey());
     const state = useQuery(api.game.getState, { dateKey });
+    const generateTransmission = useAction(api.game.generateDailyTransmission);
     const reminderPreferences = useReminderPreferences();
     useDailyReminder(reminderPreferences.preferences, reminderPreferences.isLoaded);
+
+    const handleOnboardingComplete = useCallback(async () => {
+        try {
+            await generateTransmission({
+                dateKey,
+                localNow: new Date().toLocaleString(),
+            });
+        } catch {
+            // Transmission will be available on next visit
+        }
+    }, [dateKey, generateTransmission]);
 
     if (state === undefined) return <LoadingState label="Tuning the constellation..." />;
 
     const gameState = state as GameState;
-    if (!gameState.persona) return <OnboardingFlow />;
+    if (!gameState.persona) return <OnboardingFlow onCompleted={handleOnboardingComplete} />;
     return (
         <FutureselfHome
             state={gameState}

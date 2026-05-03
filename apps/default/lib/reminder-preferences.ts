@@ -12,7 +12,7 @@ const REMINDER_PREFERENCES_KEY = "futureself.reminderPreferences";
 
 const defaultReminderPreferences: ReminderPreferences = {
   enabled: false,
-  hour: 9,
+  hour: 20,
   minute: 0,
 };
 

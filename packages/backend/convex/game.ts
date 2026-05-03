@@ -79,9 +79,36 @@ export const completeOnboarding = authMutation({
     });
     if (existing) {
       await ctx.db.patch(existing._id, payload);
+      // Auto-create first check-in so transmission can generate immediately
+      const todayKey = new Date().toISOString().split("T")[0];
+      const existingCheckIn = await ctx.db
+        .query("checkIns")
+        .withIndex("by_userId_and_dateKey", (q) =>
+          q.eq("userId", ctx.user._id).eq("dateKey", todayKey),
+        )
+        .unique();
+      if (!existingCheckIn) {
+        await ctx.db.insert("checkIns", {
+          userId: ctx.user._id,
+          dateKey: todayKey,
+          word: "beginning",
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
       return existing._id;
     }
-    return await ctx.db.insert("personas", payload);
+    const personaId = await ctx.db.insert("personas", payload);
+    // Auto-create first check-in so transmission can generate immediately
+    const todayKey = new Date().toISOString().split("T")[0];
+    await ctx.db.insert("checkIns", {
+      userId: ctx.user._id,
+      dateKey: todayKey,
+      word: "beginning",
+      createdAt: now,
+      updatedAt: now,
+    });
+    return personaId;
   },
 });
 

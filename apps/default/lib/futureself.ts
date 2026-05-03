@@ -158,6 +158,11 @@ export interface GameState {
   openThreads: Array<ThreadState>;
   systemSignals: StateSignals;
   reactionStreaks: ReactionStreaksState | null;
+  yesterdayAccountability: {
+    actionPrompt: string;
+    reaction?: "landed" | "not_quite" | "did_it" | "keep_close";
+    followedThrough: boolean;
+  } | null;
 }
 
 export interface OnboardingDraft {

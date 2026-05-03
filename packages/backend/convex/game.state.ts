@@ -62,6 +62,16 @@ export function buildStateReturn(params: {
     ? enhanceTransmission(params.todayTransmission, enhancedRecentTransmissions, params.reactionStreaks)
     : null;
 
+  const yesterdayTransmission = params.recentTransmissions[0];
+  const yesterdayResponse = yesterdayTransmission?.response;
+  const yesterdayAccountability = yesterdayTransmission
+    ? {
+        actionPrompt: yesterdayTransmission.actionPrompt,
+        reaction: yesterdayResponse?.reaction,
+        followedThrough: yesterdayResponse?.reaction === "did_it",
+      }
+    : null;
+
   return {
     persona: params.persona,
     todayCheckIn: params.todayCheckIn,
@@ -75,6 +85,7 @@ export function buildStateReturn(params: {
       castMember: thread.castMember,
     })),
     reactionStreaks: params.reactionStreaks,
+    yesterdayAccountability,
     systemSignals: buildStateSignals({
       persona: params.persona,
       openThreadsCount: params.openThreads.length,

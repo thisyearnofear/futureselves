@@ -42,6 +42,7 @@ import {
   ProgressionSection,
   ReceiveSignalSection,
   VoiceUnlockOverlay,
+  WeeklyReflectionSection,
   RitualRefinementPrompt,
   StorySection,
   TransmissionSection,
@@ -67,6 +68,13 @@ const choiceCopy: Record<Choice, string> = {
   steady: "Keep faith",
   release: "Release one thing",
   repair: "Repair a thread",
+};
+
+const choiceHints: Record<Choice, string> = {
+  toward: "The brave move. Shifts the timeline fastest.",
+  steady: "Protect continuity. No risk, no change.",
+  release: "Let something go. Makes room for the unknown.",
+  repair: "Resolve an open thread. Brings the future closer.",
 };
 
 const choiceColors: Record<Choice, string> = {
@@ -710,6 +718,7 @@ export function FutureselfHome({
             shareStatus={shareStatus}
             showTransmissionArrival={showTransmissionArrival}
             transmission={state.todayTransmission}
+            yesterdayAccountability={state.yesterdayAccountability}
             transmissionArrivalCoreStyle={transmissionArrivalCore}
             transmissionArrivalGlowStyle={transmissionArrivalGlow}
             transmissionArrivalSweepStyle={transmissionArrivalSweep}
@@ -733,6 +742,7 @@ export function FutureselfHome({
           <ChoiceSection
             actionNudges={actionNudges}
             choiceCopy={choiceCopy}
+            choiceHints={choiceHints}
             choiceOutcome={choiceOutcome}
             onChoice={handleChoice}
             onSelectThread={setSelectedThreadId}
@@ -757,6 +767,11 @@ export function FutureselfHome({
             title="Ready to deepen the line?"
           />
         ) : null}
+
+        <WeeklyReflectionSection
+          persona={persona}
+          transmissions={state.recentTransmissions}
+        />
 
         <ProgressionSection
           constellation={state.constellation}

@@ -36,8 +36,8 @@ export function useDailyReminder(preferences: ReminderPreferences, isLoaded = tr
 
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: "🔮 Your future self has something to say today",
-            body: "One word is all it takes. The signal is waiting.",
+            title: "Your future self checked in today. Did you?",
+            body: "One word and a choice. That's all the line needs from you tonight.",
             sound: true,
           },
           trigger: {

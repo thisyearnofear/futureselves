@@ -182,6 +182,21 @@ export const stateReturnValidator = v.object({
     }),
     v.null(),
   ),
+  yesterdayAccountability: v.union(
+    v.object({
+      actionPrompt: v.string(),
+      reaction: v.optional(
+        v.union(
+          v.literal("landed"),
+          v.literal("not_quite"),
+          v.literal("did_it"),
+          v.literal("keep_close"),
+        ),
+      ),
+      followedThrough: v.boolean(),
+    }),
+    v.null(),
+  ),
 });
 
 export const generationContextValidator = v.object({

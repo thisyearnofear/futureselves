@@ -125,6 +125,11 @@ export function HeroSection({
 
 interface TransmissionSectionProps {
   transmission: TransmissionState;
+  yesterdayAccountability: {
+    actionPrompt: string;
+    reaction?: "landed" | "not_quite" | "did_it" | "keep_close";
+    followedThrough: boolean;
+  } | null;
   showTransmissionArrival: boolean;
   transmissionArrivalSweepStyle: any;
   transmissionArrivalGlowStyle: any;
@@ -140,6 +145,7 @@ interface TransmissionSectionProps {
 
 export function TransmissionSection({
   transmission,
+  yesterdayAccountability,
   showTransmissionArrival,
   transmissionArrivalSweepStyle,
   transmissionArrivalGlowStyle,
@@ -151,6 +157,20 @@ export function TransmissionSection({
 }: TransmissionSectionProps) {
   return (
     <>
+      {yesterdayAccountability ? (
+        <Animated.View entering={FadeInUp.duration(260)} style={styles.accountabilityBanner}>
+          <Ionicons
+            name={yesterdayAccountability.followedThrough ? "checkmark-circle-outline" : "time-outline"}
+            size={15}
+            color={yesterdayAccountability.followedThrough ? "#A9F7B5" : "#8F96B4"}
+          />
+          <Text style={styles.accountabilityText}>
+            {yesterdayAccountability.followedThrough
+              ? "Yesterday you followed through. The line remembers."
+              : "Yesterday's signal is still waiting for a move."}
+          </Text>
+        </Animated.View>
+      ) : null}
       <Animated.View
         entering={ZoomIn.duration(400).springify().damping(15)}
         style={styles.transmissionShell}
@@ -349,6 +369,7 @@ interface ChoiceSectionProps {
   shouldShowStoryDepth: boolean;
   shouldShowSystemDepth: boolean;
   choiceCopy: Record<Choice, string>;
+  choiceHints: Record<Choice, string>;
   actionNudges: Array<ActionNudge>;
   onSelectThread: (id: Id<"narrativeThreads">) => void;
   onChoice: (choice: Choice) => void;
@@ -363,6 +384,7 @@ export function ChoiceSection({
   shouldShowStoryDepth,
   shouldShowSystemDepth,
   choiceCopy,
+  choiceHints,
   actionNudges,
   onSelectThread,
   onChoice,
@@ -408,25 +430,46 @@ export function ChoiceSection({
         </View>
       ) : null}
       <View style={styles.choiceGrid}>
-        {(Object.keys(choiceCopy) as Array<Choice>).map((choice) => (
-          <Pressable
-            key={choice}
-            onPress={() => onChoice(choice)}
+        <Pressable
+          onPress={() => onChoice("toward")}
+          style={[
+            styles.choiceButtonHero,
+            selectedChoice === "toward" && styles.choiceButtonHeroActive,
+          ]}
+        >
+          <Text
             style={[
-              styles.choiceButton,
-              selectedChoice === choice && styles.choiceButtonActive,
+              styles.choiceTextHero,
+              selectedChoice === "toward" && { color: "#101320" },
             ]}
           >
-            <Text
+            {choiceCopy.toward}
+          </Text>
+          <Text style={[styles.choiceHintHero, selectedChoice === "toward" && { color: "#101320", opacity: 0.7 }]}>
+            {choiceHints.toward}
+          </Text>
+        </Pressable>
+        <View style={styles.choiceSecondaryRow}>
+          {(["steady", "release", "repair"] as Array<Choice>).map((choice) => (
+            <Pressable
+              key={choice}
+              onPress={() => onChoice(choice)}
               style={[
-                styles.choiceText,
-                selectedChoice === choice && styles.choiceTextActive,
+                styles.choiceButtonSecondary,
+                selectedChoice === choice && styles.choiceButtonSecondaryActive,
               ]}
             >
-              {choiceCopy[choice]}
-            </Text>
-          </Pressable>
-        ))}
+              <Text
+                style={[
+                  styles.choiceTextSecondary,
+                  selectedChoice === choice && styles.choiceTextActive,
+                ]}
+              >
+                {choiceCopy[choice]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
       {choiceOutcome ? (
         <View style={styles.choiceOutcomeCard}>
@@ -467,6 +510,63 @@ export function ChoiceSection({
             leaves more room for the shadow later.
           </Text>
         </View>
+      ) : null}
+    </Animated.View>
+  );
+}
+
+interface WeeklyReflectionProps {
+  transmissions: Array<TransmissionState>;
+  persona: { streak: number; name: string } | null;
+}
+
+export function WeeklyReflectionSection({ transmissions, persona }: WeeklyReflectionProps) {
+  if (transmissions.length < 7) return null;
+
+  const last7 = transmissions.slice(0, 7);
+  const reactions = last7.filter((t) => t.response?.reaction);
+  const didIts = reactions.filter((t) => t.response?.reaction === "did_it").length;
+  const keepCloses = reactions.filter((t) => t.response?.reaction === "keep_close").length;
+  const landed = reactions.filter((t) => t.response?.reaction === "landed").length;
+  const voiceCounts = new Map<string, number>();
+  for (const t of last7) {
+    voiceCounts.set(t.castMember, (voiceCounts.get(t.castMember) ?? 0) + 1);
+  }
+  const topVoice = [...voiceCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+
+  const weekLabel = didIts >= 3
+    ? "You moved the line forward most days this week."
+    : keepCloses >= 3
+      ? "You kept the important signals close."
+      : landed >= 3
+        ? "The signals are landing. The line is learning your frequency."
+        : "The line is still finding your rhythm.";
+
+  return (
+    <Animated.View entering={FadeInUp.delay(200)} style={styles.weeklyCard}>
+      <View style={styles.weeklyHeader}>
+        <Ionicons name="calendar-outline" size={16} color="#F7D38B" />
+        <Text style={styles.sectionTitle}>This week</Text>
+      </View>
+      <Text style={styles.weeklySummary}>{weekLabel}</Text>
+      <View style={styles.weeklyStatsRow}>
+        <View style={styles.weeklyStat}>
+          <Text style={styles.weeklyStatValue}>{didIts}</Text>
+          <Text style={styles.weeklyStatLabel}>followed through</Text>
+        </View>
+        <View style={styles.weeklyStat}>
+          <Text style={styles.weeklyStatValue}>{keepCloses}</Text>
+          <Text style={styles.weeklyStatLabel}>kept close</Text>
+        </View>
+        <View style={styles.weeklyStat}>
+          <Text style={styles.weeklyStatValue}>{landed}</Text>
+          <Text style={styles.weeklyStatLabel}>landed</Text>
+        </View>
+      </View>
+      {topVoice ? (
+        <Text style={styles.weeklyVoice}>
+          {formatCastMember(topVoice[0] as CastMember)} spoke {topVoice[1]} time{topVoice[1] > 1 ? "s" : ""} this week.
+        </Text>
       ) : null}
     </Animated.View>
   );
