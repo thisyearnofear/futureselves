@@ -74,6 +74,7 @@ export function buildStateReturn(params: {
       seed: thread.seed,
       castMember: thread.castMember,
     })),
+    reactionStreaks: params.reactionStreaks,
     systemSignals: buildStateSignals({
       persona: params.persona,
       openThreadsCount: params.openThreads.length,
