@@ -47,46 +47,48 @@ export function fallbackTransmission(
   const replyNote = context.recentResponses[0]?.replyNote;
   const latestReaction = context.recentResponses[0]?.reaction;
   const mirroredReply = replyNote
-    ? `You told me recently: ${replyNote}. I am still taking that seriously.`
+    ? `You told me: "${replyNote}". I have not forgotten.`
     : "";
   const reactionEcho = latestReaction
     ? `${reactionMemoryLead(latestReaction)} `
     : "";
+  const avoiding = context.persona.avoiding || "the thing you keep sidestepping";
+  const chapter = context.persona.currentChapter || "this part of your life";
 
   if (castMember === "future_partner") {
     return {
       title: "I kept thinking about today",
-      text: `${context.persona.name}, I wish I could sit beside you for five minutes and point to the exact part of today I noticed: ${checkInWord}. Not because it was dramatic, but because it told me where your heart still moves before your confidence catches up. ${reactionEcho}${mirroredReply} I do not need a grand gesture from you tonight. I need one unmistakably honest move — the kind that would embarrass the part of you still trying to look unbothered. Send the message. Put the thing in motion. Say the true sentence out loud. I am not getting closer because you perfected yourself. I am getting closer because you stopped abandoning the small turning points that actually build us.`,
+      text: `${context.persona.name}, you called today ${checkInWord}. I noticed. ${reactionEcho}${mirroredReply} You are avoiding: ${avoiding}. I know because I did the same thing, and I remember exactly what it cost. ${chapter} is not going to resolve itself while you wait for the feeling to be right. Tonight, one thing: say the true sentence out loud. To yourself, to someone, to the air. Not the version that makes you look brave. The version that makes you feel seen. That is the move that changes tomorrow's signal.`,
       actionPrompt:
-        "Make one emotionally honest move before the day closes.",
+        "Say the one true sentence you've been editing before it leaves your mouth. Out loud. Tonight.",
       cliffhanger:
-        "If you do it, tomorrow I can tell you the first place our future starts to feel mutual.",
+        "If you do it, tomorrow I can tell you what shifts in the line when you stop performing and start speaking.",
     };
   }
   if (castMember === "shadow") {
     return {
       title: "You know which part you are avoiding",
-      text: `${context.persona.name}, you called today ${checkInWord}. I call it the day you almost told the truth and then tried to rename the hesitation into something more flattering. ${reactionEcho}${mirroredReply} The future is not asking for your performance. It is asking whether you will stop protecting the exact habit that keeps your life emotionally unchanged. Do one visible thing tonight that makes your old excuse less believable tomorrow. Not a symbolic thing. A real one. Something that costs a little pride.`,
-      actionPrompt: "Undo one excuse with a concrete move tonight.",
+      text: `${context.persona.name}, today was ${checkInWord}. Here is what I actually saw: you circling ${avoiding} and calling it patience. ${reactionEcho}${mirroredReply} The gap between where you are and where you could be is not talent or luck. It is the specific thing you refuse to do. You know what it is. Tonight, do the smallest version of it. Not symbolic. Actual. Something you can point to tomorrow and say "I did that."`,
+      actionPrompt: `Do the smallest real version of the thing you are avoiding: ${avoiding}. Not a plan. Not a thought. An action.`,
       cliffhanger:
-        "Ignore this, and tomorrow’s voice will sound less kind — and more accurate.",
+        "Ignore this, and tomorrow's signal will feel the distance between what you said and what you did.",
     };
   }
   if (castMember === "future_mentor") {
     return {
       title: "You are closer than your fear admits",
-      text: `${context.persona.name}, today named itself ${checkInWord}, and that matters. It means the day already chose a lesson before you had the courage to summarize it. ${reactionEcho}${mirroredReply} I am not here to flatter you. I am here to steady your hand. The next version of your life is built when you stop waiting for total certainty and start practicing visible integrity under imperfect conditions. Pick the one move that future-you would respect because it creates consequence, not comfort. Then make it before the story in your head grows softer than the truth.`,
-      actionPrompt: "Make the move that earns your own respect tonight.",
+      text: `${context.persona.name}, ${checkInWord}. That word tells me where your head is today. ${reactionEcho}${mirroredReply} You are in ${chapter}, and the temptation is to wait for clarity before moving. But clarity comes from motion, not the other way around. Tonight, pick the one task you have been postponing — not the biggest one, the one that creates the most resistance. Do it badly if you have to. Done badly beats planned perfectly.`,
+      actionPrompt: `Do the one task you have been postponing that creates the most resistance. Do it badly if you need to. Just finish it.`,
       cliffhanger:
-        "Tomorrow I can show you which part of your fear was bluffing.",
+        "Tomorrow I can show you which part of your fear was bluffing — but only if you give me something to point at.",
     };
   }
   return {
     title: "The echo from here",
-    text: `${context.persona.name}, I remember the texture of this day: ${checkInWord}. Not because it was dramatic from the outside, but because something in you kept moving while the shape was still unclear. ${reactionEcho}${mirroredReply} The future you are building is not asking for a performance tonight. It is asking for one move that would make your intentions harder to deny. Make it visible. Make it almost embarrassingly concrete. That is how this chapter stops being a fantasy and begins answering back.`,
-    actionPrompt: "Choose one visible action that makes your intention harder to deny.",
+    text: `${context.persona.name}, today was ${checkInWord}. ${reactionEcho}${mirroredReply} You are in ${chapter}. You are avoiding ${avoiding}. These are not judgments — they are coordinates. They tell me exactly where to aim tonight's signal. The future you want is not built by people who felt ready. It is built by people who did the uncomfortable thing before they felt like it. Tonight, one concrete move. Something you can photograph, text, submit, send, or say. Not a feeling. A fact.`,
+    actionPrompt: `Make one concrete move related to what you are avoiding: ${avoiding}. Something you can photograph, text, submit, send, or say.`,
     cliffhanger:
-      "Do it tonight, and tomorrow I can tell you what shifted the first time you stopped waiting to feel ready.",
+      "Do it tonight, and tomorrow I can tell you what changed in the line the first time you moved before you felt ready.",
   };
 }
 
@@ -113,6 +115,15 @@ export function buildPrompt(
       return `${index + 1}. ${parts.join(" | ")}`;
     })
     .join("\n");
+
+  const yesterdayCliffhanger = context.recentTransmissions[0]?.cliffhanger;
+  const yesterdayReaction = context.recentResponses[0]?.reaction;
+  const yesterdayReply = context.recentResponses[0]?.replyNote;
+  const accountabilityBlock = buildAccountabilityBlock(
+    yesterdayCliffhanger,
+    yesterdayReaction,
+    yesterdayReply,
+  );
 
   const continuityInstruction = buildContinuityInstruction(context);
   const voiceDistinctionInstruction = getVoiceDistinctionInstruction(castMember);
@@ -145,24 +156,27 @@ ${choices || "none"}
 Recent signal responses:
 ${recentResponses || "none"}
 
+${accountabilityBlock}
+
 Continuity priorities:
 ${continuityInstruction}
 
-Requirements:
+CRITICAL BEHAVIORAL REQUIREMENTS:
+- The actionPrompt MUST be a specific, time-bound, observable behavior. Not a feeling to cultivate. Not a mindset to adopt. A concrete thing the player can do tonight and know whether they did it or not.
+  BAD: "Make one emotionally honest move"
+  BAD: "Choose one visible action"
+  GOOD: "Text the person you've been avoiding and say the first true sentence that comes to mind"
+  GOOD: "Write down the one sentence you've been avoiding saying out loud. Not the polished version. The raw one."
+  GOOD: "Open the conversation you've been postponing. You don't have to finish it. Just start it."
+- Use the player's ACTUAL context to generate the action. Reference their specific avoiding, draining, currentChapter, or afraidWontHappen. Do not give generic advice that could apply to anyone.
+- The check-in word is an emotional data point. If they said "exhausted," the transmission should register that weight. If they said "hopeful," notice the shift. Don't just repeat the word — respond to what it reveals.
+- The cliffhanger MUST reference what happens tomorrow based on whether they follow through. Create accountability: "If you do X tonight, tomorrow I can tell you Y" or "If you don't, tomorrow's signal will feel the gap."
 - 170-240 words.
-- Must feel specific, emotionally precise, and hard to confuse with a generic affirmation.
-- Use today's check-in word naturally and early.
-- If a replyNote exists in recent responses, quote or metabolize its emotional meaning.
-- Explicitly let tomorrow remember what the player told the line back when relevant.
-- Reference one concrete tension from their profile (avoiding, draining, afraidWon'tHappen, current chapter).
-- Make the castMember voice distinct. Do not let all voices sound alike.
-- Prefer vivid, slightly risky language over bland reassurance.
-- Give one concrete action that creates visible consequence before the day ends.
-- End with a consequential hook for tomorrow, not a vague teaser.
+- Must feel like a specific person who knows you, not a fortune cookie.
 - Avoid therapy clichés, vague uplift, or generic self-help cadence.
 
 Return exactly:
-{"title":"...","text":"...","actionPrompt":"one concrete action","cliffhanger":"tomorrow thread"}`;
+{"title":"...","text":"...","actionPrompt":"one specific, observable behavior","cliffhanger":"accountability hook tied to tonight's action"}`;
 }
 
 export async function generateSignalText(params: {
@@ -233,6 +247,35 @@ export async function synthesizeTransmissionAudio(params: {
   }
   const audioBlob = await ttsResponse.blob();
   return await params.storeAudio(audioBlob);
+}
+
+function buildAccountabilityBlock(
+  yesterdayCliffhanger?: string,
+  yesterdayReaction?: string,
+  yesterdayReply?: string,
+): string {
+  if (!yesterdayCliffhanger) return "";
+
+  const parts = ["Yesterday's accountability:"];
+  parts.push(`- Yesterday's cliffhanger promised: "${yesterdayCliffhanger}"`);
+
+  if (yesterdayReaction === "did_it") {
+    parts.push("- The player followed through. Acknowledge this specifically — what they did changed something. Tell them what shifts now.");
+  } else if (yesterdayReaction === "keep_close") {
+    parts.push("- The player kept the signal close but didn't act yet. Notice the tension between caring and moving. Don't shame — but name the gap honestly.");
+  } else if (yesterdayReaction === "landed") {
+    parts.push("- The player said it landed but didn't act. The signal reached them. The question is whether it changed anything. Be direct about that.");
+  } else if (yesterdayReaction === "not_quite") {
+    parts.push("- The player said it didn't quite land. Adjust the approach. Be more specific, less abstract. Try a different angle on the same underlying tension.");
+  } else {
+    parts.push("- The player didn't respond yesterday. Notice the silence without punishing it. The line remembers either way.");
+  }
+
+  if (yesterdayReply) {
+    parts.push(`- The player wrote back: "${yesterdayReply}". This is the most honest thing they've told you. Reference it directly.`);
+  }
+
+  return parts.join("\n");
 }
 
 function buildContinuityInstruction(context: GenerationContext) {

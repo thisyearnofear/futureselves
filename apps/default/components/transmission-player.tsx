@@ -14,6 +14,7 @@ import { useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import AnimatedReanimated, {
   useSharedValue,
@@ -80,7 +81,12 @@ export function TransmissionPlayer({
   }));
 
   return (
-    <View style={styles.card}>
+    <LinearGradient
+      colors={["rgba(246,240,222,0.12)", "rgba(247,211,139,0.04)", "rgba(16,19,32,0.15)"]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={styles.card}
+    >
       <AnimatedReanimated.View entering={FadeInUp.duration(260)} style={styles.headerWrap}>
         <View style={styles.headerCopy}>
           <Text style={styles.cast}>{formatCastMember(transmission.castMember)}</Text>
@@ -229,7 +235,11 @@ export function TransmissionPlayer({
           </View>
         ) : null}
       </AnimatedReanimated.View>
-    </View>
+
+      <View style={styles.brandFooter}>
+        <Text style={styles.brandText}>futureself</Text>
+      </View>
+    </LinearGradient>
   );
 }
 
@@ -492,10 +502,10 @@ function TransmissionFallback({ status }: { status: TransmissionState["status"] 
 const styles = StyleSheet.create({
   card: {
     gap: 18,
-    padding: 20,
+    padding: 24,
+    paddingTop: 28,
     borderRadius: 30,
     borderCurve: "continuous",
-    backgroundColor: "rgba(246,240,222,0.08)",
     borderWidth: 1,
     borderColor: "rgba(247,211,139,0.18)",
     alignItems: "center",
@@ -809,6 +819,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.3,
+  },
+  brandFooter: {
+    paddingTop: 8,
+    alignItems: "center",
+  },
+  brandText: {
+    color: "rgba(247,211,139,0.25)",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 2.5,
+    textTransform: "uppercase",
   },
   pressed: {
     opacity: 0.78,
