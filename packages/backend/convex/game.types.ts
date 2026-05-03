@@ -73,6 +73,25 @@ export const transmissionResponseReturnValidator = v.object({
   createdAt: v.number(),
 });
 
+export const transmissionContinuityReturnValidator = v.union(
+  v.object({
+    callbackLine: v.optional(v.string()),
+    responseEcho: v.optional(v.string()),
+    rewardLabel: v.optional(v.string()),
+    audioArrivalNote: v.optional(v.string()),
+  }),
+  v.null(),
+);
+
+export const transmissionMemoryReturnValidator = v.union(
+  v.object({
+    resurfacedTransmissionId: v.optional(v.id("transmissions")),
+    resurfacedTitle: v.optional(v.string()),
+    resurfacedReason: v.optional(v.string()),
+  }),
+  v.null(),
+);
+
 export const transmissionReturnValidator = v.object({
   id: v.id("transmissions"),
   dateKey: v.string(),
@@ -89,6 +108,8 @@ export const transmissionReturnValidator = v.object({
     v.literal("failed"),
   ),
   response: v.union(transmissionResponseReturnValidator, v.null()),
+  continuity: transmissionContinuityReturnValidator,
+  memory: transmissionMemoryReturnValidator,
   createdAt: v.number(),
 });
 
