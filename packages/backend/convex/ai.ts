@@ -19,6 +19,8 @@ export class OpenAICompatibleProvider implements AIProvider {
 
   async generate(prompt: string, systemPrompt: string): Promise<string | null> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
@@ -34,7 +36,9 @@ export class OpenAICompatibleProvider implements AIProvider {
           max_tokens: 700,
           temperature: 0.8,
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -94,6 +98,8 @@ export class AnthropicProvider implements AIProvider {
 
   async generate(prompt: string, systemPrompt: string): Promise<string | null> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -108,7 +114,9 @@ export class AnthropicProvider implements AIProvider {
           system: systemPrompt,
           messages: [{ role: "user", content: prompt }],
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -199,10 +207,18 @@ export function getAIProvider(): AIProvider {
   if (featherlessKey) {
     providers.push(
       new OpenAICompatibleProvider(
-        "Featherless",
+        "Featherless-70B",
         "https://api.featherless.ai/v1",
         featherlessKey,
         "meta-llama/Meta-Llama-3.1-70B-Instruct",
+      ),
+    );
+    providers.push(
+      new OpenAICompatibleProvider(
+        "Featherless-8B",
+        "https://api.featherless.ai/v1",
+        featherlessKey,
+        "meta-llama/Meta-Llama-3.1-8B-Instruct",
       ),
     );
   }
