@@ -698,6 +698,55 @@ export function MilestoneOverlay({
   );
 }
 
+interface VoiceUnlockOverlayProps {
+  voice: { label: string; emotionalRegister: string; castMember: string } | null;
+  onDismiss: () => void;
+  onShare: (voiceLabel: string) => void;
+}
+
+export function VoiceUnlockOverlay({ voice, onDismiss, onShare }: VoiceUnlockOverlayProps) {
+  if (!voice) return null;
+
+  return (
+    <Animated.View
+      entering={FadeIn.duration(400)}
+      exiting={FadeOut.duration(600)}
+      style={styles.milestoneOverlay}
+    >
+      <Pressable style={styles.milestoneBackdrop} onPress={onDismiss} />
+      <Animated.View
+        entering={ZoomIn.duration(500).springify().damping(12)}
+        style={styles.milestoneCard}
+      >
+        <Animated.View entering={FadeInUp.delay(200).duration(300)}>
+          <Text style={styles.milestoneEmoji}>✨</Text>
+        </Animated.View>
+        <Animated.Text entering={FadeInUp.delay(300).duration(300)} style={styles.milestoneTitle}>
+          {voice.label} has arrived
+        </Animated.Text>
+        <Animated.Text entering={FadeInUp.delay(400).duration(300)} style={styles.milestoneCopy}>
+          A new voice is available on the line. {voice.emotionalRegister}.
+        </Animated.Text>
+        <View style={styles.milestoneActions}>
+          <Pressable
+            onPress={() => onShare(voice.label)}
+            style={({ pressed }) => [styles.milestoneShareButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="share-outline" size={16} color="#101320" />
+            <Text style={styles.milestoneShareText}>Share unlock</Text>
+          </Pressable>
+          <Pressable
+            onPress={onDismiss}
+            style={({ pressed }) => [styles.milestoneDismiss, pressed && styles.pressed]}
+          >
+            <Text style={styles.milestoneDismissText}>Continue</Text>
+          </Pressable>
+        </View>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 interface FlareOverlayProps {
   visible: boolean;
   flareColor: string;

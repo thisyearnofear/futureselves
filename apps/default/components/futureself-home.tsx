@@ -41,6 +41,7 @@ import {
   MilestoneOverlay,
   ProgressionSection,
   ReceiveSignalSection,
+  VoiceUnlockOverlay,
   RitualRefinementPrompt,
   StorySection,
   TransmissionSection,
@@ -147,8 +148,14 @@ export function FutureselfHome({
   const [celebrateNextTransmission, setCelebrateNextTransmission] =
     useState(false);
   const [showMilestone, setShowMilestone] = useState(false);
+  const [newlyUnlockedVoice, setNewlyUnlockedVoice] = useState<{
+    label: string;
+    emotionalRegister: string;
+    castMember: string;
+  } | null>(null);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const milestoneShownRef = useRef(false);
+  const unlockedRef = useRef<Set<string>>(new Set());
   const [showTransmissionArrival, setShowTransmissionArrival] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -281,6 +288,31 @@ export function FutureselfHome({
     }
   }, [isMilestone, hasTransmissionToday]);
 
+  // Voice unlock detection
+  useEffect(() => {
+    if (!state.constellation.length) return;
+    const currentUnlocked = new Set(
+      state.constellation
+        .filter((star) => star.state === "lit" || star.state === "dim")
+        .map((star) => star.castMember),
+    );
+    const prevUnlocked = unlockedRef.current;
+    if (prevUnlocked.size > 0) {
+      const newlyUnlocked = [...currentUnlocked].filter((v) => !prevUnlocked.has(v));
+      if (newlyUnlocked.length > 0 && hasTransmissionToday) {
+        const voice = state.constellation.find((s) => s.castMember === newlyUnlocked[0]);
+        if (voice) {
+          setNewlyUnlockedVoice({
+            label: voice.label,
+            emotionalRegister: voice.emotionalRegister,
+            castMember: voice.castMember,
+          });
+        }
+      }
+    }
+    unlockedRef.current = currentUnlocked;
+  }, [state.constellation, hasTransmissionToday]);
+
   const handleShare = useCallback(async () => {
     if (!state.todayTransmission || !persona) return;
     const t = state.todayTransmission;
@@ -332,6 +364,18 @@ export function FutureselfHome({
       try { await RNShare.share({ message: shareText }); } catch { /* cancelled */ }
     }
   }, [currentStreak]);
+
+  const handleShareVoiceUnlock = useCallback(async (voiceLabel: string) => {
+    const shareText = `A new voice just arrived on my Future Selves line: ${voiceLabel}. ✨\n\nfutureself.app`;
+    if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.share) {
+      try { await navigator.share({ title: "Future Selves — New Voice", text: shareText }); } catch { /* cancelled */ }
+    } else if (Platform.OS === "web") {
+      try { await navigator.clipboard.writeText(shareText); } catch { /* noop */ }
+    } else {
+      const { Share: RNShare } = await import("react-native");
+      try { await RNShare.share({ message: shareText }); } catch { /* cancelled */ }
+    }
+  }, []);
 
   async function handleSaveSettings(preferences: {
     timeline: PersonaState["timeline"];
@@ -776,6 +820,11 @@ export function FutureselfHome({
         onDismiss={() => setShowMilestone(false)}
         onShare={handleShareMilestone}
         visible={showMilestone}
+      />
+      <VoiceUnlockOverlay
+        voice={newlyUnlockedVoice}
+        onDismiss={() => setNewlyUnlockedVoice(null)}
+        onShare={handleShareVoiceUnlock}
       />
       <FlareOverlay flareColor={flareColor} visible={showFlare} />
       <FutureselfSettingsSheet
