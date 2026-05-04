@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# Pre-commit hook: blocks commits that contain secrets or sensitive data.
+# Installed via: bash scripts/install-hooks.sh
+
+set -euo pipefail
+
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+ERRORS=()
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+staged_files() {
+  git diff --cached --name-only --diff-filter=ACM
+}
+
+staged_diff() {
+  git diff --cached --diff-filter=ACM -U0
+}
+
+check_pattern() {
+  local label="$1"
+  local pattern="$2"
+  local matches
+  matches="$(staged_diff | grep -Eni -e "$pattern" || true)"
+  if [ -n "$matches" ]; then
+    ERRORS+=("${RED}BLOCKED${NC}: $label found in staged changes:\n$matches")
+  fi
+}
+
+# ── Check 1: .env files must not be staged ───────────────────────────────────
+
+env_files="$(staged_files | grep -E '(^|/)\.env($|\.|[^.]|$)|\.env\.local$' || true)"
+if [ -n "$env_files" ]; then
+  ERRORS+=("${RED}BLOCKED${NC}: .env files must not be committed:\n$env_files")
+fi
+
+# ── Check 2: Scan staged diff for secrets ────────────────────────────────────
+
+# AWS
+check_pattern "AWS access key" 'AKIA[0-9A-Z]{16}'
+check_pattern "AWS secret key" '["\x27]([A-Za-z0-9/+=]{40})["\x27].*(?i:aws|secret|key)'
+
+# Replicate
+check_pattern "Replicate API token" 'r8_[A-Za-z0-9]{36}'
+
+# Anthropic
+check_pattern "Anthropic API key" 'sk-ant-[A-Za-z0-9\-]{40,}'
+
+# OpenAI
+check_pattern "OpenAI API key" 'sk-[A-Za-z0-9]{20,}'
+
+# ElevenLabs
+check_pattern "ElevenLabs API key" 'xi-api-key["\x27:= ]+[A-Za-z0-9]{20,}'
+
+# Generic patterns
+check_pattern "Private key header" '-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'
+check_pattern "Generic API key assignment" '(?i)(api_key|api_token|api_secret|secret_key|access_token|auth_token)\s*=\s*["\x27][A-Za-z0-9_\-]{16,}'
+
+# Bearer tokens (hardcoded, not process.env)
+check_pattern "Hardcoded Bearer token" 'Bearer [A-Za-z0-9_\-\.]{20,}'
+
+# High-entropy hex strings (40+ chars) that look like tokens, but exclude hashes and common patterns
+# Only flag if preceded by assignment/colon
+check_pattern "Hex token assignment" '(?i)(token|key|secret|password)\s*[:=]\s*["\x27]?[0-9a-f]{40,}'
+
+# ── Check 3: Files that should never appear ──────────────────────────────────
+
+sensitive_files="$(staged_files | grep -iE '\.pem$|\.p12$|\.p8$|\.key$|id_rsa|id_ed25519|\.keystore$' || true)"
+if [ -n "$sensitive_files" ]; then
+  ERRORS+=("${RED}BLOCKED${NC}: Private key / cert files must not be committed:\n$sensitive_files")
+fi
+
+# ── Report ───────────────────────────────────────────────────────────────────
+
+if [ ${#ERRORS[@]} -gt 0 ]; then
+  echo ""
+  echo -e "${RED}╔══════════════════════════════════════════════════╗${NC}"
+  echo -e "${RED}║   Pre-commit hook blocked this commit.          ║${NC}"
+  echo -e "${RED}╚══════════════════════════════════════════════════╝${NC}"
+  echo ""
+  for err in "${ERRORS[@]}"; do
+    echo -e "$err"
+    echo ""
+  done
+  echo -e "${YELLOW}To bypass (only if you know what you're doing):${NC}"
+  echo -e "  git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+echo -e "${GREEN}pre-commit: no secrets detected${NC}"
+exit 0
