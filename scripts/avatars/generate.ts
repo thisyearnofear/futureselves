@@ -30,6 +30,50 @@ const archetypes = [
     name: "future_best_friend",
     prompt: "Portrait of someone who would make you laugh in a hospital waiting room, effortlessly warm. Expression: mischievous warmth, nostalgic, slightly irreverent. Lighting: natural daylight, candid feel. Color palette: warm earth tones, comfortable. Age: similar age to the user. Background: cozy, lived-in, slightly out of focus. High quality, photographic, emotionally resonant, professional portrait photography. The face should feel like a real person — specific, not generic. Aspect ratio 1:1, centered composition.",
   },
+  {
+    name: "future_employee",
+    prompt: "Portrait of someone who works for you and is genuinely grateful, specific and professional. Expression: grateful, specific, professional pride. Lighting: bright, optimistic, clear. Color palette: clean whites, accent of warm gold. Age: late 20s to mid 30s. Background: modern workspace, slightly blurred. High quality, photographic, emotionally resonant, professional portrait photography. The face should feel like a real person — specific, not generic. Aspect ratio 1:1, centered composition.",
+  },
+  {
+    name: "future_customer",
+    prompt: "Portrait of someone whose life was changed by something you built, authentic and specific. Expression: changed, grateful, real. Lighting: natural, documentary feel. Color palette: warm neutrals. Age: varies. Background: everyday setting, real-world. High quality, photographic, emotionally resonant, professional portrait photography. The face should feel like a real person — specific, not generic. Aspect ratio 1:1, centered composition.",
+  },
+  {
+    name: "future_child",
+    prompt: "Portrait of a young adult who carries something of you in their face but is entirely their own person. Expression: rare, gentle, devastating, a little vulnerable. Lighting: soft, early morning quality. Color palette: pale, tender, soft focus. Age: early 20s. Background: dreamlike, gentle blur. High quality, photographic, emotionally resonant, professional portrait photography. The face should feel like a real person — specific, not generic. Aspect ratio 1:1, centered composition.",
+  },
+  {
+    name: "future_stranger",
+    prompt: "Portrait of someone you almost recognize but can't place, familiar and foreign simultaneously. Expression: unknown, moving, uncanny. Lighting: slightly desaturated, liminal. Color palette: muted, transitional. Age: ambiguous. Background: transitional space, train station or airport quality. High quality, photographic, emotionally resonant, professional portrait photography. The face should feel like a real person — specific, not generic. Aspect ratio 1:1, centered composition.",
+  },
+  {
+    name: "the_ceiling",
+    prompt: "Portrait of someone who got everything they wanted and found out it was a room with no doors. Expression: tired, settled, almost satisfied. Lighting: flat, fluorescent-adjacent, institutional. Color palette: muted beige, grey. Age: mid 50s. Background: comfortable but confining. High quality, photographic, emotionally resonant, professional portrait photography. The face should feel like a real person — specific, not generic. Aspect ratio 1:1, centered composition.",
+  },
+  {
+    name: "the_resentee",
+    prompt: "Portrait of someone keeping a precise mental ledger, sharp and specific. Expression: sharp, specific, keeping score. Lighting: harsh side lighting, angular shadows. Color palette: cool steel, bitter green. Age: mid 40s. Background: sparse, counting-house quality. High quality, photographic, emotionally resonant, professional portrait photography. The face should feel like a real person — specific, not generic. Aspect ratio 1:1, centered composition.",
+  },
+  {
+    name: "the_grandfather",
+    prompt: "Portrait of someone who has lived long enough to see the cost of wisdom, proud but drained. Expression: proud, drained, no more road left. Lighting: late afternoon, long shadows. Color palette: warm but fading, sepia-adjacent. Age: late 70s. Background: a study, a porch, somewhere with history. High quality, photographic, emotionally resonant, professional portrait photography. The face should feel like a real person — specific, not generic. Aspect ratio 1:1, centered composition.",
+  },
+  {
+    name: "the_exhausted_winner",
+    prompt: "Portrait of someone who climbed the mountain and found nothing at the top, wealthy and hollowed. Expression: wealthy, hollowed, nothing left to want. Lighting: bright but cold, luxury lighting. Color palette: white marble, cold gold. Age: mid 50s. Background: penthouse, sterile, too clean. High quality, photographic, emotionally resonant, professional portrait photography. The face should feel like a real person — specific, not generic. Aspect ratio 1:1, centered composition.",
+  },
+  {
+    name: "the_ghost",
+    prompt: "Ghostly, translucent portrait of someone who is present but thinning, comfortable with erasure. Expression: faint, absent, almost invisible. Lighting: barely there, overexposed. Color palette: white, near-white, washed out. Age: ambiguous. Background: empty, overexposed. Overexposed, ethereal, barely visible. The face is there but not quite. High quality, painterly, atmospheric. Aspect ratio 1:1, centered composition.",
+  },
+  {
+    name: "the_disappointed_healer",
+    prompt: "Portrait of someone who tried to fix themselves and others and the results were mixed. Expression: raw, failing, still trying. Lighting: clinical, slightly harsh, honest. Color palette: medical white, tired skin tones. Age: late 40s. Background: a kitchen table at 2am. High quality, photographic, emotionally resonant, professional portrait photography. The face should feel like a real person — specific, not generic. Aspect ratio 1:1, centered composition.",
+  },
+  {
+    name: "the_dissolver",
+    prompt: "A portrait dissolving at the edges, watercolor quality. Someone who is present but thinning, comfortable with erasure. Expression: present but thinning, comfortable with erasure. Lighting: fading, soft, dissolving edges. Color palette: watercolor quality, bleeding edges. Age: ambiguous, maybe 60. Background: barely there, dissolving into white. The subject is present but their edges bleed into the background. High quality, artistic, atmospheric. Aspect ratio 1:1, centered composition.",
+  },
 ];
 
 async function createPrediction(prompt: string) {

@@ -27,6 +27,17 @@ const FALLBACK_AVATARS: Partial<Record<CastMember, number>> = {
   future_best_friend: require("@/assets/images/avatars/future_best_friend.webp"),
   shadow: require("@/assets/images/avatars/shadow.webp"),
   alternate_self: require("@/assets/images/avatars/alternate_self.webp"),
+  future_employee: require("@/assets/images/avatars/future_employee.webp"),
+  future_customer: require("@/assets/images/avatars/future_customer.webp"),
+  future_child: require("@/assets/images/avatars/future_child.webp"),
+  future_stranger: require("@/assets/images/avatars/future_stranger.webp"),
+  the_ceiling: require("@/assets/images/avatars/the_ceiling.webp"),
+  the_resentee: require("@/assets/images/avatars/the_resentee.webp"),
+  the_grandfather: require("@/assets/images/avatars/the_grandfather.webp"),
+  the_exhausted_winner: require("@/assets/images/avatars/the_exhausted_winner.webp"),
+  the_ghost: require("@/assets/images/avatars/the_ghost.webp"),
+  the_disappointed_healer: require("@/assets/images/avatars/the_disappointed_healer.webp"),
+  the_dissolver: require("@/assets/images/avatars/the_dissolver.webp"),
 };
 
 interface AvatarRevealProps {
