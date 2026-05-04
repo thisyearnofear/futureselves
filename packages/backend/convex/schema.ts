@@ -6,6 +6,7 @@ import {
   timelineValidator,
   archetypeValidator,
   castMemberValidator,
+  avatarTierValidator,
 } from "./validators";
 
 export default defineSchema({
@@ -139,4 +140,16 @@ export default defineSchema({
   })
     .index("by_userId_and_status", ["userId", "status"])
     .index("by_userId_and_createdAt", ["userId", "createdAt"]),
+  castAvatars: defineTable({
+    userId: v.string(),
+    castMember: castMemberValidator,
+    storageId: v.id("_storage"),
+    prompt: v.string(),
+    tier: avatarTierValidator,
+    sourcePhotoId: v.optional(v.id("_storage")),
+    generatedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_user_and_cast", ["userId", "castMember"])
+    .index("by_user", ["userId"]),
 });

@@ -23,6 +23,7 @@ import type {
   TransmissionState,
 } from "@/lib/futureself";
 import { formatCastMember } from "@/lib/futureself";
+import { AvatarReveal } from "@/components/avatar-reveal";
 import { TransmissionPlayer } from "@/components/transmission-player";
 import { styles } from "@/components/futureself-home.styles";
 
@@ -819,7 +820,7 @@ export function VoiceUnlockOverlay({ voice, onDismiss, onShare }: VoiceUnlockOve
         style={styles.milestoneCard}
       >
         <Animated.View entering={FadeInUp.delay(200).duration(300)}>
-          <Text style={styles.milestoneEmoji}>✨</Text>
+          <AvatarReveal castMember={voice.castMember as CastMember} size={140} />
         </Animated.View>
         <Animated.Text entering={FadeInUp.delay(300).duration(300)} style={styles.milestoneTitle}>
           {voice.label} has arrived
@@ -968,21 +969,22 @@ function VoiceOrb({ star }: VoiceOrbProps) {
 
   return (
     <View style={styles.voiceOrbWrap}>
-      <View
-        style={[
-          styles.voiceOrb,
-          isUnlocked && styles.voiceOrbUnlocked,
-          star.state === "quiet" && styles.voiceOrbQuiet,
-        ]}
-      >
-        <Ionicons
-          name={
-            isUnlocked ? "radio" : star.state === "quiet" ? "moon" : "lock-closed"
-          }
-          size={16}
-          color={isUnlocked ? "#101320" : "#F7D38B"}
-        />
-      </View>
+      {isUnlocked ? (
+        <AvatarReveal castMember={star.castMember} size={48} />
+      ) : (
+        <View
+          style={[
+            styles.voiceOrb,
+            star.state === "quiet" && styles.voiceOrbQuiet,
+          ]}
+        >
+          <Ionicons
+            name={star.state === "quiet" ? "moon" : "lock-closed"}
+            size={16}
+            color="#F7D38B"
+          />
+        </View>
+      )}
       <Text numberOfLines={2} style={styles.voiceLabel}>
         {star.label}
       </Text>

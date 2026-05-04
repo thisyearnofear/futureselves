@@ -48,3 +48,8 @@ export const choiceValidator = v.union(
   v.literal("release"),
   v.literal("repair"),
 );
+
+export const avatarTierValidator = v.union(
+  v.literal("generated"),
+  v.literal("personalized"),
+);

@@ -12,6 +12,8 @@ import type * as ai from "../ai.js";
 import type * as auth from "../auth.js";
 import type * as cast from "../cast.js";
 import type * as choice_effects from "../choice_effects.js";
+import type * as face from "../face.js";
+import type * as face_prompts from "../face.prompts.js";
 import type * as functions from "../functions.js";
 import type * as game from "../game.js";
 import type * as http from "../http.js";
@@ -33,6 +35,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   cast: typeof cast;
   choice_effects: typeof choice_effects;
+  face: typeof face;
+  face_prompts: typeof face_prompts;
   functions: typeof functions;
   game: typeof game;
   http: typeof http;

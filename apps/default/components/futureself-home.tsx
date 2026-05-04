@@ -136,6 +136,7 @@ export function FutureselfHome({
   const recordChoice = useMutation(api.game.recordChoice);
   const saveTransmissionResponse = useMutation(api.game.saveTransmissionResponse);
   const generateTransmission = useAction(api.game.generateDailyTransmission);
+  const generateAvatar = useAction(api.face.generateAvatar);
 
   // Debug mutations
   const debugReset = useMutation(api.game.debugResetPersona);
@@ -296,7 +297,7 @@ export function FutureselfHome({
     }
   }, [isMilestone, hasTransmissionToday]);
 
-  // Voice unlock detection
+  // Voice unlock detection + avatar generation
   useEffect(() => {
     if (!state.constellation.length) return;
     const currentUnlocked = new Set(
@@ -305,7 +306,13 @@ export function FutureselfHome({
         .map((star) => star.castMember),
     );
     const prevUnlocked = unlockedRef.current;
-    if (prevUnlocked.size > 0) {
+    if (prevUnlocked.size === 0) {
+      // First mount: generate avatars for any already-unlocked cast members
+      // (e.g., future_self is always lit). The action is idempotent — skips if exists.
+      for (const castMember of currentUnlocked) {
+        void generateAvatar({ castMember: castMember as CastMember }).catch(() => {});
+      }
+    } else {
       const newlyUnlocked = [...currentUnlocked].filter((v) => !prevUnlocked.has(v));
       if (newlyUnlocked.length > 0 && hasTransmissionToday) {
         const voice = state.constellation.find((s) => s.castMember === newlyUnlocked[0]);
@@ -316,10 +323,14 @@ export function FutureselfHome({
             castMember: voice.castMember,
           });
         }
+        // Fire-and-forget avatar generation for newly unlocked cast members
+        for (const castMember of newlyUnlocked) {
+          void generateAvatar({ castMember: castMember as CastMember }).catch(() => {});
+        }
       }
     }
     unlockedRef.current = currentUnlocked;
-  }, [state.constellation, hasTransmissionToday]);
+  }, [state.constellation, hasTransmissionToday, generateAvatar]);
 
   const handleShare = useCallback(async () => {
     if (!state.todayTransmission || !persona) return;

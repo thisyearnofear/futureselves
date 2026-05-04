@@ -26,6 +26,7 @@ import AnimatedReanimated, {
 } from "react-native-reanimated";
 import type { TransmissionState } from "@/lib/futureself";
 import { formatCastMember } from "@/lib/futureself";
+import { AvatarReveal } from "@/components/avatar-reveal";
 
 interface TransmissionPlayerProps {
   transmission: TransmissionState;
@@ -88,6 +89,7 @@ export function TransmissionPlayer({
       style={styles.card}
     >
       <AnimatedReanimated.View entering={FadeInUp.duration(260)} style={styles.headerWrap}>
+        <AvatarReveal castMember={transmission.castMember} size={180} />
         <View style={styles.headerCopy}>
           <Text style={styles.cast}>{formatCastMember(transmission.castMember)}</Text>
           <Text style={styles.title}>{transmission.title}</Text>
