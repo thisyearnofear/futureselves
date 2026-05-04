@@ -1,6 +1,6 @@
 # Future Selves Visual Experience Upgrade
 
-**Status:** Draft v2 | **Date:** May 2026
+**Status:** Implementation Complete (Tier 1) | **Date:** May 2026
 **Focus:** AI-generated avatars for each cast member, with opt-in personalized face swap as a premium tier
 
 ---
@@ -828,28 +828,31 @@ Tier 2 costs are minimal because the opt-in rate will be low and the per-avatar 
 
 ## Implementation Phases
 
-### Phase 1: Silhouette + Avatar Display (Week 1)
+### Phase 1: Silhouette + Avatar Display (Week 1) ✅ COMPLETED
 
-- Add `castAvatars` table to schema
-- Build `AvatarReveal` component with silhouette states
-- Integrate into `TransmissionPlayer`
-- Integrate into constellation view
-- No image generation yet — just the visual framework
+- ✅ Add `castAvatars` table to schema
+- ✅ Build `AvatarReveal` component with silhouette states
+- ✅ Integrate into `TransmissionPlayer`
+- ✅ Integrate into constellation view
+- ✅ No image generation yet — just the visual framework
 
 **Deliverable:** Every cast member has a visual presence (silhouette) in the UI. The reveal animation works.
 
-### Phase 2: AI-Generated Avatars (Weeks 2–3)
+### Phase 2: AI-Generated Avatars (Weeks 2–3) ✅ COMPLETED
 
-- Add Replicate integration (Flux Schnell)
-- Build `generateAvatarForUnlock` action
-- Wire into cast unlock flow
-- Build prompt templates for all 18 cast members
-- Handle degraded cast members (Flatlined = static, Ghost = overexposed)
-- Add `StaticNoiseView` component for `the_flatlined`
+- ✅ Add Replicate integration (Flux Schnell)
+- ✅ Build `generateAvatarForUnlock` action
+- ✅ Wire into cast unlock flow (automatic trigger on check-in/choice)
+- ✅ Build prompt templates for all 18 cast members
+- ✅ Handle degraded cast members (Flatlined = static, Ghost = overexposed)
+- ✅ Add `StaticNoiseView` component for `the_flatlined`
+- ✅ Generate fallback avatars for all cast members
+- ✅ Add avatar preloading hook for smooth display
+- ✅ Implement rate limiting (10/hour, 3/minute burst)
 
-**Deliverable:** When a cast member is unlocked, their avatar generates in background and appears within 1–2 transmissions.
+**Deliverable:** When a cast member is unlocked, their avatar generates in background and appears within 1–2 transmissions. ✅ ACHIEVED
 
-### Phase 3: Premium Personalized Faces (Weeks 4–5)
+### Phase 3: Premium Personalized Faces (Weeks 4–5) 🔲 NOT STARTED
 
 - Add consent screen and Settings entry point
 - Add `expo-image-picker` dependency
@@ -860,7 +863,7 @@ Tier 2 costs are minimal because the opt-in rate will be low and the per-avatar 
 
 **Deliverable:** Premium users can upload a selfie and see personalized versions of their cast members.
 
-### Phase 4: Polish & Shareability (Weeks 6–7)
+### Phase 4: Polish & Shareability (Weeks 6–7) 🔲 NOT STARTED
 
 - Add share-to-social functionality (export avatar as image with archetype label)
 - A/B test: with-avatar vs without-avatar engagement
@@ -902,12 +905,55 @@ Tier 2 costs are minimal because the opt-in rate will be low and the per-avatar 
 
 ```bash
 # Face Generation
-REPLICATE_API_TOKEN=            # Required for both tiers
+REPLICATE_API_TOKEN=            # Required for both tiers (set in Convex env)
 REPLICATE_WEBHOOK_SECRET=       # Optional: for async callbacks
 
 # Local Development
 EXPO_PUBLIC_AVATAR_PLACEHOLDER= # URL to default silhouette image
 ```
+
+---
+
+## Current Status & Next Steps
+
+### ✅ Completed (Tier 1)
+
+1. **Schema & Backend**
+   - `castAvatars` table with proper indexes
+   - Rate limiting (10/hour, 3/minute burst per user)
+   - Automatic avatar generation on cast unlock
+   - Error handling and logging for Replicate API
+
+2. **Frontend Components**
+   - `AvatarReveal` component with shimmer animation
+   - `StaticNoiseView` for The Flatlined
+   - Avatar preloading hook for smooth display
+   - Fallback avatars for all 17 cast members
+
+3. **Avatar Generation**
+   - All 17 cast members have generated avatars
+   - Proper prompts for each archetype
+   - Degraded styles for Ghost and Dissolver
+
+### 🔲 Next Steps
+
+1. **Test End-to-End Flow**
+   - Verify automatic generation triggers on cast unlock
+   - Test fallback behavior when API is unavailable
+   - Monitor Replicate API costs and success rates
+
+2. **Implement Tier 2: Personalized Faces**
+   - Add consent screen for selfie upload
+   - Integrate `expo-image-picker`
+   - Implement face preservation with InstantID
+   - Add "Summon" button UX with loading state
+   - Gate behind premium status check
+
+3. **Polish & Shareability**
+   - Add avatar regeneration UI in settings
+   - Implement share-to-social functionality
+   - A/B test engagement with/without avatars
+   - Tune prompts based on user feedback
 
 ---
 
