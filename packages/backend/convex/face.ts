@@ -3,6 +3,7 @@ import { castMemberValidator } from "./validators";
 import { authAction, authMutation, authQuery } from "./functions";
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { rateLimiter } from "./rateLimit";
 import { buildAvatarPrompt, NO_IMAGE_CAST_MEMBERS } from "./face.prompts";
 import type { CastMember } from "../../domain/src";
 import type { Id } from "./_generated/dataModel";
@@ -178,6 +179,17 @@ export const generateAvatar = authAction({
     const replicateKey = process.env.REPLICATE_API_TOKEN;
     if (!replicateKey) return { status: "no_api_key", storageId: null };
 
+    // Rate limit: 10/hour per user (covers all archetypes + regenerations)
+    // with burst protection of 3/minute
+    const status = await rateLimiter.limit(ctx, "generateAvatar", { key: ctx.userId });
+    if (!status.ok) {
+      return { status: "skipped", storageId: null };
+    }
+    const burstStatus = await rateLimiter.limit(ctx, "generateAvatarBurst", { key: ctx.userId });
+    if (!burstStatus.ok) {
+      return { status: "skipped", storageId: null };
+    }
+
     const imageUrl = await callReplicateForAvatar(prompt, replicateKey);
     if (!imageUrl) return { status: "skipped", storageId: null };
 
@@ -215,12 +227,14 @@ async function callReplicateForAvatar(
         },
         body: JSON.stringify({
           // Flux Schnell — fast, high-quality, ~$0.003/image
-          model: "black-forest-labs/flux-schnell",
+          version: "c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e",
           input: {
             prompt,
-            width: 512,
-            height: 512,
+            aspect_ratio: "1:1",
             num_outputs: 1,
+            go_fast: true,
+            output_format: "webp",
+            output_quality: 80,
           },
         }),
       },

@@ -17,6 +17,17 @@ import type { CastMember } from "@/lib/futureself";
 const DEGRADED_CAST_MEMBERS = new Set(["the_ghost", "the_dissolver"]);
 const NO_IMAGE_CAST_MEMBERS = new Set(["the_flatlined"]);
 
+// Bundled fallback avatars — used when no Convex-generated avatar exists.
+// These are shared across all users until per-user generation runs.
+const FALLBACK_AVATARS: Partial<Record<CastMember, number>> = {
+  future_self: require("@/assets/images/avatars/future_self.webp"),
+  future_partner: require("@/assets/images/avatars/future_partner.webp"),
+  future_mentor: require("@/assets/images/avatars/future_mentor.webp"),
+  future_best_friend: require("@/assets/images/avatars/future_best_friend.webp"),
+  shadow: require("@/assets/images/avatars/shadow.webp"),
+  alternate_self: require("@/assets/images/avatars/alternate_self.webp"),
+};
+
 interface AvatarRevealProps {
   castMember: CastMember;
   size?: number;
@@ -26,10 +37,11 @@ export function AvatarReveal({ castMember, size = 200 }: AvatarRevealProps) {
   const avatar = useQuery(api.face.getAvatar, { castMember });
   const isDegraded = DEGRADED_CAST_MEMBERS.has(castMember);
   const isNoImage = NO_IMAGE_CAST_MEMBERS.has(castMember);
+  const hasFallback = castMember in FALLBACK_AVATARS;
 
   const pulse = useSharedValue(1);
   useEffect(() => {
-    if (!avatar?.url) {
+    if (!avatar?.url && !hasFallback) {
       pulse.value = withRepeat(
         withSequence(
           withTiming(0.6, { duration: 1600, easing: Easing.inOut(Easing.quad) }),
@@ -39,13 +51,18 @@ export function AvatarReveal({ castMember, size = 200 }: AvatarRevealProps) {
         false,
       );
     }
-  }, [avatar?.url, pulse]);
+  }, [avatar?.url, hasFallback, pulse]);
 
   const shimmerStyle = useAnimatedStyle(() => ({
     opacity: pulse.value,
   }));
 
   const borderRadius = size / 2;
+  const imageSource = avatar?.url
+    ? { uri: avatar.url }
+    : hasFallback
+      ? FALLBACK_AVATARS[castMember]!
+      : null;
 
   if (isNoImage) {
     return (
@@ -70,10 +87,10 @@ export function AvatarReveal({ castMember, size = 200 }: AvatarRevealProps) {
           isDegraded && styles.silhouetteDegraded,
         ]}
       />
-      {avatar?.url ? (
+      {imageSource ? (
         <Animated.View entering={FadeIn.duration(600).easing(Easing.out(Easing.cubic))}>
           <Image
-            source={{ uri: avatar.url }}
+            source={imageSource}
             style={[
               styles.avatarImage,
               {

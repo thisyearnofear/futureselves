@@ -1,4 +1,4 @@
-import { RateLimiter } from "@convex-dev/rate-limiter";
+import { RateLimiter, HOUR, MINUTE } from "@convex-dev/rate-limiter";
 import type { ComponentApi as RateLimiterComponentApi } from "@convex-dev/rate-limiter/_generated/component.js";
 import { components } from "./_generated/api";
 
@@ -7,12 +7,11 @@ import { components } from "./_generated/api";
 export const rateLimiter = new RateLimiter(
     components.rateLimiter as RateLimiterComponentApi<"rateLimiter">,
     {
-        // Define rate limits here. Each key becomes a named limit you can check/consume.
-        // Import MINUTE, HOUR, SECOND from "@convex-dev/rate-limiter" for period values.
-        //
-        // sendMessage: { kind: "token bucket", rate: 10, period: MINUTE, capacity: 15 },
-        // createAccount: { kind: "fixed window", rate: 5, period: HOUR },
-        // apiCall: { kind: "token bucket", rate: 100, period: MINUTE },
+        // Avatar generation: max 10 per user per hour (~$0.03/user/hr at Flux Schnell pricing)
+        // Covers all archetypes (typically 3-5 unlocked) plus a few regenerations
+        generateAvatar: { kind: "fixed window", rate: 10, period: HOUR },
+        // Global burst protection: max 3 avatar generations per minute per user
+        generateAvatarBurst: { kind: "token bucket", rate: 1, period: MINUTE, capacity: 3 },
     }
 );
 
