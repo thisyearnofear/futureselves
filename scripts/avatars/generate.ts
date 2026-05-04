@@ -47,7 +47,7 @@ async function createPrediction(prompt: string) {
         num_outputs: 1,
         go_fast: true,
         output_format: "webp",
-        output_quality: 90,
+        output_quality: 80,
       },
     }),
   });

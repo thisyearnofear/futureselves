@@ -514,3 +514,28 @@ const castDirections: Record<string, string> = {
 export function getCastDirection(castMember: CastMember): string {
   return castDirections[castMember] || "";
 }
+
+/**
+ * Detect newly unlocked cast members by comparing previous and current constellation states.
+ * Returns array of cast members that transitioned from "locked" to any other state.
+ */
+export function detectNewlyUnlocked(
+  previousConstellation: Array<{ castMember: CastMember; state: string }>,
+  currentConstellation: Array<{ castMember: CastMember; state: string }>,
+): Array<CastMember> {
+  const newlyUnlocked: Array<CastMember> = [];
+
+  for (const current of currentConstellation) {
+    if (current.state === "locked") continue;
+
+    const previous = previousConstellation.find(
+      (p) => p.castMember === current.castMember,
+    );
+
+    if (!previous || previous.state === "locked") {
+      newlyUnlocked.push(current.castMember);
+    }
+  }
+
+  return newlyUnlocked;
+}

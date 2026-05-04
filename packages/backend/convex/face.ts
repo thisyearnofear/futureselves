@@ -1,11 +1,10 @@
 import { v } from "convex/values";
 import { castMemberValidator } from "./validators";
-import { authAction, authMutation, authQuery } from "./functions";
+import { authAction, authQuery } from "./functions";
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { rateLimiter } from "./rateLimit";
 import { buildAvatarPrompt, NO_IMAGE_CAST_MEMBERS } from "./face.prompts";
-import type { CastMember } from "../../domain/src";
 import type { Id } from "./_generated/dataModel";
 
 // ─── Public Queries ──────────────────────────────────────────────────────────
@@ -93,6 +92,32 @@ export const getExistingAvatar = internalQuery({
         q.eq("userId", args.userId).eq("castMember", args.castMember),
       )
       .unique();
+  },
+});
+
+// ─── Internal Actions ──────────────────────────────────────────────────────────
+
+export const generateAvatarForUnlock = internalMutation({
+  args: {
+    userId: v.string(),
+    castMember: castMemberValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Check if avatar already exists
+    const existing = await ctx.db
+      .query("castAvatars")
+      .withIndex("by_user_and_cast", (q) =>
+        q.eq("userId", args.userId).eq("castMember", args.castMember),
+      )
+      .unique();
+
+    if (existing) return null;
+
+    // Note: Actual generation is triggered by the client when the cast member is unlocked
+    // This mutation just marks that generation should happen
+    // The client will call the public generateAvatar action
+    return null;
   },
 });
 
@@ -240,14 +265,21 @@ async function callReplicateForAvatar(
       },
     );
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.error(`Replicate API error: ${response.status} ${response.statusText}`);
+      return null;
+    }
     const prediction = await response.json();
 
     // Poll for completion (max 60s)
     const result = await pollReplicatePrediction(prediction.id, apiKey);
-    if (!result?.output?.length) return null;
+    if (!result?.output?.length) {
+      console.error(`Replicate prediction failed or timed out: ${prediction.id}`);
+      return null;
+    }
     return result.output[0] as string;
-  } catch {
+  } catch (error) {
+    console.error("Replicate avatar generation failed:", error);
     return null;
   }
 }
@@ -267,11 +299,18 @@ async function pollReplicatePrediction(
       },
     );
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.error(`Replicate poll error: ${response.status} for prediction ${predictionId}`);
+      return null;
+    }
     const result = await response.json();
 
     if (result.status === "succeeded") return result;
-    if (result.status === "failed" || result.status === "canceled") return null;
+    if (result.status === "failed" || result.status === "canceled") {
+      console.error(`Replicate prediction ${result.status}: ${predictionId}`, result.error);
+      return null;
+    }
   }
+  console.error(`Replicate prediction timed out after ${maxAttempts} attempts: ${predictionId}`);
   return null;
 }

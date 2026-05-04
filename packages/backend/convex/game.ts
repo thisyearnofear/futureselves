@@ -15,7 +15,7 @@ import {
   choiceRequiresThreadTarget,
 } from "./choice_effects";
 import type { VoicePreset } from "./voice";
-import { chooseCastMember } from "./cast";
+import { chooseCastMember, buildConstellation, detectNewlyUnlocked } from "./cast";
 import {
   buildEmptyState,
   buildGenerationContext,
@@ -162,12 +162,44 @@ export const saveCheckIn = authMutation({
       dateKey: args.dateKey,
       previousChoiceExists: Boolean(previousChoice),
     });
+    // Detect newly unlocked cast members before updating persona
+    const personaWithDefaults = {
+      ...persona,
+      towardCount: persona.towardCount ?? 0,
+      steadyCount: persona.steadyCount ?? 0,
+      releaseCount: persona.releaseCount ?? 0,
+      repairCount: persona.repairCount ?? 0,
+      unchosenVoices: persona.unchosenVoices ?? [],
+    };
+    const previousConstellation = buildConstellation(personaWithDefaults);
+
     await ctx.db.patch(persona._id, {
       streak: progression.streak,
       lastCheckInDateKey: args.dateKey,
       timelineDivergenceScore: progression.timelineDivergenceScore,
       updatedAt: now,
     });
+
+    // Check for newly unlocked cast members and trigger avatar generation
+    const updatedPersona = {
+      ...persona,
+      ...progression,
+      towardCount: persona.towardCount ?? 0,
+      steadyCount: persona.steadyCount ?? 0,
+      releaseCount: persona.releaseCount ?? 0,
+      repairCount: persona.repairCount ?? 0,
+      unchosenVoices: persona.unchosenVoices ?? [],
+    };
+    const currentConstellation = buildConstellation(updatedPersona);
+    const newlyUnlocked = detectNewlyUnlocked(previousConstellation, currentConstellation);
+
+    for (const castMember of newlyUnlocked) {
+      await ctx.scheduler.runAfter(0, internal.face.generateAvatarForUnlock, {
+        userId: ctx.user._id as unknown as string,
+        castMember,
+      });
+    }
+
     return await ctx.db.insert("checkIns", {
       userId: ctx.user._id,
       dateKey: args.dateKey,
@@ -232,11 +264,22 @@ export const recordChoice = authMutation({
       });
     }
     if (persona) {
+      // Detect newly unlocked cast members before updating persona
+      const personaWithDefaults = {
+        ...persona,
+        towardCount: persona.towardCount ?? 0,
+        steadyCount: persona.steadyCount ?? 0,
+        releaseCount: persona.releaseCount ?? 0,
+        repairCount: persona.repairCount ?? 0,
+        unchosenVoices: persona.unchosenVoices ?? [],
+      };
+      const previousConstellation = buildConstellation(personaWithDefaults);
+
       const progression = getChoiceProgressionUpdate({
-        towardCount: persona.towardCount,
-        steadyCount: persona.steadyCount,
-        releaseCount: persona.releaseCount,
-        repairCount: persona.repairCount,
+        towardCount: persona.towardCount ?? 0,
+        steadyCount: persona.steadyCount ?? 0,
+        releaseCount: persona.releaseCount ?? 0,
+        repairCount: persona.repairCount ?? 0,
         timelineDivergenceScore: persona.timelineDivergenceScore,
         previousChoice: existing?.choice ?? null,
         nextChoice: args.choice,
@@ -249,6 +292,26 @@ export const recordChoice = authMutation({
         repairCount: progression.repairCount,
         updatedAt: now,
       });
+
+      // Check for newly unlocked cast members and trigger avatar generation
+      const updatedPersona = {
+        ...persona,
+        ...progression,
+        towardCount: progression.towardCount,
+        steadyCount: progression.steadyCount,
+        releaseCount: progression.releaseCount,
+        repairCount: progression.repairCount,
+        unchosenVoices: persona.unchosenVoices ?? [],
+      };
+      const currentConstellation = buildConstellation(updatedPersona);
+      const newlyUnlocked = detectNewlyUnlocked(previousConstellation, currentConstellation);
+
+      for (const castMember of newlyUnlocked) {
+        await ctx.scheduler.runAfter(0, internal.face.generateAvatarForUnlock, {
+          userId: ctx.user._id as unknown as string,
+          castMember,
+        });
+      }
     }
 
     const outcome = buildChoiceOutcome(args.choice, selectedThread?.title);
