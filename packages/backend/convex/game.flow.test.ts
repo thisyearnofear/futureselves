@@ -18,7 +18,6 @@ async function createAuthUser(t: ReturnType<typeof convexTest>, email: string) {
     return await ctx.db.insert("users", {
       email,
       name: email.split("@")[0],
-      createdAt: Date.now(),
     });
   });
 
@@ -105,7 +104,7 @@ describe("game flow", () => {
     expect(state.persona?.name).toBe("Amani");
     expect(state.persona?.lastTransmissionDateKey).toBe("2026-05-01");
     expect(state.todayCheckIn?.word).toBe("threshold");
-    expect(state.todayTransmission?.status).toBe("ready");
+    expect(state.todayTransmission?.status).toBe("text_ready");
     expect(state.todayTransmission?.title).toBe("A voice from the line");
     expect(state.todayTransmission?.text).toContain("threshold");
     expect(state.recentTransmissions.length).toBeGreaterThan(0);

@@ -425,7 +425,6 @@ export const getState = authQuery({
       };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return buildStateReturn({
       persona,
       todayCheckIn: todayCheckInDoc ? toCheckInReturn(todayCheckInDoc) : null,
@@ -448,7 +447,7 @@ export const getState = authQuery({
         choice: choice.choice,
       })),
       reactionStreaks: personaDoc.reactionStreaks ?? null,
-    }) as unknown;
+    });
   },
 });
 

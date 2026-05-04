@@ -33,6 +33,7 @@ export function buildEmptyState() {
       approachingEventTone: "opportunity" as const,
     },
     reactionStreaks: null,
+    yesterdayAccountability: null,
   };
 }
 

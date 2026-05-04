@@ -360,7 +360,7 @@ describe("game.transmission", () => {
       "future_partner",
     );
 
-    expect(prompt).toContain('today\'s check-in word ("threshold")');
+    expect(prompt).toContain("Today's check-in word: threshold");
     expect(prompt).toContain("Voice speaking today: future_partner.");
     expect(prompt).toContain("Recent transmissions:");
     expect(prompt).toContain("Recent choices:");
@@ -389,7 +389,7 @@ describe("game.transmission", () => {
 
     expect(transmission.title).toBe("I kept thinking about today");
     expect(transmission.text).toContain("threshold");
-    expect(transmission.actionPrompt).toContain("repair");
+    expect(transmission.actionPrompt).toContain("sentence");
   });
 
   it("uses valid AI JSON output when generation succeeds", async () => {
