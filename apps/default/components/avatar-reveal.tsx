@@ -13,6 +13,7 @@ import { Image } from "expo-image";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { CastMember } from "@/lib/futureself";
+import { StaticNoiseView } from "./static-noise-view";
 
 const DEGRADED_CAST_MEMBERS = new Set(["the_ghost", "the_dissolver"]);
 const NO_IMAGE_CAST_MEMBERS = new Set(["the_flatlined"]);
@@ -67,13 +68,7 @@ export function AvatarReveal({ castMember, size = 200 }: AvatarRevealProps) {
   if (isNoImage) {
     return (
       <View style={[styles.container, { width: size, height: size }]}>
-        <View
-          style={[
-            styles.silhouette,
-            { width: size, height: size, borderRadius },
-            styles.silhouetteEmpty,
-          ]}
-        />
+        <StaticNoiseView size={size} />
       </View>
     );
   }

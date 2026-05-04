@@ -3,6 +3,7 @@ import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { useAvatarPreloading } from "@/hooks/use-avatar-preloading";
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
     unsavedChangesWarning: false,
@@ -16,9 +17,15 @@ const secureStorage = {
 
 const isNative = Platform.OS === "ios" || Platform.OS === "android";
 
+function AvatarPreloader() {
+    useAvatarPreloading();
+    return null;
+}
+
 export default function RootLayout() {
     return (
         <ConvexAuthProvider client={convex} storage={isNative ? secureStorage : undefined}>
+            <AvatarPreloader />
             <Stack>
                 <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen
