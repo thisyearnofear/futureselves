@@ -13,7 +13,10 @@ export type {
   Archetype,
   CastMember,
   Choice,
+  Distinguishing,
   FirstVoiceCastMember,
+  HairStyle,
+  SkinTone,
   Timeline,
 } from "../../../packages/domain/src";
 export {
@@ -21,9 +24,15 @@ export {
   arcLabels,
   archetypeValues,
   archetypeLabels,
+  distinguishingLabels,
+  distinguishingValues,
   firstVoiceCastMembers,
   firstVoiceLabels,
   formatCastMember,
+  hairStyleLabels,
+  hairStyleValues,
+  skinToneLabels,
+  skinToneValues,
   timelineValues,
   timelineLabels,
 } from "../../../packages/domain/src";
@@ -60,6 +69,9 @@ export interface PersonaState {
   releaseCount: number;
   repairCount: number;
   unchosenVoices: Array<CastMember>;
+  skinTone?: string;
+  hairStyle?: string;
+  distinguishing?: string;
 }
 
 export interface CheckInState {
@@ -181,6 +193,9 @@ export interface OnboardingDraft {
   voicePreset: VoicePreset;
   futureChildOptIn: boolean;
   significantDates: Array<string>;
+  skinTone: string;
+  hairStyle: string;
+  distinguishing: string;
 }
 
 export type VoicePreset = "ember" | "atlas" | "sol";

@@ -93,6 +93,63 @@ export const archetypeLabels: Record<Archetype, string> = {
   wanderer: "Wanderer",
 };
 
+export const skinToneValues = [
+  "fair",
+  "light",
+  "medium",
+  "olive",
+  "brown",
+  "dark",
+] as const;
+export type SkinTone = (typeof skinToneValues)[number];
+
+export const skinToneLabels: Record<SkinTone, string> = {
+  fair: "Fair",
+  light: "Light",
+  medium: "Medium",
+  olive: "Olive",
+  brown: "Brown",
+  dark: "Dark",
+};
+
+export const hairStyleValues = [
+  "short",
+  "medium",
+  "long",
+  "curly",
+  "braids",
+  "bald",
+  "buzz",
+] as const;
+export type HairStyle = (typeof hairStyleValues)[number];
+
+export const hairStyleLabels: Record<HairStyle, string> = {
+  short: "Short",
+  medium: "Medium",
+  long: "Long",
+  curly: "Curly",
+  braids: "Braids",
+  bald: "Bald",
+  buzz: "Buzz cut",
+};
+
+export const distinguishingValues = [
+  "glasses",
+  "beard",
+  "tattoos",
+  "freckles",
+  "none",
+] as const;
+export type Distinguishing = (typeof distinguishingValues)[number];
+
+export const distinguishingLabels: Record<Distinguishing, string> = {
+  glasses: "Glasses",
+  beard: "Beard",
+  tattoos: "Tattoos",
+  freckles: "Freckles",
+  none: "None",
+};
+
 export function formatCastMember(castMember: CastMember): string {
   return castMemberLabels[castMember];
 }

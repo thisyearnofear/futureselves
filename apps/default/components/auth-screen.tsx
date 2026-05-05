@@ -234,7 +234,7 @@ export function AuthScreen() {
               )}
             </Pressable>
             <Text style={styles.ctaSubtext}>
-              No sign-up required — about a minute to your first signal
+              No sign-up required — about a minute to your first transmission
             </Text>
           </Animated.View>
 

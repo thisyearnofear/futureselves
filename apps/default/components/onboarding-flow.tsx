@@ -18,14 +18,23 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type {
   Arc,
+  Distinguishing,
   FirstVoiceCastMember,
+  HairStyle,
   OnboardingDraft,
+  SkinTone,
 } from "@/lib/futureself";
 import {
   arcLabels,
   arcValues,
+  distinguishingLabels,
+  distinguishingValues,
   firstVoiceCastMembers,
   firstVoiceLabels,
+  hairStyleLabels,
+  hairStyleValues,
+  skinToneLabels,
+  skinToneValues,
 } from "@/lib/futureself";
 
 const initialDraft: OnboardingDraft = {
@@ -44,6 +53,9 @@ const initialDraft: OnboardingDraft = {
   voicePreset: "ember",
   futureChildOptIn: false,
   significantDates: [],
+  skinTone: "",
+  hairStyle: "",
+  distinguishing: "",
 };
 
 const chapterNudges = {
@@ -81,7 +93,7 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
   const [error, setError] = useState<string | null>(null);
 
   const chapters = useMemo(
-    () => ["The signal", "The pull", "The voice"],
+    () => ["The threshold", "The pull", "The voice"],
     [],
   );
 
@@ -150,6 +162,9 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
         ...draft,
         age: draft.age.trim() || undefined,
         significantDates: draft.significantDates.filter(Boolean),
+        skinTone: draft.skinTone || undefined,
+        hairStyle: draft.hairStyle || undefined,
+        distinguishing: draft.distinguishing || undefined,
       });
       onCompleted?.();
     } catch (caughtError) {
@@ -248,7 +263,7 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
             ) : (
               <Text style={styles.primaryText}>
                 {chapter === chapters.length - 1
-                  ? "Receive first signal"
+                  ? "Receive first transmission"
                   : "Turn the page"}
               </Text>
             )}
@@ -277,7 +292,7 @@ function renderChapter(
           placeholder="Your name"
         />
         <Field
-          label="Where is the signal finding you?"
+          label="Where are you right now?"
           value={draft.city}
           onChangeText={(value) => updateDraft("city", value)}
           placeholder="City"
@@ -289,6 +304,26 @@ function renderChapter(
           onChangeText={(value) => updateDraft("currentChapter", value)}
           placeholder="A transition, a rebuild, a quiet beginning, a hard truth..."
           suggestions={chapterNudges.currentChapter}
+        />
+        <Text style={styles.optionLabel}>How would someone spot you in a crowd?</Text>
+        <Text style={styles.deferText}>Optional. Helps future-you look more like you.</Text>
+        <ChipGrid
+          values={skinToneValues}
+          selected={(draft.skinTone || "") as SkinTone | ""}
+          labels={skinToneLabels as Record<string, string>}
+          onSelect={(value) => updateDraft("skinTone", value === draft.skinTone ? "" : value)}
+        />
+        <ChipGrid
+          values={hairStyleValues}
+          selected={(draft.hairStyle || "") as HairStyle | ""}
+          labels={hairStyleLabels as Record<string, string>}
+          onSelect={(value) => updateDraft("hairStyle", value === draft.hairStyle ? "" : value)}
+        />
+        <ChipGrid
+          values={distinguishingValues}
+          selected={(draft.distinguishing || "") as Distinguishing | ""}
+          labels={distinguishingLabels as Record<string, string>}
+          onSelect={(value) => updateDraft("distinguishing", value === draft.distinguishing ? "" : value)}
         />
       </View>
     );
@@ -454,7 +489,7 @@ function ChipGrid<T extends string>({
 function getChapterTitle(chapter: number): string {
   const titles = [
     "Someone has been trying to reach you.",
-    "Tell the signal what you want and what you’re avoiding.",
+    "Tell future-you what you want and what you're avoiding.",
     "Choose the voice of your first reply.",
   ];
   return titles[chapter];
@@ -463,7 +498,7 @@ function getChapterTitle(chapter: number): string {
 function getChapterSubtitle(chapter: number): string {
   const subtitles = [
     "A transmission cannot find a stranger. Give it just enough texture to recognize you.",
-    "Keep it brief and honest. The first signal only needs the emotional direction, not your full autobiography.",
+    "Keep it brief and honest. Future-you only needs the emotional direction, not your full autobiography.",
     "We’ll start simple. The deeper settings can wait until after you feel the ritual work.",
   ];
   return subtitles[chapter];

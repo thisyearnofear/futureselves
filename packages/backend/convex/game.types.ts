@@ -47,6 +47,9 @@ export const personaReturnValidator = v.object({
   releaseCount: v.number(),
   repairCount: v.number(),
   unchosenVoices: v.array(castMemberValidator),
+  skinTone: v.optional(v.string()),
+  hairStyle: v.optional(v.string()),
+  distinguishing: v.optional(v.string()),
 });
 
 export const checkInReturnValidator = v.object({
@@ -267,6 +270,9 @@ export interface PersonaReturn {
   releaseCount: number;
   repairCount: number;
   unchosenVoices: Array<CastMember>;
+  skinTone?: string;
+  hairStyle?: string;
+  distinguishing?: string;
 }
 
 export interface CheckInReturn {

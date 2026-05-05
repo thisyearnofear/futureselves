@@ -46,6 +46,7 @@ import {
   RitualRefinementPrompt,
   StorySection,
   TransmissionSection,
+  YesterdayMoment,
 } from "@/components/futureself-home-sections";
 import {
   MemoryArchiveSection,
@@ -176,6 +177,7 @@ export function FutureselfHome({
   );
   const [selectedThreadId, setSelectedThreadId] =
     useState<Id<"narrativeThreads"> | null>(null);
+  const [yesterdayMomentDismissed, setYesterdayMomentDismissed] = useState(false);
   const [choiceOutcome, setChoiceOutcome] = useState<ChoiceOutcome | null>(
     null,
   );
@@ -341,7 +343,7 @@ export function FutureselfHome({
     if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: "Future Selves — A signal from the timeline",
+          title: "Future Selves — A transmission from the timeline",
           text: shareText,
         });
         setShareStatus("Shared");
@@ -455,6 +457,9 @@ export function FutureselfHome({
     age?: string;
     draining: string;
     significantDates: Array<string>;
+    skinTone?: string;
+    hairStyle?: string;
+    distinguishing?: string;
   }) {
     if (!persona) return;
 
@@ -476,6 +481,9 @@ export function FutureselfHome({
         voicePreset: inferVoicePresetFromSelectedVoice(persona.selectedVoiceName),
         futureChildOptIn: persona.futureChildOptIn,
         significantDates: values.significantDates,
+        skinTone: values.skinTone,
+        hairStyle: values.hairStyle,
+        distinguishing: values.distinguishing,
       });
       setProfilePromptDismissed(true);
       setShowProfileSheet(false);
@@ -486,7 +494,7 @@ export function FutureselfHome({
       const message =
         caught instanceof Error
           ? caught.message
-          : "Could not save your signal profile just now.";
+          : "Could not save your profile just now.";
       Alert.alert("Could not save profile", message);
     } finally {
       setIsSavingProfile(false);
@@ -514,7 +522,7 @@ export function FutureselfHome({
     setError(null);
     const trimmedWord = word.trim();
     if (!trimmedWord) {
-      setError("Give today one word first. It becomes the key in the signal.");
+      setError("Give today one word first. It becomes the seed for your transmission.");
       return;
     }
     setChoiceOutcome(null);
@@ -537,7 +545,7 @@ export function FutureselfHome({
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Could not receive today's signal.",
+          : "Could not receive today's transmission.",
       );
     } finally {
       setIsReceiving(false);
@@ -571,6 +579,34 @@ export function FutureselfHome({
           ? caught.message
           : "Could not save your note back just now.";
       Alert.alert("Could not save response", message);
+    } finally {
+      setIsSavingResponse(false);
+    }
+  }
+
+  const yesterdayTransmission = state.recentTransmissions[0];
+  const showYesterdayMoment =
+    !state.todayTransmission &&
+    !yesterdayMomentDismissed &&
+    state.yesterdayAccountability?.actionPrompt &&
+    yesterdayTransmission?.id &&
+    !yesterdayTransmission.response?.reaction;
+
+  async function handleYesterdayResponse(reaction: "did_it" | "not_quite" | "keep_close") {
+    if (!yesterdayTransmission?.id) return;
+    try {
+      setIsSavingResponse(true);
+      await saveTransmissionResponse({
+        transmissionId: yesterdayTransmission.id as Id<"transmissions">,
+        dateKey: yesterdayTransmission.dateKey,
+        reaction,
+      });
+      setYesterdayMomentDismissed(true);
+      if (Platform.OS !== "web") {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch {
+      setYesterdayMomentDismissed(true);
     } finally {
       setIsSavingResponse(false);
     }
@@ -620,7 +656,7 @@ export function FutureselfHome({
     await debugSetState({ clearToday: true });
     if (Platform.OS === "web") {
       window.alert(
-        `Demo voice locked: ${formatCastMember(castMember)}. Today's signal was cleared so you can receive it now.`,
+        `Demo voice locked: ${formatCastMember(castMember)}. Today's transmission was cleared so you can receive it now.`,
       );
     }
   }
@@ -734,6 +770,13 @@ export function FutureselfHome({
             transmissionArrivalGlowStyle={transmissionArrivalGlow}
             transmissionArrivalSweepStyle={transmissionArrivalSweep}
           />
+        ) : showYesterdayMoment ? (
+          <YesterdayMoment
+            actionPrompt={state.yesterdayAccountability!.actionPrompt}
+            isResponding={isSavingResponse}
+            onDismiss={() => setYesterdayMomentDismissed(true)}
+            onRespond={handleYesterdayResponse}
+          />
         ) : (
           <ReceiveSignalSection
             isReceiving={isReceiving}
@@ -773,7 +816,7 @@ export function FutureselfHome({
         {shouldShowProfilePrompt ? (
           <RitualRefinementPrompt
             body="A few extra details make later transmissions feel more grounded. Add what’s draining you, plus one date worth remembering."
-            buttonLabel="Complete signal profile"
+            buttonLabel="Complete your profile"
             onOpenSettings={() => setShowProfileSheet(true)}
             title="Ready to deepen the line?"
           />
@@ -808,7 +851,7 @@ export function FutureselfHome({
         {shouldShowStoryDepth ? (
           <View style={styles.memoryArchiveEntryRow}>
             <Text style={styles.memoryArchiveEntryCopy}>
-              Build a fuller memory practice with pinned signals and recent lines in one place.
+              Build a fuller memory practice with pinned transmissions and recent lines in one place.
             </Text>
             <Pressable
               onPress={() => router.push("./archive")}

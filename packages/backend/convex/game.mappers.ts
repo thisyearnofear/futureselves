@@ -44,6 +44,9 @@ export function toPersonaReturn(persona: {
   releaseCount?: number;
   repairCount?: number;
   unchosenVoices?: Array<CastMember>;
+  skinTone?: string;
+  hairStyle?: string;
+  distinguishing?: string;
 }): PersonaReturn {
   const unchosenVoices = persona.unchosenVoices ?? [];
 
@@ -79,6 +82,9 @@ export function toPersonaReturn(persona: {
     releaseCount: persona.releaseCount ?? 0,
     repairCount: persona.repairCount ?? 0,
     unchosenVoices,
+    skinTone: persona.skinTone,
+    hairStyle: persona.hairStyle,
+    distinguishing: persona.distinguishing,
   };
 }
 

@@ -6,6 +6,7 @@ import {
 } from "./voice";
 import { getCastDirection } from "./cast";
 import type { CastMember } from "../../domain/src";
+import { formatCastMember } from "../../domain/src";
 import type {
   GeneratedTransmission,
   GenerationContext,
@@ -116,17 +117,23 @@ export function buildPrompt(
     })
     .join("\n");
 
+  const yesterdayChoice = context.recentChoices[0];
   const yesterdayCliffhanger = context.recentTransmissions[0]?.cliffhanger;
+  const yesterdayActionPrompt = context.recentTransmissions[0]?.actionPrompt;
   const yesterdayReaction = context.recentResponses[0]?.reaction;
   const yesterdayReply = context.recentResponses[0]?.replyNote;
   const accountabilityBlock = buildAccountabilityBlock(
+    yesterdayChoice,
     yesterdayCliffhanger,
+    yesterdayActionPrompt,
     yesterdayReaction,
     yesterdayReply,
   );
 
   const continuityInstruction = buildContinuityInstruction(context);
   const voiceDistinctionInstruction = getVoiceDistinctionInstruction(castMember);
+  const threadsBlock = buildThreadsBlock(context.openThreads);
+  const patternsBlock = buildPatternsBlock(context);
 
   return `Create today's futureself transmission as JSON only.
 
@@ -157,6 +164,10 @@ Recent signal responses:
 ${recentResponses || "none"}
 
 ${accountabilityBlock}
+
+${threadsBlock}
+
+${patternsBlock}
 
 Continuity priorities:
 ${continuityInstruction}
@@ -250,14 +261,34 @@ export async function synthesizeTransmissionAudio(params: {
 }
 
 function buildAccountabilityBlock(
+  yesterdayChoice?: { dateKey: string; choice: string; prompt: string },
   yesterdayCliffhanger?: string,
+  yesterdayActionPrompt?: string,
   yesterdayReaction?: string,
   yesterdayReply?: string,
 ): string {
-  if (!yesterdayCliffhanger) return "";
+  if (!yesterdayCliffhanger && !yesterdayChoice) return "";
 
   const parts = ["Yesterday's accountability:"];
-  parts.push(`- Yesterday's cliffhanger promised: "${yesterdayCliffhanger}"`);
+
+  if (yesterdayChoice) {
+    const choiceLabels: Record<string, string> = {
+      toward: "moving toward something brave",
+      steady: "holding steady where they are",
+      release: "letting something go",
+      repair: "repairing a thread that matters",
+    };
+    const choiceLabel = choiceLabels[yesterdayChoice.choice] ?? yesterdayChoice.choice;
+    parts.push(`- Yesterday they chose: ${choiceLabel}.`);
+  }
+
+  if (yesterdayActionPrompt) {
+    parts.push(`- Yesterday's action was: "${yesterdayActionPrompt}"`);
+  }
+
+  if (yesterdayCliffhanger) {
+    parts.push(`- Yesterday's cliffhanger promised: "${yesterdayCliffhanger}"`);
+  }
 
   if (yesterdayReaction === "did_it") {
     parts.push("- The player followed through. Acknowledge this specifically — what they did changed something. Tell them what shifts now.");
@@ -323,6 +354,71 @@ function getVoiceDistinctionInstruction(castMember: CastMember) {
     default:
       return "Voice texture: clear, intimate, emotionally precise. It should sound unmistakably human and particular.";
   }
+}
+
+function buildThreadsBlock(
+  openThreads: Array<{ title: string; seed: string; castMember: CastMember }>,
+): string {
+  if (openThreads.length === 0) return "";
+
+  const lines = ["Open narrative threads (the player's ongoing storylines):"];
+  for (const thread of openThreads) {
+    lines.push(`- "${thread.title}" (seeded by ${formatCastMember(thread.castMember)}: "${thread.seed}")`);
+  }
+  lines.push(
+    "- If relevant to today's word or choice, reference a thread by name. This makes the transmission feel like a continuing story, not a standalone message.",
+  );
+  return lines.join("\n");
+}
+
+function buildPatternsBlock(context: GenerationContext): string {
+  const parts: string[] = [];
+
+  const { towardCount, steadyCount, releaseCount, repairCount, streak, timelineDivergenceScore } =
+    context.persona;
+
+  const total = (towardCount ?? 0) + (steadyCount ?? 0) + (releaseCount ?? 0) + (repairCount ?? 0);
+  if (total >= 3) {
+    const dominant = getDominantChoice(
+      towardCount ?? 0,
+      steadyCount ?? 0,
+      releaseCount ?? 0,
+      repairCount ?? 0,
+    );
+    const dominantLabels: Record<string, string> = {
+      toward: "They keep reaching forward — more toward than any other direction.",
+      steady: "They keep holding ground — steady is their default when uncertain.",
+      release: "They keep letting go — release is how they process difficulty.",
+      repair: "They keep returning to fix things — repair is their instinct when things fray.",
+    };
+    parts.push(`Choice pattern: ${dominantLabels[dominant]}`);
+  }
+
+  if (streak && streak >= 3) {
+    parts.push(
+      `Streak: ${streak} consecutive days. The ritual is becoming part of their rhythm. Notice this without making it about the streak itself.`,
+    );
+  }
+
+  if (timelineDivergenceScore && timelineDivergenceScore >= 3) {
+    parts.push(
+      "Timeline divergence is high. Their choices are actively reshaping the future. The transmission should feel the weight of that momentum.",
+    );
+  }
+
+  if (parts.length === 0) return "";
+
+  return ["Behavioral context:"].concat(parts).join("\n");
+}
+
+function getDominantChoice(
+  toward: number,
+  steady: number,
+  release: number,
+  repair: number,
+): string {
+  const counts = { toward, steady, release, repair };
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
 }
 
 function reactionMemoryLead(

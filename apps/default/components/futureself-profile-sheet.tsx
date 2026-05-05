@@ -10,12 +10,23 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { PersonaState } from "@/lib/futureself";
+import type { Distinguishing, HairStyle, PersonaState, SkinTone } from "@/lib/futureself";
+import {
+  distinguishingLabels,
+  distinguishingValues,
+  hairStyleLabels,
+  hairStyleValues,
+  skinToneLabels,
+  skinToneValues,
+} from "@/lib/futureself";
 
 interface ProfileRefinementValues {
   age?: string;
   draining: string;
   significantDates: Array<string>;
+  skinTone?: string;
+  hairStyle?: string;
+  distinguishing?: string;
 }
 
 interface FutureselfProfileSheetProps {
@@ -36,12 +47,18 @@ export function FutureselfProfileSheet({
   const [age, setAge] = useState("");
   const [draining, setDraining] = useState("");
   const [significantDate, setSignificantDate] = useState("");
+  const [skinTone, setSkinTone] = useState("");
+  const [hairStyle, setHairStyle] = useState("");
+  const [distinguishing, setDistinguishing] = useState("");
 
   useEffect(() => {
     if (!visible || !persona) return;
     setAge(persona.age ?? "");
     setDraining(persona.draining);
     setSignificantDate(persona.significantDates[0] ?? "");
+    setSkinTone(persona.skinTone ?? "");
+    setHairStyle(persona.hairStyle ?? "");
+    setDistinguishing(persona.distinguishing ?? "");
   }, [visible, persona]);
 
   if (!persona) return null;
@@ -51,6 +68,9 @@ export function FutureselfProfileSheet({
       age: age.trim() || undefined,
       draining: draining.trim(),
       significantDates: significantDate.trim() ? [significantDate.trim()] : [],
+      skinTone: skinTone || undefined,
+      hairStyle: hairStyle || undefined,
+      distinguishing: distinguishing || undefined,
     });
   }
 
@@ -63,11 +83,11 @@ export function FutureselfProfileSheet({
         <View style={styles.sheet}>
           <View style={styles.header}>
             <View style={styles.headerCopy}>
-              <Text style={styles.eyebrow}>Signal profile</Text>
+              <Text style={styles.eyebrow}>Your profile</Text>
               <Text style={styles.title}>Give future-you a little more context.</Text>
               <Text style={styles.copy}>
-                Now that the ritual has started, you can deepen the signal with a
-                few optional details without reopening onboarding.
+                Now that the ritual has started, you can add a few optional details
+                to make future transmissions feel more grounded.
               </Text>
             </View>
             <Pressable onPress={onClose} style={styles.closeButton}>
@@ -89,6 +109,28 @@ export function FutureselfProfileSheet({
               placeholder="Optional"
               value={age}
             />
+            <View style={styles.chipSection}>
+              <Text style={styles.label}>How would someone spot you in a crowd?</Text>
+              <Text style={styles.chipHint}>Optional. Helps future-you look more like you.</Text>
+              <ChipRow
+                values={skinToneValues}
+                selected={skinTone as SkinTone | ""}
+                labels={skinToneLabels as Record<string, string>}
+                onSelect={(v) => setSkinTone(v === skinTone ? "" : v)}
+              />
+              <ChipRow
+                values={hairStyleValues}
+                selected={hairStyle as HairStyle | ""}
+                labels={hairStyleLabels as Record<string, string>}
+                onSelect={(v) => setHairStyle(v === hairStyle ? "" : v)}
+              />
+              <ChipRow
+                values={distinguishingValues}
+                selected={distinguishing as Distinguishing | ""}
+                labels={distinguishingLabels as Record<string, string>}
+                onSelect={(v) => setDistinguishing(v === distinguishing ? "" : v)}
+              />
+            </View>
             <Field
               label="What has been draining you lately?"
               multiline
@@ -123,7 +165,7 @@ export function FutureselfProfileSheet({
               {isSaving ? (
                 <ActivityIndicator color="#101320" />
               ) : (
-                <Text style={styles.primaryText}>Save signal profile</Text>
+                <Text style={styles.primaryText}>Save profile</Text>
               )}
             </Pressable>
           </View>
@@ -158,6 +200,34 @@ function Field({
         textAlignVertical={multiline ? "top" : "center"}
         value={value}
       />
+    </View>
+  );
+}
+
+function ChipRow<T extends string>({
+  values,
+  selected,
+  labels,
+  onSelect,
+}: {
+  values: ReadonlyArray<T>;
+  selected: T | "";
+  labels: Record<string, string>;
+  onSelect: (value: T) => void;
+}) {
+  return (
+    <View style={styles.chipRow}>
+      {values.map((value) => (
+        <Pressable
+          key={value}
+          onPress={() => onSelect(value)}
+          style={[styles.chip, selected === value && styles.chipActive]}
+        >
+          <Text style={[styles.chipText, selected === value && styles.chipTextActive]}>
+            {labels[value]}
+          </Text>
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -303,5 +373,38 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.8,
     transform: [{ scale: 0.99 }],
+  },
+  chipSection: {
+    gap: 10,
+  },
+  chipHint: {
+    color: "#AEB6D4",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  chip: {
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  chipActive: {
+    backgroundColor: "rgba(247,211,139,0.18)",
+    borderColor: "rgba(247,211,139,0.45)",
+  },
+  chipText: {
+    color: "#AEB6D4",
+    fontWeight: "800",
+    fontSize: 13,
+  },
+  chipTextActive: {
+    color: "#F7D38B",
   },
 });

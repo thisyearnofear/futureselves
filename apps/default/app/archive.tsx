@@ -46,7 +46,7 @@ export default function ArchiveScreen() {
         <Text style={styles.archiveEyebrow}>Memory archive</Text>
         <Text style={styles.archiveTitle}>Keep the line close.</Text>
         <Text style={styles.archiveBody}>
-          Pinned signals stay near the surface, recent ones keep the timeline feeling alive,
+          Pinned transmissions stay near the surface, recent ones keep the timeline feeling alive,
           and every saved line remains easy to reopen.
         </Text>
         <View style={styles.archiveStatsRow}>

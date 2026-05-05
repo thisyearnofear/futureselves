@@ -55,10 +55,10 @@ export function MemoryArchiveSection({
 
   const headerCopy =
     filter === "pinned"
-      ? "Signals you chose to keep in reach."
+      ? "Transmissions you chose to keep in reach."
       : filter === "recent"
         ? "Recent lines that have not been pinned yet."
-        : "The line remembers what it already said. Reopen a signal, or pin one that should stay close.";
+        : "The line remembers what it already said. Reopen a transmission, or pin one that should stay close.";
 
   return (
     <Animated.View entering={FadeInUp.duration(260)} style={styles.memoryCard}>
@@ -68,7 +68,7 @@ export function MemoryArchiveSection({
             <Ionicons name="bookmark-outline" size={15} color="#F7D38B" />
           </View>
           <View style={styles.memoryCopy}>
-            <Text style={styles.sectionTitle}>Signal archive</Text>
+            <Text style={styles.sectionTitle}>Archive</Text>
             <Text style={styles.sectionCopy}>{headerCopy}</Text>
           </View>
         </View>
@@ -126,12 +126,12 @@ export function MemoryArchiveSection({
         <View style={styles.memoryEmptyState}>
           <Ionicons name="sparkles-outline" size={18} color="#8F96B4" />
           <Text style={styles.memoryEmptyTitle}>
-            {filter === "pinned" ? "No pinned signals yet." : "No unpinned signals right now."}
+            {filter === "pinned" ? "No pinned transmissions yet." : "No unpinned transmissions right now."}
           </Text>
           <Text style={styles.memoryEmptyBody}>
             {filter === "pinned"
-              ? "Bookmark a signal to keep it near the top of your archive."
-              : "Pinned signals stay close. New arrivals will appear here as the line grows."}
+              ? "Bookmark a transmission to keep it near the top of your archive."
+              : "Pinned transmissions stay close. New arrivals will appear here as the line grows."}
           </Text>
         </View>
       ) : (
@@ -152,7 +152,7 @@ export function MemoryArchiveSection({
                 <View style={styles.memoryMetaRow}>
                   <View style={styles.memoryLabelRow}>
                     <Text style={styles.memoryIndex}>
-                      {isPinned ? "Pinned" : "Signal"} {String(index + 1).padStart(2, "0")}
+                      {isPinned ? "Pinned" : "Transmission"} {String(index + 1).padStart(2, "0")}
                     </Text>
                     {isPinned ? (
                       <View style={styles.memoryPinnedBadge}>
@@ -202,7 +202,7 @@ export function MemoryArchiveSection({
                     {transmission.cliffhanger}
                   </Text>
                   <Text style={styles.memoryExpandHint}>
-                    {isExpanded ? "Tap to close the signal." : "Tap to reopen the signal."}
+                    {isExpanded ? "Tap to close." : "Tap to reopen."}
                   </Text>
                   {isExpanded ? (
                     <View style={styles.memoryExpandedContent}>

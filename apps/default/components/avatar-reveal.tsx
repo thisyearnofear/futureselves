@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   FadeIn,
+  ZoomIn,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -69,6 +70,20 @@ export function AvatarReveal({ castMember, size = 200 }: AvatarRevealProps) {
     opacity: pulse.value,
   }));
 
+  const glowOpacity = useSharedValue(0);
+  useEffect(() => {
+    if (avatar?.url) {
+      glowOpacity.value = withSequence(
+        withTiming(0.35, { duration: 300 }),
+        withTiming(0, { duration: 800 }),
+      );
+    }
+  }, [avatar?.url, glowOpacity]);
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value,
+  }));
+
   const borderRadius = size / 2;
   const imageSource = avatar?.url
     ? { uri: avatar.url }
@@ -86,6 +101,17 @@ export function AvatarReveal({ castMember, size = 200 }: AvatarRevealProps) {
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
+      <Animated.View
+        style={[
+          styles.glowRing,
+          {
+            width: size + 16,
+            height: size + 16,
+            borderRadius: (size + 16) / 2,
+          },
+          glowStyle,
+        ]}
+      />
       <View
         style={[
           styles.silhouette,
@@ -94,7 +120,7 @@ export function AvatarReveal({ castMember, size = 200 }: AvatarRevealProps) {
         ]}
       />
       {imageSource ? (
-        <Animated.View entering={FadeIn.duration(600).easing(Easing.out(Easing.cubic))}>
+        <Animated.View entering={ZoomIn.duration(500).springify().damping(12).stiffness(80)}>
           <Image
             source={imageSource}
             style={[
@@ -131,6 +157,12 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  glowRing: {
+    position: "absolute",
+    backgroundColor: "transparent",
+    borderWidth: 2,
+    borderColor: "rgba(247, 211, 139, 0.4)",
   },
   silhouette: {
     position: "absolute",

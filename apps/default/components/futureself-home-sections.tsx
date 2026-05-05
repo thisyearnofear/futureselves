@@ -71,7 +71,7 @@ export function HeroSection({
         <Pressable disabled={!isDebugMode} onPress={onDebugTap}>
           <View style={styles.signalBadge}>
             <View style={styles.liveDot} />
-            <Text style={styles.signalBadgeText}>daily signal</Text>
+            <Text style={styles.signalBadgeText}>daily</Text>
           </View>
         </Pressable>
         <Pressable onPress={onOpenSettings} style={styles.settingsEntry}>
@@ -86,7 +86,7 @@ export function HeroSection({
       <Text style={styles.heroCopy}>
         {hasTransmissionToday
           ? "Make one small choice. Tomorrow responds."
-          : "Give today one word. The signal will find the rest."}
+          : "One word. Your future self will do the rest."}
       </Text>
 
       {isDebugMode && forcedCastMember ? (
@@ -168,7 +168,7 @@ export function TransmissionSection({
           <Text style={styles.accountabilityText}>
             {yesterdayAccountability.followedThrough
               ? "Yesterday you followed through. The line remembers."
-              : "Yesterday's signal is still waiting for a move."}
+              : "Yesterday's transmission is still waiting for a response."}
           </Text>
         </Animated.View>
       ) : null}
@@ -229,7 +229,7 @@ export function TransmissionSection({
               entering={FadeInUp.delay(180).duration(320)}
               style={styles.transmissionArrivalTitle}
             >
-              {transmission.audioUrl ? "The voice has arrived." : "The signal has landed."}
+              {transmission.audioUrl ? "The voice has arrived." : "The transmission has arrived."}
             </Animated.Text>
             <Animated.Text
               entering={FadeInUp.delay(260).duration(340)}
@@ -249,12 +249,81 @@ export function TransmissionSection({
           style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}
         >
           <Ionicons name="share-outline" size={18} color="#F7D38B" />
-          <Text style={styles.shareButtonText}>{shareStatus ?? "Share this signal"}</Text>
+          <Text style={styles.shareButtonText}>{shareStatus ?? "Share this moment"}</Text>
         </Pressable>
       </Animated.View>
     </>
   );
 }
+
+// ─── Yesterday Moment ────────────────────────────────────────────────────────
+
+interface YesterdayMomentProps {
+  actionPrompt: string;
+  onRespond: (reaction: "did_it" | "not_quite" | "keep_close") => void;
+  onDismiss: () => void;
+  isResponding: boolean;
+}
+
+export function YesterdayMoment({
+  actionPrompt,
+  onRespond,
+  onDismiss,
+  isResponding,
+}: YesterdayMomentProps) {
+  return (
+    <Animated.View
+      entering={Platform.OS === "web" ? undefined : FadeInUp.duration(320)}
+      style={styles.yesterdayCard}
+    >
+      <View style={styles.yesterdayHeader}>
+        <Ionicons name="arrow-back-circle-outline" size={18} color="#F7D38B" />
+        <Text style={styles.yesterdayEyebrow}>Yesterday</Text>
+      </View>
+      <Text style={styles.yesterdayAction}>{actionPrompt}</Text>
+      <Text style={styles.yesterdayQuestion}>Did you follow through?</Text>
+      <View style={styles.yesterdayButtons}>
+        <Pressable
+          disabled={isResponding}
+          onPress={() => onRespond("did_it")}
+          style={({ pressed }) => [
+            styles.yesterdayButton,
+            styles.yesterdayButtonPrimary,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Ionicons name="checkmark-circle-outline" size={16} color="#101320" />
+          <Text style={styles.yesterdayButtonTextPrimary}>I did it</Text>
+        </Pressable>
+        <Pressable
+          disabled={isResponding}
+          onPress={() => onRespond("not_quite")}
+          style={({ pressed }) => [
+            styles.yesterdayButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.yesterdayButtonText}>Not quite</Text>
+        </Pressable>
+        <Pressable
+          disabled={isResponding}
+          onPress={() => onRespond("keep_close")}
+          style={({ pressed }) => [
+            styles.yesterdayButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.yesterdayButtonText}>Keeping it close</Text>
+        </Pressable>
+      </View>
+      <Pressable onPress={onDismiss} style={styles.yesterdayDismiss}>
+        <Text style={styles.yesterdayDismissText}>Skip for now</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+// ─── Receive Signal Section ──────────────────────────────────────────────────
 
 interface ReceiveSignalSectionProps {
   isReceiving: boolean;
@@ -538,9 +607,9 @@ export function WeeklyReflectionSection({ transmissions, persona }: WeeklyReflec
   const weekLabel = didIts >= 3
     ? "You moved the line forward most days this week."
     : keepCloses >= 3
-      ? "You kept the important signals close."
+      ? "You kept the important transmissions close."
       : landed >= 3
-        ? "The signals are landing. The line is learning your frequency."
+        ? "The transmissions are landing. The line is learning your frequency."
         : "The line is still finding your rhythm.";
 
   return (
@@ -595,7 +664,7 @@ export function ProgressionSection({
       <View style={styles.unlockHeader}>
         <Text style={styles.sectionTitle}>A voice is moving closer.</Text>
         <Text style={styles.sectionCopy}>
-          You do not need the whole map yet. One nearby signal is enough.
+          You do not need the whole map yet. One nearby voice is enough.
         </Text>
       </View>
 
@@ -705,7 +774,7 @@ interface RitualRefinementPromptProps {
 }
 
 export function RitualRefinementPrompt({
-  title = "Your first signal is in motion.",
+  title = "Your first transmission is in motion.",
   body = "Refine the ritual when you’re ready: voice tone, timeline depth, and rare-voice consent now live in settings.",
   buttonLabel = "Refine your ritual",
   onOpenSettings,

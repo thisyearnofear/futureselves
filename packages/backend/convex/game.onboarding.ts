@@ -23,6 +23,9 @@ export interface OnboardingArgs {
   firstVoice: CastMember;
   futureChildOptIn: boolean;
   significantDates: Array<string>;
+  skinTone?: string;
+  hairStyle?: string;
+  distinguishing?: string;
 }
 
 export function extractTerms(text: string): Array<string> {
@@ -107,6 +110,9 @@ export function buildOnboardingPayload({
     releaseCount: existing?.releaseCount ?? 0,
     repairCount: existing?.repairCount ?? 0,
     unchosenVoices,
+    skinTone: args.skinTone?.trim() || undefined,
+    hairStyle: args.hairStyle?.trim() || undefined,
+    distinguishing: args.distinguishing?.trim() || undefined,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };

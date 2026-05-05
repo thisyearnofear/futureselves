@@ -61,6 +61,9 @@ export const completeOnboarding = authMutation({
     ),
     futureChildOptIn: v.boolean(),
     significantDates: v.array(v.string()),
+    skinTone: v.optional(v.string()),
+    hairStyle: v.optional(v.string()),
+    distinguishing: v.optional(v.string()),
   },
   returns: v.id("personas"),
   handler: async (ctx, args) => {

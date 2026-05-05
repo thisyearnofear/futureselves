@@ -190,34 +190,60 @@ export const DEGRADED_CAST_MEMBERS: ReadonlySet<CastMember> = new Set([
   "the_dissolver",
 ]);
 
-export function buildAvatarPrompt(castMember: CastMember): string | null {
+export interface AvatarAppearance {
+  skinTone?: string;
+  hairStyle?: string;
+  distinguishing?: string;
+}
+
+export function buildAvatarPrompt(
+  castMember: CastMember,
+  appearance?: AvatarAppearance,
+): string | null {
   if (NO_IMAGE_CAST_MEMBERS.has(castMember)) return null;
 
   const profile = ARCHETYPE_VISUAL_PROFILES[castMember];
 
+  const appearanceLine = appearance?.skinTone
+    ? `The person has ${appearance.skinTone} skin${
+        appearance.hairStyle ? `, ${appearance.hairStyle} hair` : ""
+      }${
+        appearance.distinguishing && appearance.distinguishing !== "none"
+          ? `, and ${appearance.distinguishing}`
+          : ""
+      }.`
+    : "";
+
   if (castMember === "the_ghost") {
     return [
       `Ghostly, translucent portrait of ${profile.description}.`,
+      appearanceLine,
       profile.mood,
       profile.lighting,
       profile.palette,
       "Overexposed, ethereal, barely visible. The face is there but not quite.",
       "High quality, painterly, atmospheric.",
-    ].join(" ");
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
 
   if (castMember === "the_dissolver") {
     return [
       "A portrait dissolving at the edges, watercolor quality.",
       `${profile.description}. ${profile.mood}.`,
+      appearanceLine,
       `${profile.lighting}. ${profile.palette}.`,
       "The subject is present but their edges bleed into the background.",
       "High quality, artistic, atmospheric.",
-    ].join(" ");
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
 
   return [
     `Portrait of ${profile.description}.`,
+    appearanceLine,
     `Expression: ${profile.mood}.`,
     `Lighting: ${profile.lighting}.`,
     `Color palette: ${profile.palette}.`,
@@ -226,5 +252,7 @@ export function buildAvatarPrompt(castMember: CastMember): string | null {
     "High quality, photographic, emotionally resonant, professional portrait photography.",
     "The face should feel like a real person — specific, not generic.",
     "Aspect ratio 1:1, centered composition.",
-  ].join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 }

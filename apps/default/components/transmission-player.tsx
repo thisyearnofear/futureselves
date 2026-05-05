@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import React from "react";
 import {
   ActivityIndicator,
@@ -10,7 +10,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
@@ -20,22 +19,17 @@ import AnimatedReanimated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
+  withSequence,
   withTiming,
   Easing,
   FadeInUp,
+  FadeIn,
 } from "react-native-reanimated";
-import type { TransmissionState } from "@/lib/futureself";
+import type { CastMember, TransmissionState } from "@/lib/futureself";
 import { formatCastMember } from "@/lib/futureself";
 import { AvatarReveal } from "@/components/avatar-reveal";
 
-interface TransmissionPlayerProps {
-  transmission: TransmissionState;
-  isSavingResponse: boolean;
-  onSaveResponse: (payload: {
-    reaction?: "landed" | "not_quite" | "did_it" | "keep_close";
-    replyNote?: string;
-  }) => Promise<void>;
-}
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const reactionOptions: Array<{
   key: "landed" | "not_quite" | "did_it" | "keep_close";
@@ -47,6 +41,70 @@ const reactionOptions: Array<{
   { key: "did_it", label: "I did it", icon: "checkmark-circle-outline" },
   { key: "keep_close", label: "Keep close", icon: "bookmark-outline" },
 ];
+
+const AURA_COLORS: Partial<Record<CastMember, string>> = {
+  future_self: "rgba(247,211,139,0.25)",
+  future_partner: "rgba(244,164,170,0.25)",
+  future_mentor: "rgba(160,180,210,0.25)",
+  future_best_friend: "rgba(210,180,140,0.25)",
+  shadow: "rgba(120,80,160,0.3)",
+  alternate_self: "rgba(180,160,220,0.25)",
+  future_employee: "rgba(220,220,240,0.2)",
+  future_child: "rgba(200,180,220,0.2)",
+  the_ceiling: "rgba(180,180,170,0.2)",
+  the_ghost: "rgba(220,220,220,0.15)",
+  the_dissolver: "rgba(200,200,220,0.15)",
+};
+
+const DEFAULT_AURA = "rgba(247,211,139,0.2)";
+
+const ambientAssets: Record<string, number> = {
+  future_self: require("@/assets/audio/room-tone.mp3"),
+  future_partner: require("@/assets/audio/tender-pads.mp3"),
+  future_mentor: require("@/assets/audio/spacious-hum.mp3"),
+  shadow: require("@/assets/audio/shadow-wind.mp3"),
+  alternate_self: require("@/assets/audio/uncanny-resonance.mp3"),
+};
+const defaultAmbient: number = require("@/assets/audio/room-tone.mp3");
+
+// ─── Arrival Phases ──────────────────────────────────────────────────────────
+
+type ArrivalPhase = "liminal" | "gathering" | "whisper" | "reveal" | "complete";
+
+const PHASE_DURATIONS: Record<Exclude<ArrivalPhase, "complete">, number> = {
+  liminal: 2800,
+  gathering: 4200,
+  whisper: 5000,
+  reveal: 0,
+};
+
+const PHASE_LINES: Record<Exclude<ArrivalPhase, "complete">, string> = {
+  liminal: "Someone is reaching back\u2026",
+  gathering: "",
+  whisper: "",
+  reveal: "",
+};
+
+const GATHERING_LINES: Record<string, string> = {
+  future_self: "Your future self is composing a thought\u2026",
+  future_partner: "Someone close is thinking of you\u2026",
+  future_mentor: "A voice of experience is forming\u2026",
+  shadow: "Something honest is gathering\u2026",
+  alternate_self: "A different version is reaching\u2026",
+};
+
+const DEFAULT_GATHERING = "Your future self is composing\u2026";
+
+// ─── TransmissionPlayer ──────────────────────────────────────────────────────
+
+interface TransmissionPlayerProps {
+  transmission: TransmissionState;
+  isSavingResponse: boolean;
+  onSaveResponse: (payload: {
+    reaction?: "landed" | "not_quite" | "did_it" | "keep_close";
+    replyNote?: string;
+  }) => Promise<void>;
+}
 
 export function TransmissionPlayer({
   transmission,
@@ -62,11 +120,13 @@ export function TransmissionPlayer({
     setIsReplyOpen(Boolean(transmission.response?.replyNote));
   }, [transmission.response?.replyNote]);
 
+  const isInArrival = transmission.status === "generating" || transmission.status === "text_ready";
+
   const statusLabel = useMemo(() => {
     if (transmission.audioUrl) return "transmission";
-    if (transmission.status === "text_ready") return "message delivered";
-    if (transmission.status === "generating") return "signal arriving";
-    return "text signal";
+    if (transmission.status === "text_ready") return "words ready";
+    if (transmission.status === "generating") return "composing";
+    return "text only";
   }, [transmission.audioUrl, transmission.status]);
 
   const driftY = useSharedValue(0);
@@ -81,6 +141,19 @@ export function TransmissionPlayer({
     transform: [{ translateY: driftY.value }],
   }));
 
+  const dotPulse = useSharedValue(1);
+  useEffect(() => {
+    dotPulse.value = withRepeat(
+      withSequence(
+        withTiming(0.35, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      false,
+    );
+  }, []);
+  const dotStyle = useAnimatedStyle(() => ({ opacity: dotPulse.value }));
+
   return (
     <LinearGradient
       colors={["rgba(246,240,222,0.12)", "rgba(247,211,139,0.04)", "rgba(16,19,32,0.15)"]}
@@ -92,40 +165,55 @@ export function TransmissionPlayer({
         <AvatarReveal castMember={transmission.castMember} size={180} />
         <View style={styles.headerCopy}>
           <Text style={styles.cast}>{formatCastMember(transmission.castMember)}</Text>
-          <Text style={styles.title}>{transmission.title}</Text>
+          {isInArrival ? null : (
+            <Text style={styles.title}>{transmission.title}</Text>
+          )}
         </View>
         <View style={styles.livePill}>
-          <View style={styles.liveDot} />
+          <AnimatedReanimated.View style={[styles.liveDot, dotStyle]} />
           <Text style={styles.liveText}>{statusLabel}</Text>
         </View>
       </AnimatedReanimated.View>
 
-      <AnimatedReanimated.View entering={FadeInUp.delay(80).duration(260)}>
-        {transmission.audioUrl ? (
-          <AudioPlayer
-            audioUrl={transmission.audioUrl}
-            title={transmission.title}
-            castMember={transmission.castMember}
-            transmission={transmission}
-          />
-        ) : (
-          <TransmissionFallback status={transmission.status} />
-        )}
-      </AnimatedReanimated.View>
+      {isInArrival ? (
+        <ArrivalSequence
+          status={transmission.status}
+          castMember={transmission.castMember}
+          title={transmission.title}
+          text={transmission.text}
+          cliffhanger={transmission.cliffhanger}
+          audioUrl={transmission.audioUrl}
+        />
+      ) : (
+        <>
+          {transmission.audioUrl ? (
+            <AnimatedReanimated.View entering={FadeIn.duration(500)}>
+              <AudioPlayer
+                audioUrl={transmission.audioUrl}
+                title={transmission.title}
+                castMember={transmission.castMember}
+                transmission={transmission}
+              />
+            </AnimatedReanimated.View>
+          ) : (
+            <TextOnlyNotice />
+          )}
 
-      <AnimatedReanimated.Text entering={FadeInUp.delay(160).duration(280)} style={styles.body}>
-        {transmission.text}
-      </AnimatedReanimated.Text>
-      <AnimatedReanimated.View
-        entering={FadeInUp.delay(240).duration(280)}
-        style={[styles.cliffhangerCard, cliffhangerDrift]}
-      >
-        <Ionicons name="moon" size={17} color="#F7D38B" />
-        <Text style={styles.cliffhanger}>{transmission.cliffhanger}</Text>
-      </AnimatedReanimated.View>
+          <AnimatedReanimated.Text entering={FadeInUp.delay(80).duration(280)} style={styles.body}>
+            {transmission.text}
+          </AnimatedReanimated.Text>
+          <AnimatedReanimated.View
+            entering={FadeInUp.delay(160).duration(280)}
+            style={[styles.cliffhangerCard, cliffhangerDrift]}
+          >
+            <Ionicons name="moon" size={17} color="#F7D38B" />
+            <Text style={styles.cliffhanger}>{transmission.cliffhanger}</Text>
+          </AnimatedReanimated.View>
+        </>
+      )}
 
       {transmission.continuity?.rewardLabel ? (
-        <AnimatedReanimated.View entering={FadeInUp.delay(320).duration(260)} style={styles.rewardBadge}>
+        <AnimatedReanimated.View entering={FadeInUp.delay(200).duration(260)} style={styles.rewardBadge}>
           <Ionicons name="sparkles" size={12} color="#C8A84B" />
           <Text style={styles.rewardBadgeText}>{transmission.continuity.rewardLabel}</Text>
         </AnimatedReanimated.View>
@@ -136,7 +224,7 @@ export function TransmissionPlayer({
           onPress={() => router.push("/archive" as never)}
           style={({ pressed }) => pressed && styles.pressed}
         >
-          <AnimatedReanimated.View entering={FadeInUp.delay(320).duration(260)} style={styles.memoryBanner}>
+          <AnimatedReanimated.View entering={FadeInUp.delay(200).duration(260)} style={styles.memoryBanner}>
             <Ionicons name="git-commit-outline" size={13} color="#A0B4D0" />
             <Text style={styles.memoryBannerText}>
               <Text style={styles.memoryBannerTitle}>{transmission.memory.resurfacedTitle}</Text>
@@ -149,8 +237,8 @@ export function TransmissionPlayer({
         </Pressable>
       ) : null}
 
-      <AnimatedReanimated.View entering={FadeInUp.delay(400).duration(280)} style={styles.responseCard}>
-        <Text style={styles.responseTitle}>Answer the signal back.</Text>
+      <AnimatedReanimated.View entering={FadeInUp.delay(240).duration(280)} style={styles.responseCard}>
+        <Text style={styles.responseTitle}>Write back to yourself.</Text>
         <Text style={styles.responseCopy}>
           Let the line become a correspondence, not just a message.
         </Text>
@@ -245,6 +333,252 @@ export function TransmissionPlayer({
   );
 }
 
+// ─── Arrival Sequence ────────────────────────────────────────────────────────
+
+interface ArrivalSequenceProps {
+  status: TransmissionState["status"];
+  castMember: CastMember;
+  title: string;
+  text: string;
+  cliffhanger: string;
+  audioUrl: string | null;
+}
+
+function ArrivalSequence({
+  status,
+  castMember,
+  title,
+  text,
+  cliffhanger,
+}: ArrivalSequenceProps) {
+  const [phase, setPhase] = useState<ArrivalPhase>("liminal");
+  const [whisperText, setWhisperText] = useState("");
+  const [typewriterPos, setTypewriterPos] = useState(0);
+  const phaseRef = useRef<ArrivalPhase>("liminal");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const whisperTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const auraColor = AURA_COLORS[castMember] ?? DEFAULT_AURA;
+
+  // Breathing orb animation
+  const orbPulse = useSharedValue(1);
+  const orbGlow = useSharedValue(0.3);
+  useEffect(() => {
+    if (phase === "reveal" || phase === "complete") {
+      orbPulse.value = withTiming(1.1, { duration: 400 });
+      orbGlow.value = withTiming(0, { duration: 600 });
+    } else {
+      const speed = phase === "liminal" ? 1400 : 900;
+      orbPulse.value = withRepeat(
+        withSequence(
+          withTiming(0.82, { duration: speed, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1, { duration: speed, easing: Easing.inOut(Easing.quad) }),
+        ),
+        -1,
+        false,
+      );
+      orbGlow.value = withRepeat(
+        withSequence(
+          withTiming(0.55, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0.2, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        true,
+      );
+    }
+  }, [phase, orbPulse, orbGlow]);
+
+  const orbStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: orbPulse.value }],
+    opacity: orbGlow.value,
+  }));
+
+  // Aura glow during gathering
+  const auraOpacity = useSharedValue(0);
+  useEffect(() => {
+    if (phase === "gathering") {
+      auraOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.6, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0.2, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        true,
+      );
+    } else {
+      auraOpacity.value = withTiming(0, { duration: 400 });
+    }
+  }, [phase, auraOpacity]);
+
+  const auraStyle = useAnimatedStyle(() => ({
+    opacity: auraOpacity.value,
+  }));
+
+  // Phase machine — auto-advances through liminal → gathering → whisper
+  // Fast-forwards if backend completes early
+  useEffect(() => {
+    if (phase === "complete") return;
+
+    function advancePhase(next: ArrivalPhase) {
+      phaseRef.current = next;
+      setPhase(next);
+      if (Platform.OS !== "web") {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    }
+
+    // Status fast-forward: if text arrives during early phases, jump to reveal
+    if (status !== "generating" && (phase === "liminal" || phase === "gathering" || phase === "whisper")) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (whisperTimerRef.current) clearTimeout(whisperTimerRef.current);
+      advancePhase("reveal");
+      return;
+    }
+
+    const duration = PHASE_DURATIONS[phase as keyof typeof PHASE_DURATIONS];
+    if (!duration) return;
+
+    timerRef.current = setTimeout(() => {
+      const next: ArrivalPhase = phase === "liminal" ? "gathering" : phase === "gathering" ? "whisper" : "reveal";
+      advancePhase(next);
+    }, duration);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [phase, status]);
+
+  // Whisper phase: fragments appear and fade
+  useEffect(() => {
+    if (phase !== "whisper") return;
+
+    const words = cliffhanger.split(/\s+/).slice(0, 3).join(" ");
+    const appearDelay = 800;
+
+    whisperTimerRef.current = setTimeout(() => {
+      setWhisperText(words);
+      const fadeTimer = setTimeout(() => setWhisperText(""), 3000);
+      return () => clearTimeout(fadeTimer);
+    }, appearDelay);
+
+    return () => {
+      if (whisperTimerRef.current) clearTimeout(whisperTimerRef.current);
+    };
+  }, [phase, cliffhanger]);
+
+  // Reveal phase: typewriter for transmission text
+  useEffect(() => {
+    if (phase !== "reveal" || !text) return;
+
+    setTypewriterPos(0);
+    const interval = setInterval(() => {
+      setTypewriterPos((prev) => {
+        if (prev >= text.length) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 18);
+
+    return () => clearInterval(interval);
+  }, [phase, text]);
+
+  // Transition to complete when text fully revealed
+  useEffect(() => {
+    if (phase === "reveal" && typewriterPos >= text.length && text.length > 0) {
+      const timeout = setTimeout(() => setPhase("complete"), 600);
+      return () => clearTimeout(timeout);
+    }
+  }, [phase, typewriterPos, text]);
+
+  return (
+    <View style={styles.arrivalShell}>
+      {/* Breathing orb */}
+      <View style={styles.orbContainer}>
+        <AnimatedReanimated.View
+          style={[
+            styles.auraGlow,
+            { backgroundColor: auraColor },
+            auraStyle,
+          ]}
+        />
+        <AnimatedReanimated.View style={[styles.orbOuter, orbStyle]} />
+        <View style={styles.orbCore} />
+      </View>
+
+      {/* Phase-specific content */}
+      {phase === "liminal" ? (
+        <AnimatedReanimated.Text
+          entering={FadeIn.duration(800).delay(300)}
+          style={styles.arrivalLine}
+        >
+          {PHASE_LINES.liminal}
+        </AnimatedReanimated.Text>
+      ) : null}
+
+      {phase === "gathering" ? (
+        <AnimatedReanimated.Text
+          entering={FadeIn.duration(600)}
+          style={styles.arrivalLine}
+        >
+          {GATHERING_LINES[castMember] ?? DEFAULT_GATHERING}
+        </AnimatedReanimated.Text>
+      ) : null}
+
+      {phase === "whisper" && whisperText ? (
+        <AnimatedReanimated.Text
+          entering={FadeIn.duration(400)}
+          exiting={FadeIn.duration(400)}
+          style={styles.whisperLine}
+        >
+          {whisperText}
+        </AnimatedReanimated.Text>
+      ) : null}
+
+      {phase === "reveal" || phase === "complete" ? (
+        <View style={styles.revealContainer}>
+          <AnimatedReanimated.Text
+            entering={FadeIn.duration(400)}
+            style={styles.revealTitle}
+          >
+            {title}
+          </AnimatedReanimated.Text>
+          <Text style={styles.revealBody}>
+            {text.slice(0, typewriterPos)}
+            {typewriterPos < text.length ? <Text style={styles.cursor}>|</Text> : null}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Subtle hint during early phases */}
+      {(phase === "liminal" || phase === "gathering") ? (
+        <Text style={styles.arrivalHint}>Read first. The voice can catch up.</Text>
+      ) : null}
+    </View>
+  );
+}
+
+// ─── Text-only notice ────────────────────────────────────────────────────────
+
+function TextOnlyNotice() {
+  return (
+    <View style={styles.playerShellCentered}>
+      <View style={[styles.playButton, styles.playButtonMuted]}>
+        <Ionicons name="document-text-outline" size={22} color="#F7D38B" />
+      </View>
+      <View style={styles.progressColumn}>
+        <Text style={styles.pendingTitle}>Text only.</Text>
+        <Text style={styles.pendingText}>
+          The written transmission landed. Audio was unavailable for this one.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Audio Player ────────────────────────────────────────────────────────────
+
 interface AudioPlayerProps {
   audioUrl: string;
   title: string;
@@ -315,7 +649,7 @@ function WebAudioPlayer({ audioUrl }: AudioPlayerProps) {
       <View style={styles.playerControls}>
         <View style={styles.playerStatusRowCentered}>
           <Text style={styles.playerStatusText}>
-            {isPlaying ? "Listening to the future..." : progress > 0 ? "Transmission paused" : "Signal ready"}
+            {isPlaying ? "Listening to the future..." : progress > 0 ? "Paused" : "Ready"}
           </Text>
           <Text style={styles.timeText}>
             {formatTime(currentTime)} / {formatTime(duration)}
@@ -410,8 +744,8 @@ function NativeAudioPlayer({ audioUrl, castMember, transmission }: { audioUrl: s
               {status.playbackState === "playing"
                 ? "Listening to the future..."
                 : hasStarted
-                  ? "Transmission paused"
-                  : "Signal ready"}
+                  ? "Paused"
+                  : "Ready"}
             </Text>
             <Text style={styles.timeText}>
               {formatTime(status.currentTime)} / {formatTime(status.duration)}
@@ -434,14 +768,7 @@ function NativeAudioPlayer({ audioUrl, castMember, transmission }: { audioUrl: s
   );
 }
 
-const ambientAssets: Record<string, number> = {
-  future_self: require("@/assets/audio/room-tone.mp3"),
-  future_partner: require("@/assets/audio/tender-pads.mp3"),
-  future_mentor: require("@/assets/audio/spacious-hum.mp3"),
-  shadow: require("@/assets/audio/shadow-wind.mp3"),
-  alternate_self: require("@/assets/audio/uncanny-resonance.mp3"),
-};
-const defaultAmbient: number = require("@/assets/audio/room-tone.mp3");
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getAmbientSource(castMember: string): number {
   return ambientAssets[castMember] ?? defaultAmbient;
@@ -453,53 +780,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-function TransmissionFallback({ status }: { status: TransmissionState["status"] }) {
-  if (status === "generating") {
-    return (
-      <View style={styles.playerShellCentered}>
-        <View style={[styles.playButton, styles.playButtonMuted]}>
-          <ActivityIndicator color="#F7D38B" />
-        </View>
-        <View style={styles.progressColumn}>
-          <Text style={styles.pendingTitle}>The signal is being composed...</Text>
-          <Text style={styles.pendingText}>
-            Your message will land first. If audio is available, the voice will catch up after.
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (status === "text_ready") {
-    return (
-      <View style={styles.playerShellCentered}>
-        <View style={[styles.playButton, styles.playButtonMuted]}>
-          <Ionicons name="sparkles-outline" size={22} color="#F7D38B" />
-        </View>
-        <View style={styles.progressColumn}>
-          <Text style={styles.pendingTitle}>Message delivered.</Text>
-          <Text style={styles.pendingText}>
-            Read now. The voice can still arrive in a moment if audio finishes rendering.
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.playerShellCentered}>
-      <View style={[styles.playButton, styles.playButtonMuted]}>
-        <Ionicons name="document-text-outline" size={22} color="#F7D38B" />
-      </View>
-      <View style={styles.progressColumn}>
-        <Text style={styles.pendingTitle}>Text signal only.</Text>
-        <Text style={styles.pendingText}>
-          The written transmission landed. Audio was unavailable for this one.
-        </Text>
-      </View>
-    </View>
-  );
-}
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   card: {
@@ -560,6 +841,91 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
+
+  // Arrival sequence
+  arrivalShell: {
+    width: "100%",
+    alignItems: "center",
+    gap: 18,
+    paddingVertical: 12,
+    minHeight: 180,
+    justifyContent: "center",
+  },
+  orbContainer: {
+    width: 80,
+    height: 80,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  auraGlow: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  orbOuter: {
+    position: "absolute",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#F7D38B",
+  },
+  orbCore: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F7D38B",
+    shadowColor: "#F7D38B",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  arrivalLine: {
+    color: "#D7DCEE",
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0.2,
+  },
+  whisperLine: {
+    color: "rgba(246,221,169,0.6)",
+    fontSize: 15,
+    fontWeight: "600",
+    fontStyle: "italic",
+    textAlign: "center",
+    letterSpacing: 0.3,
+  },
+  revealContainer: {
+    width: "100%",
+    alignItems: "center",
+    gap: 12,
+  },
+  revealTitle: {
+    color: "#F8F0DE",
+    fontSize: 20,
+    fontWeight: "900",
+    textAlign: "center",
+    letterSpacing: -0.4,
+  },
+  revealBody: {
+    color: "#E8E1D3",
+    fontSize: 16,
+    lineHeight: 26,
+    textAlign: "center",
+  },
+  cursor: {
+    color: "#F7D38B",
+    fontWeight: "300",
+  },
+  arrivalHint: {
+    color: "#5A6180",
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center",
+  },
+
+  // Audio player
   nativePlayerShell: {
     width: "100%",
     flexDirection: "row",

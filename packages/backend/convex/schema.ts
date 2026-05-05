@@ -61,6 +61,9 @@ export default defineSchema({
     unchosenVoices: v.optional(v.array(castMemberValidator)),
     // Deprecated field — present in some existing documents, safe to ignore
     activeUnchosenSelves: v.optional(v.array(castMemberValidator)),
+    skinTone: v.optional(v.string()),
+    hairStyle: v.optional(v.string()),
+    distinguishing: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_userId", ["userId"]),

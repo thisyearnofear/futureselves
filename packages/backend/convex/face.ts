@@ -2,9 +2,11 @@ import { v } from "convex/values";
 import { castMemberValidator } from "./validators";
 import { authAction, authQuery } from "./functions";
 import { internal } from "./_generated/api";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { rateLimiter } from "./rateLimit";
 import { buildAvatarPrompt, NO_IMAGE_CAST_MEMBERS } from "./face.prompts";
+import type { AvatarAppearance } from "./face.prompts";
 import type { Id } from "./_generated/dataModel";
 
 // ─── Public Queries ──────────────────────────────────────────────────────────
@@ -40,7 +42,7 @@ export const getAvatar = authQuery({
   },
 });
 
-export const getAvatarsForUser = authQuery({
+export const getAvatarsForUser = query({
   args: {},
   returns: v.array(
     v.object({
@@ -52,10 +54,13 @@ export const getAvatarsForUser = authQuery({
     }),
   ),
   handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
     const avatars = await ctx.db
       .query("castAvatars")
       .withIndex("by_user", (q) =>
-        q.eq("userId", ctx.user._id as unknown as string),
+        q.eq("userId", userId as unknown as string),
       )
       .collect();
 
@@ -82,6 +87,7 @@ export const getExistingAvatar = internalQuery({
     v.object({
       _id: v.id("castAvatars"),
       storageId: v.id("_storage"),
+      tier: v.union(v.literal("generated"), v.literal("personalized")),
     }),
     v.null(),
   ),
@@ -92,6 +98,30 @@ export const getExistingAvatar = internalQuery({
         q.eq("userId", args.userId).eq("castMember", args.castMember),
       )
       .unique();
+  },
+});
+
+export const getPersonaAppearance = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.union(
+    v.object({
+      skinTone: v.optional(v.string()),
+      hairStyle: v.optional(v.string()),
+      distinguishing: v.optional(v.string()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const persona = await ctx.db
+      .query("personas")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .unique();
+    if (!persona) return null;
+    return {
+      skinTone: persona.skinTone,
+      hairStyle: persona.hairStyle,
+      distinguishing: persona.distinguishing,
+    };
   },
 });
 
@@ -168,6 +198,19 @@ export const saveAvatar = internalMutation({
   },
 });
 
+export const deleteAvatar = internalMutation({
+  args: {
+    avatarId: v.id("castAvatars"),
+    storageId: v.id("_storage"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.storage.delete(args.storageId);
+    await ctx.db.delete(args.avatarId);
+    return null;
+  },
+});
+
 // ─── Public Actions ──────────────────────────────────────────────────────────
 
 export const generateAvatar = authAction({
@@ -194,11 +237,26 @@ export const generateAvatar = authAction({
       userId: ctx.userId,
       castMember: args.castMember,
     });
+
+    const appearance = await ctx.runQuery(internal.face.getPersonaAppearance, {
+      userId: ctx.userId as Id<"users">,
+    });
+    const appearanceData: AvatarAppearance | undefined = appearance?.skinTone
+      ? appearance
+      : undefined;
+
     if (existing) {
-      return { status: "generated", storageId: existing.storageId };
+      if (existing.tier === "generated" && appearanceData) {
+        await ctx.runMutation(internal.face.deleteAvatar, {
+          avatarId: existing._id,
+          storageId: existing.storageId,
+        });
+      } else {
+        return { status: "generated", storageId: existing.storageId };
+      }
     }
 
-    const prompt = buildAvatarPrompt(args.castMember);
+    const prompt = buildAvatarPrompt(args.castMember, appearanceData);
     if (!prompt) return { status: "skipped", storageId: null };
 
     const replicateKey = process.env.REPLICATE_API_TOKEN;
@@ -227,7 +285,7 @@ export const generateAvatar = authAction({
       castMember: args.castMember,
       storageId,
       prompt,
-      tier: "generated",
+      tier: appearanceData ? "personalized" : "generated",
       generatedAt: Date.now(),
     });
 

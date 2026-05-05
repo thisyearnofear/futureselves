@@ -127,7 +127,7 @@ export function FutureselfSettingsSheet({
           <View style={styles.header}>
             <View style={styles.headerCopy}>
               <Text style={styles.eyebrow}>Ritual settings</Text>
-              <Text style={styles.title}>Shape the ritual, not just the signal.</Text>
+              <Text style={styles.title}>Shape the ritual, not just the words.</Text>
               <Text style={styles.copy}>
                 Your first transmission got you started. This is where you tune the
                 horizon, voice, and consent settings without restarting the line.
@@ -241,7 +241,7 @@ export function FutureselfSettingsSheet({
                 <View style={styles.toggleCopy}>
                   <Text style={styles.toggleTitle}>Daily reminder</Text>
                   <Text style={styles.toggleBody}>
-                    A gentle nudge that your signal is waiting.
+                    A gentle nudge that your transmission is waiting.
                   </Text>
                 </View>
                 <Switch

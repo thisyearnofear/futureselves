@@ -20,7 +20,7 @@ export default function Index() {
             <StatusBar style="light" />
             <SafeAreaView style={styles.safeArea}>
                 <AuthLoading>
-                    <LoadingState label="Opening the signal..." />
+                    <LoadingState label="Opening your timeline..." />
                 </AuthLoading>
                 <Unauthenticated>
                     <AuthScreen />
