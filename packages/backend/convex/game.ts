@@ -39,6 +39,7 @@ import {
   getCheckInProgressionUpdate,
   getChoiceProgressionUpdate,
 } from "./game.progression";
+import { detectVoicemailMilestone } from "./voicemail.milestones";
 
 export const completeOnboarding = authMutation({
   args: {
@@ -201,6 +202,20 @@ export const saveCheckIn = authMutation({
         userId: ctx.user._id as unknown as string,
         castMember,
       });
+    }
+
+    // Check for voicemail milestone
+    const previousStreak = persona.streak;
+    const voicemailMilestone = detectVoicemailMilestone(previousStreak, progression.streak);
+    if (voicemailMilestone) {
+      const currentCredits = persona.voicemailCredits ?? 0;
+      await ctx.db.patch(persona._id, {
+        voicemailCredits: currentCredits + voicemailMilestone.credits,
+        voicemailUnlockedAt: persona.voicemailUnlockedAt ?? now,
+      });
+      console.log(
+        `[Milestone] Voicemail unlocked: ${voicemailMilestone.label} (+${voicemailMilestone.credits} ${voicemailMilestone.tier} credits)`,
+      );
     }
 
     return await ctx.db.insert("checkIns", {

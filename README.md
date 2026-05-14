@@ -139,6 +139,32 @@ See `scripts/README.md`.
 - **Agent Orchestration:** Melius MCP
 - **Monorepo tooling:** Bun workspaces + Turbo
 
+## The Last Voicemail
+
+A milestone-gated feature where your future self sends a cinematic voicemail synthesized from your emotional journey.
+
+### How it works
+
+Voicemails are **earned through progression**, not freely available:
+
+| Milestone | Trigger | What you get |
+|---|---|---|
+| Day 7 streak | 7 consecutive check-ins | 1 free voicemail (text + audio) |
+| Day 30 streak | 30 consecutive check-ins | 1 premium voicemail (full cinematic) |
+| Day 90 streak | 90 consecutive check-ins | 3 premium voicemails |
+| Arc completion | Narrative thread resolved | 1 premium voicemail |
+| Weekly reflection | After weekly summary | 1 free voicemail |
+
+### Free vs. Premium
+
+- **Free tier**: Voicemails generated from your ritual data (check-ins, choices, emotional arc) using the built-in AI pipeline. Text + audio only.
+- **Premium tier**: Full cinematic experience — multi-agent orchestration via Melius MCP, atmospheric imagery, video loops, and the critique-driven refinement loop. Premium users can also provide custom situations.
+
+### Technical architecture
+
+- **Free path**: `voicemail.native.ts` → `ai.ts` (direct AI calls) → ElevenLabs
+- **Premium path**: `voicemail.ts` → `melius.ts` (Melius MCP) → ElevenLabs + image + video
+
 ## Notes
 
 - If diagnostics look noisy on a fresh clone, run `bun install` first.

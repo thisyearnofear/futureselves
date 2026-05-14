@@ -35,6 +35,8 @@ bun run typecheck
 - `convex/auth.ts` — auth redirects and provider setup
 - `convex/auth.config.ts` — Convex auth domain config
 - `convex/seed.ts` — seed helpers for demos/testing
+- `convex/melius.ts` — Melius MCP client for agentic workflows
+- `convex/voicemail.ts` — "The Last Voicemail" critique-driven pipeline
 
 ## Environment expectations
 
@@ -46,3 +48,4 @@ Most important values:
 - `SITE_URL`
 - optional `ANTHROPIC_API_KEY`
 - optional `ELEVENLABS_API_KEY`
+- optional `MELIUS_API_KEY` (enables "The Last Voicemail" feature)
