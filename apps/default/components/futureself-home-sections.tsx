@@ -161,6 +161,22 @@ export function HeroSection({
         </Pressable>
       </View>
 
+      {persona?.miraculousYear ? (
+        <View style={styles.northStarBadge}>
+          <Ionicons name="compass-outline" size={14} color="#F7D38B" />
+          <Text style={styles.northStarText} numberOfLines={1}>
+            {persona.miraculousYear}
+          </Text>
+        </View>
+      ) : persona?.currentChapter ? (
+        <View style={styles.northStarBadge}>
+          <Ionicons name="compass-outline" size={14} color="#F7D38B" />
+          <Text style={styles.northStarText} numberOfLines={1}>
+            {persona.currentChapter}
+          </Text>
+        </View>
+      ) : null}
+
       <Text style={styles.heroTitle}>
         {hasTransmissionToday ? "The voice has arrived." : "One word is enough."}
       </Text>

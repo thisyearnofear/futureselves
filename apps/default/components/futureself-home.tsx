@@ -231,10 +231,13 @@ export function FutureselfHome({
     transmissionCount >= 3 &&
     isProfileIncomplete &&
     !profilePromptDismissed;
-  // Progressive disclosure: reveal layers only as engagement deepens
+  // Progressive disclosure & Focus Mode Enforcement:
+  // If today's transmission hasn't arrived, hide most of the UI to focus on the check-in ritual.
+  const isFocusMode = !hasTransmissionToday;
   const shouldShowProgression = hasTransmissionToday;
-  const shouldShowSystemDepth = transmissionCount >= 5;
-  const shouldShowStoryDepth = hasTransmissionToday && transmissionCount >= 3;
+  const shouldShowSystemDepth = !isFocusMode && transmissionCount >= 5;
+  const shouldShowStoryDepth = !isFocusMode && transmissionCount >= 3;
+  const shouldShowWeeklyReflection = !isFocusMode && transmissionCount >= 7;
 
   const transmissionArrivalGlow = useAnimatedStyle(() => ({
     transform: [{ scale: 1 + arrivalPulse.value * 0.08 }],
@@ -831,10 +834,12 @@ export function FutureselfHome({
           />
         ) : null}
 
-        <WeeklyReflectionSection
-          persona={persona}
-          transmissions={state.recentTransmissions}
-        />
+        {shouldShowWeeklyReflection ? (
+          <WeeklyReflectionSection
+            persona={persona}
+            transmissions={state.recentTransmissions}
+          />
+        ) : null}
 
         <ProgressionSection
           constellation={state.constellation}
