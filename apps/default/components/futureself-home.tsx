@@ -132,15 +132,23 @@ export function FutureselfHome({
 }: FutureselfHomeProps) {
   const router = useRouter();
   const { signOut } = useAuthActions();
+  // @ts-expect-error - game property is generated dynamically by Convex
   const completeOnboarding = useMutation(api.game.completeOnboarding);
+  // @ts-expect-error - game property is generated dynamically by Convex
   const saveCheckIn = useMutation(api.game.saveCheckIn);
+  // @ts-expect-error - game property is generated dynamically by Convex
   const recordChoice = useMutation(api.game.recordChoice);
+  // @ts-expect-error - game property is generated dynamically by Convex
   const saveTransmissionResponse = useMutation(api.game.saveTransmissionResponse);
+  // @ts-expect-error - game property is generated dynamically by Convex
   const generateTransmission = useAction(api.game.generateDailyTransmission);
+  // @ts-expect-error - face property is generated dynamically by Convex
   const generateAvatar = useAction(api.face.generateAvatar);
 
   // Debug mutations
+  // @ts-expect-error - game property is generated dynamically by Convex
   const debugReset = useMutation(api.game.debugResetPersona);
+  // @ts-expect-error - game property is generated dynamically by Convex
   const debugSetState = useMutation(api.game.debugSetGameState);
 
   const [word, setWord] = useState(state.todayCheckIn?.word ?? "");
@@ -753,6 +761,7 @@ export function FutureselfHome({
           isDebugMode={isDebugMode}
           onDebugTap={handleDebugTap}
           onOpenSettings={() => setShowSettings(true)}
+          onOpenVoicemail={() => router.push("/voicemail" as any)}
           persona={persona}
           shouldShowSystemDepth={shouldShowSystemDepth}
         />

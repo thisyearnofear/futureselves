@@ -50,6 +50,7 @@ interface HeroSectionProps {
   divergenceLabel: string;
   onDebugTap: () => void;
   onOpenSettings: () => void;
+  onOpenVoicemail: () => void;
 }
 
 export function HeroSection({
@@ -61,6 +62,7 @@ export function HeroSection({
   divergenceLabel,
   onDebugTap,
   onOpenSettings,
+  onOpenVoicemail,
 }: HeroSectionProps) {
   return (
     <Animated.View
@@ -68,12 +70,21 @@ export function HeroSection({
       style={styles.hero}
     >
       <View style={styles.heroTopStack}>
-        <Pressable disabled={!isDebugMode} onPress={onDebugTap}>
-          <View style={styles.signalBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.signalBadgeText}>daily</Text>
-          </View>
-        </Pressable>
+        <View style={styles.heroTopStackLeft}>
+          <Pressable disabled={!isDebugMode} onPress={onDebugTap}>
+            <View style={styles.signalBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.signalBadgeText}>daily</Text>
+            </View>
+          </Pressable>
+          <Pressable 
+            onPress={onOpenVoicemail} 
+            style={[styles.signalBadge, { marginLeft: 8, backgroundColor: "rgba(247, 211, 139, 0.15)" }]}
+          >
+            <Ionicons name="mic-outline" size={12} color="#F7D38B" />
+            <Text style={[styles.signalBadgeText, { color: "#F7D38B" }]}>voicemail</Text>
+          </Pressable>
+        </View>
         <Pressable onPress={onOpenSettings} style={styles.settingsEntry}>
           <Ionicons name="settings-outline" size={16} color="#F8F0DE" />
           <Text style={styles.settingsEntryText}>Ritual settings</Text>

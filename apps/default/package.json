@@ -20,7 +20,7 @@
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
-    "convex": "^1.36.1",
+    "convex": "1.36.1",
     "convex-helpers": "0.1.113",
     "expo": "~55.0.4",
     "expo-audio": "~55.0.14",

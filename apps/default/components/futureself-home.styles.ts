@@ -19,8 +19,14 @@ export const styles = StyleSheet.create({
   },
   heroTopStack: {
     width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     gap: 12,
+  },
+  heroTopStackLeft: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   signalBadge: {
     flexDirection: "row",

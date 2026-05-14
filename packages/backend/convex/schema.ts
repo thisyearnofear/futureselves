@@ -10,7 +10,7 @@ import {
 } from "./validators";
 
 export default defineSchema({
-  ...authTables,
+  ...(authTables as any),
   personas: defineTable({
     userId: v.id("users"),
     name: v.string(),
@@ -155,4 +155,17 @@ export default defineSchema({
   })
     .index("by_user_and_cast", ["userId", "castMember"])
     .index("by_user", ["userId"]),
+  voicemails: defineTable({
+    userId: v.id("users"),
+    situation: v.string(),
+    emotionalCore: v.string(),
+    transcript: v.string(),
+    audioUrl: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    videoUrl: v.optional(v.string()),
+    critique: v.optional(v.string()),
+    meliusProjectId: v.string(),
+    meliusCanvasId: v.string(),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
 });

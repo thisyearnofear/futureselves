@@ -5,7 +5,6 @@
         "allowJs": true,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
-        "baseUrl": ".",
         "ignoreDeprecations": "5.0",
         "paths": {
             "@/convex/*": ["./convex/*"]
