@@ -430,6 +430,7 @@ interface ReceiveSignalSectionProps {
   showDetailInput: boolean;
   wordNudges: Array<string>;
   noteNudges: Array<string>;
+  yesterdayCliffhanger?: string;
   onWordChange: (value: string) => void;
   onNoteChange: (value: string) => void;
   onToggleDetail: () => void;
@@ -443,6 +444,7 @@ export function ReceiveSignalSection({
   showDetailInput,
   wordNudges,
   noteNudges,
+  yesterdayCliffhanger,
   onWordChange,
   onNoteChange,
   onToggleDetail,
@@ -464,6 +466,15 @@ export function ReceiveSignalSection({
           </Text>
         </View>
       </View>
+
+      {yesterdayCliffhanger ? (
+        <View style={styles.cliffhangerTeaser}>
+          <Ionicons name="moon" size={13} color="#AEB6D4" />
+          <Text style={styles.cliffhangerTeaserText}>
+            Yesterday&apos;s voice left something unfinished: &ldquo;{yesterdayCliffhanger}&rdquo;
+          </Text>
+        </View>
+      ) : null}
 
       <TextInput
         onChangeText={onWordChange}

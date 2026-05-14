@@ -146,6 +146,8 @@ export function FutureselfHome({
   const generateAvatar = useAction(api.face.generateAvatar);
   // @ts-expect-error - synthesis property is generated dynamically by Convex
   const generateSynthesis = useAction(api.synthesis.generateWeeklySynthesis);
+  // @ts-expect-error - voicemail.native property is generated dynamically by Convex
+  const generateWelcomeVoicemail = useAction(api.voicemail_native.generateNativeVoicemail);
 
   // Debug mutations
   // @ts-expect-error - game property is generated dynamically by Convex
@@ -195,6 +197,7 @@ export function FutureselfHome({
   const [archiveFilter, setArchiveFilter] = useState<MemoryArchiveFilter>("all");
   const arrivalPulse = useSharedValue(0);
   const arrivalSweep = useSharedValue(-280);
+  const welcomeVoicemailTriggered = useRef(false);
 
   const persona = state.persona;
   const { pinnedSignalIds, togglePinnedSignal } = useSavedSignalPins();
@@ -313,6 +316,23 @@ export function FutureselfHome({
     }
   }, [isMilestone, hasTransmissionToday]);
 
+  // Day 1 Welcome Voicemail: auto-trigger a free voicemail after the very first transmission
+  useEffect(() => {
+    if (
+      !welcomeVoicemailTriggered.current &&
+      hasTransmissionToday &&
+      persona &&
+      persona.streak === 1 &&
+      state.recentTransmissions.length === 1
+    ) {
+      welcomeVoicemailTriggered.current = true;
+      // Fire-and-forget: generate a welcome voicemail in the background
+      void generateWelcomeVoicemail({ castMember: "future_self" }).catch((err: unknown) => {
+        console.warn("[Day1Voicemail] Could not generate welcome voicemail:", err);
+      });
+    }
+  }, [hasTransmissionToday, persona, state.recentTransmissions.length, generateWelcomeVoicemail]);
+
   // Voice unlock detection + avatar generation
   useEffect(() => {
     if (!state.constellation.length) return;
@@ -351,13 +371,21 @@ export function FutureselfHome({
   const handleShare = useCallback(async () => {
     if (!state.todayTransmission || !persona) return;
     const t = state.todayTransmission;
-    const teaser = t.text.length > 120 ? `${t.text.slice(0, 117)}...` : t.text;
-    const shareText = `"${teaser}"\n\n— ${formatCastMember(t.castMember)}, Day ${persona.streak}\n\n🔮 futureself.app`;
+    const teaser = t.text.length > 160 ? `${t.text.slice(0, 157)}...` : t.text;
+    const castLabel = formatCastMember(t.castMember);
+    const shareText = [
+      `"${teaser}"`,
+      ``,
+      `— ${castLabel}, Day ${persona.streak}`,
+      ``,
+      `My future self left me a voice message today.`,
+      `🔮 futureself.app`,
+    ].join("\n");
 
     if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: "Future Selves — A transmission from the timeline",
+          title: `${castLabel} — Future Selves`,
           text: shareText,
         });
         setShareStatus("Shared");
@@ -375,7 +403,7 @@ export function FutureselfHome({
       // Native: use Share API from react-native
       const { Share: RNShare } = await import("react-native");
       try {
-        await RNShare.share({ message: shareText, title: "Future Selves" });
+        await RNShare.share({ message: shareText, title: `${castLabel} — Future Selves` });
         setShareStatus("Shared");
       } catch {
         setShareStatus(null);
@@ -831,6 +859,7 @@ export function FutureselfHome({
             showDetailInput={showDetailInput}
             word={word}
             wordNudges={wordNudges}
+            yesterdayCliffhanger={state.recentTransmissions[0]?.cliffhanger}
           />
         )}
 

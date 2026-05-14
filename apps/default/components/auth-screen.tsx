@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useOAuthSignIn } from "@/hooks/use-oauth-sign-in";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -26,6 +27,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 const TAGLINE_FULL = "Hear from the future version of your life.";
+
+const sampleAudio = require("@/assets/audio/room-tone.mp3");
 
 function useTypewriter(text: string, speed = 38, delay = 600) {
   const [displayed, setDisplayed] = useState("");
@@ -59,6 +62,20 @@ export function AuthScreen() {
 
   const isBusy = isSubmitting || isOAuthLoading;
   const tagline = useTypewriter(TAGLINE_FULL);
+
+  // Sample audio preview
+  const samplePlayer = useAudioPlayer(sampleAudio);
+  const sampleStatus = useAudioPlayerStatus(samplePlayer);
+  const isSamplePlaying = sampleStatus?.playing ?? false;
+
+  function toggleSampleAudio() {
+    if (isSamplePlaying) {
+      samplePlayer.pause();
+    } else {
+      samplePlayer.seekTo(0);
+      samplePlayer.play();
+    }
+  }
 
   // Pulsing orb animation
   const orbScale = useSharedValue(1);
@@ -210,6 +227,22 @@ export function AuthScreen() {
               “You do not need a bigger sign. You need one honest move that
               makes tomorrow easier to believe.”
             </Text>
+            <Pressable
+              onPress={toggleSampleAudio}
+              style={({ pressed }) => [
+                styles.samplePlayButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Ionicons
+                name={isSamplePlaying ? "pause" : "play"}
+                size={18}
+                color="#101320"
+              />
+              <Text style={styles.samplePlayText}>
+                {isSamplePlaying ? "Listening..." : "Hear a sample voice"}
+              </Text>
+            </Pressable>
           </Animated.View>
 
           {/* Primary CTA */}
@@ -498,6 +531,23 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: "700",
     textAlign: "center",
+  },
+  samplePlayButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: "#F7D38B",
+    alignSelf: "center",
+  },
+  samplePlayText: {
+    color: "#101320",
+    fontSize: 13,
+    fontWeight: "900",
   },
   primaryButton: {
     minHeight: 58,
