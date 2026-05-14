@@ -18,6 +18,7 @@ If you just landed in the repo, use this path:
 3. Receive a personalized transmission from a future self
 4. Make a tiny choice that nudges the timeline
 5. Unlock new voices as your streak, context, and divergence evolve
+6. **The Last Voicemail**: Capture an emotionally charged situation and receive a critique-driven cinematic voicemail from a future you.
 
 ## Repository structure
 
@@ -135,6 +136,7 @@ See `scripts/README.md`.
 - **Backend:** Convex
 - **AI:** Anthropic Claude
 - **Audio:** ElevenLabs
+- **Agent Orchestration:** Melius MCP
 - **Monorepo tooling:** Bun workspaces + Turbo
 
 ## Notes
