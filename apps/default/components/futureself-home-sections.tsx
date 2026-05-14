@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeIn, FadeInUp, FadeOut, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInUp, FadeOut, ZoomIn, useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import type { Id } from "@/convex/_generated/dataModel";
 import type {
@@ -28,6 +28,76 @@ import { TransmissionPlayer } from "@/components/transmission-player";
 import { styles } from "@/components/futureself-home.styles";
 
 type IconName = keyof typeof Ionicons.glyphMap;
+
+export function HoldToCommitButton({
+  onCommit,
+  isProcessing,
+  defaultText,
+  style,
+  textStyle,
+}: {
+  onCommit: () => void;
+  isProcessing: boolean;
+  defaultText: string;
+  style?: any;
+  textStyle?: any;
+}) {
+  const progress = useSharedValue(0);
+  const isHeld = useSharedValue(false);
+
+  const handlePressIn = () => {
+    if (isProcessing) return;
+    isHeld.value = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    progress.value = withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }, (finished) => {
+      if (finished && isHeld.value) {
+        runOnJS(Haptics.notificationAsync)(Haptics.NotificationFeedbackType.Success);
+        runOnJS(onCommit)();
+      }
+    });
+  };
+
+  const handlePressOut = () => {
+    isHeld.value = false;
+    if (progress.value < 1) {
+      progress.value = withTiming(0, { duration: 300 });
+    }
+  };
+
+  const animatedFillStyle = useAnimatedStyle(() => {
+    return {
+      position: "absolute",
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: `${progress.value * 100}%`,
+      backgroundColor: "rgba(255,255,255,0.25)",
+    };
+  });
+
+  const animatedScaleStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: 1 - progress.value * 0.03 }],
+    };
+  });
+
+  return (
+    <Pressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      disabled={isProcessing}
+    >
+      <Animated.View style={[style, animatedScaleStyle, { overflow: "hidden" }]}>
+        <Animated.View style={animatedFillStyle} />
+        {isProcessing ? (
+          <ActivityIndicator color="#101320" />
+        ) : (
+          <Text style={textStyle}>{defaultText}</Text>
+        )}
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 interface ActionNudge {
   label: string;
@@ -426,17 +496,13 @@ export function ReceiveSignalSection({
         </View>
       ) : null}
 
-      <Pressable
-        disabled={isReceiving}
-        onPress={onReceive}
-        style={({ pressed }) => [styles.receiveButton, pressed && styles.pressed]}
-      >
-        {isReceiving ? (
-          <ActivityIndicator color="#101320" />
-        ) : (
-          <Text style={styles.receiveText}>Receive today&apos;s voice</Text>
-        )}
-      </Pressable>
+      <HoldToCommitButton
+        isProcessing={isReceiving}
+        onCommit={onReceive}
+        defaultText="Hold to receive today's voice"
+        style={styles.receiveButton}
+        textStyle={styles.receiveText}
+      />
     </Animated.View>
   );
 }

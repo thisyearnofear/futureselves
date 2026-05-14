@@ -154,6 +154,16 @@ export function TransmissionPlayer({
   }, []);
   const dotStyle = useAnimatedStyle(() => ({ opacity: dotPulse.value }));
 
+  const breatheOpacity = useSharedValue(0);
+  useEffect(() => {
+    breatheOpacity.value = withRepeat(
+      withTiming(0.8, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+  }, []);
+  const breatheStyle = useAnimatedStyle(() => ({ opacity: breatheOpacity.value }));
+
   return (
     <LinearGradient
       colors={["rgba(246,240,222,0.12)", "rgba(247,211,139,0.04)", "rgba(16,19,32,0.15)"]}
@@ -161,6 +171,10 @@ export function TransmissionPlayer({
       end={{ x: 0.5, y: 1 }}
       style={styles.card}
     >
+      <AnimatedReanimated.View 
+        style={[StyleSheet.absoluteFill, breatheStyle, { backgroundColor: AURA_COLORS[transmission.castMember] ?? DEFAULT_AURA, borderRadius: 24 }]} 
+        pointerEvents="none" 
+      />
       <AnimatedReanimated.View entering={FadeInUp.duration(260)} style={styles.headerWrap}>
         <AvatarReveal castMember={transmission.castMember} size={180} />
         <View style={styles.headerCopy}>
@@ -199,11 +213,11 @@ export function TransmissionPlayer({
             <TextOnlyNotice />
           )}
 
-          <AnimatedReanimated.Text entering={FadeInUp.delay(80).duration(280)} style={styles.body}>
+          <AnimatedReanimated.Text entering={FadeIn.delay(800).duration(2400)} style={styles.body}>
             {transmission.text}
           </AnimatedReanimated.Text>
           <AnimatedReanimated.View
-            entering={FadeInUp.delay(160).duration(280)}
+            entering={FadeInUp.delay(1800).duration(1200)}
             style={[styles.cliffhangerCard, cliffhangerDrift]}
           >
             <Ionicons name="moon" size={17} color="#F7D38B" />
