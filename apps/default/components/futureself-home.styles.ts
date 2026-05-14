@@ -41,6 +41,55 @@ export const styles = StyleSheet.create({
     borderColor: "rgba(247,211,139,0.25)",
     marginBottom: -4,
   },
+
+  synthesisContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
+  },
+  synthesisSummary: {
+    color: "#BFC6DE",
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  synthesisActionHeader: {
+    color: "#F8F0DE",
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    marginBottom: 12,
+  },
+  synthesisActionItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginBottom: 8,
+  },
+  synthesisActionText: {
+    color: "#F8F0DE",
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+  },
+  synthesizeButton: {
+    marginTop: 16,
+    backgroundColor: "rgba(247,211,139,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.3)",
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  synthesizeButtonText: {
+    color: "#F7D38B",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+
   northStarText: {
     color: "#F7D38B",
     fontSize: 12,

@@ -144,6 +144,8 @@ export function FutureselfHome({
   const generateTransmission = useAction(api.game.generateDailyTransmission);
   // @ts-expect-error - face property is generated dynamically by Convex
   const generateAvatar = useAction(api.face.generateAvatar);
+  // @ts-expect-error - synthesis property is generated dynamically by Convex
+  const generateSynthesis = useAction(api.synthesis.generateWeeklySynthesis);
 
   // Debug mutations
   // @ts-expect-error - game property is generated dynamically by Convex
@@ -158,6 +160,7 @@ export function FutureselfHome({
   );
   const [isReceiving, setIsReceiving] = useState(false);
   const [isSavingResponse, setIsSavingResponse] = useState(false);
+  const [isGeneratingSynthesis, setIsGeneratingSynthesis] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<Choice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showFlare, setShowFlare] = useState(false);
@@ -623,6 +626,33 @@ export function FutureselfHome({
     }
   }
 
+  async function handleGenerateSynthesis() {
+    try {
+      setIsGeneratingSynthesis(true);
+      
+      const last7 = state.recentTransmissions.slice(0, 7);
+      const textLog = last7.map(t => 
+        `Date: ${t.dateKey}\nVoice: ${t.castMember}\nMessage: ${t.text}\nUser's Reaction: ${t.response?.reaction || 'none'}\nUser's Note: ${t.response?.replyNote || 'none'}`
+      ).join("\n\n---\n\n");
+      
+      const weekStartDateKey = last7[last7.length - 1]?.dateKey || dateKey;
+
+      await generateSynthesis({
+        dateKey,
+        weekStartDateKey,
+        transmissionsText: textLog,
+      });
+
+      if (Platform.OS !== "web") {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (err) {
+      Alert.alert("Failed to synthesize", err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsGeneratingSynthesis(false);
+    }
+  }
+
   async function handleChoice(choice: Choice) {
     if (!state.todayTransmission) return;
 
@@ -838,6 +868,9 @@ export function FutureselfHome({
           <WeeklyReflectionSection
             persona={persona}
             transmissions={state.recentTransmissions}
+            currentSynthesis={state.currentSynthesis}
+            isGeneratingSynthesis={isGeneratingSynthesis}
+            onGenerateSynthesis={handleGenerateSynthesis}
           />
         ) : null}
 

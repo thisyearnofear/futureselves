@@ -159,10 +159,10 @@ export const saveCheckIn = authMutation({
           .unique()
       : null;
     const progression = getCheckInProgressionUpdate({
-      streak: persona.streak,
-      lastCheckInDateKey: persona.lastCheckInDateKey,
-      lastTransmissionDateKey: persona.lastTransmissionDateKey,
-      timelineDivergenceScore: persona.timelineDivergenceScore,
+      streak: persona.streak as unknown as number,
+      lastCheckInDateKey: persona.lastCheckInDateKey as unknown as string | undefined,
+      lastTransmissionDateKey: persona.lastTransmissionDateKey as unknown as string | undefined,
+      timelineDivergenceScore: persona.timelineDivergenceScore as unknown as number,
       dateKey: args.dateKey,
       previousChoiceExists: Boolean(previousChoice),
     });
@@ -205,13 +205,13 @@ export const saveCheckIn = authMutation({
     }
 
     // Check for voicemail milestone
-    const previousStreak = persona.streak;
+    const previousStreak = persona.streak as unknown as number;
     const voicemailMilestone = detectVoicemailMilestone(previousStreak, progression.streak);
     if (voicemailMilestone) {
-      const currentCredits = persona.voicemailCredits ?? 0;
-      await ctx.db.patch(persona._id, {
+      const currentCredits = (persona.voicemailCredits as unknown as number | undefined) ?? 0;
+      await ctx.db.patch(persona._id as any, {
         voicemailCredits: currentCredits + voicemailMilestone.credits,
-        voicemailUnlockedAt: persona.voicemailUnlockedAt ?? now,
+        voicemailUnlockedAt: (persona.voicemailUnlockedAt as unknown as number | undefined) ?? now,
       });
       console.log(
         `[Milestone] Voicemail unlocked: ${voicemailMilestone.label} (+${voicemailMilestone.credits} ${voicemailMilestone.tier} credits)`,
@@ -492,6 +492,11 @@ export const getState = authQuery({
       .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
       .order("desc")
       .take(6);
+    const synthesisDoc = await ctx.db
+      .query("syntheses")
+      .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
+      .order("desc")
+      .first();
 
     function mapResponse(transmissionId: Id<"transmissions">) {
       const r = responseByTransmissionId.get(transmissionId);
@@ -528,6 +533,13 @@ export const getState = authQuery({
         choice: choice.choice,
       })),
       reactionStreaks: personaDoc.reactionStreaks ?? null,
+      currentSynthesis: synthesisDoc ? {
+        id: synthesisDoc._id,
+        weekStartDateKey: synthesisDoc.weekStartDateKey,
+        summary: synthesisDoc.summary,
+        actionItems: synthesisDoc.actionItems,
+        createdAt: synthesisDoc.createdAt,
+      } : null,
     });
   },
 });

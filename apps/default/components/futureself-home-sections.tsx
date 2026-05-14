@@ -19,6 +19,7 @@ import type {
   ConstellationStar,
   PersonaState,
   StateSignals,
+  SynthesisState,
   ThreadState,
   TransmissionState,
 } from "@/lib/futureself";
@@ -681,9 +682,18 @@ export function ChoiceSection({
 interface WeeklyReflectionProps {
   transmissions: Array<TransmissionState>;
   persona: { streak: number; name: string } | null;
+  currentSynthesis?: SynthesisState | null;
+  isGeneratingSynthesis?: boolean;
+  onGenerateSynthesis?: () => void;
 }
 
-export function WeeklyReflectionSection({ transmissions, persona }: WeeklyReflectionProps) {
+export function WeeklyReflectionSection({
+  transmissions,
+  persona,
+  currentSynthesis,
+  isGeneratingSynthesis,
+  onGenerateSynthesis,
+}: WeeklyReflectionProps) {
   if (transmissions.length < 7) return null;
 
   const last7 = transmissions.slice(0, 7);
@@ -730,6 +740,27 @@ export function WeeklyReflectionSection({ transmissions, persona }: WeeklyReflec
         <Text style={styles.weeklyVoice}>
           {formatCastMember(topVoice[0] as CastMember)} spoke {topVoice[1]} time{topVoice[1] > 1 ? "s" : ""} this week.
         </Text>
+      ) : null}
+
+      {currentSynthesis ? (
+        <View style={styles.synthesisContainer}>
+          <Text style={styles.synthesisSummary}>{currentSynthesis.summary}</Text>
+          <Text style={styles.synthesisActionHeader}>Action Items:</Text>
+          {currentSynthesis.actionItems.map((item, idx) => (
+            <View key={idx} style={styles.synthesisActionItem}>
+              <Ionicons name="ellipse" size={6} color="#F7D38B" style={{ marginTop: 6 }} />
+              <Text style={styles.synthesisActionText}>{item}</Text>
+            </View>
+          ))}
+        </View>
+      ) : onGenerateSynthesis ? (
+        <HoldToCommitButton
+          isProcessing={Boolean(isGeneratingSynthesis)}
+          onCommit={onGenerateSynthesis}
+          defaultText="Synthesize this week"
+          style={styles.synthesizeButton}
+          textStyle={styles.synthesizeButtonText}
+        />
       ) : null}
     </Animated.View>
   );

@@ -184,4 +184,13 @@ export default defineSchema({
     meliusCanvasId: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_userId", ["userId"]),
+  syntheses: defineTable({
+    userId: v.id("users"),
+    weekStartDateKey: v.string(), // e.g. "2026-05-08" (the start of the 7-day period)
+    summary: v.string(),
+    actionItems: v.array(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_week", ["userId", "weekStartDateKey"]),
 });

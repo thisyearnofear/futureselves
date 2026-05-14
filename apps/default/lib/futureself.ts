@@ -161,6 +161,14 @@ export interface ReactionStreaksState {
   landedCount: number;
 }
 
+export interface SynthesisState {
+  id: string;
+  weekStartDateKey: string;
+  summary: string;
+  actionItems: Array<string>;
+  createdAt: number;
+}
+
 export interface GameState {
   persona: PersonaState | null;
   todayCheckIn: CheckInState | null;
@@ -175,6 +183,7 @@ export interface GameState {
     reaction?: "landed" | "not_quite" | "did_it" | "keep_close";
     followedThrough: boolean;
   } | null;
+  currentSynthesis: SynthesisState | null;
 }
 
 export interface OnboardingDraft {
