@@ -207,10 +207,10 @@ export const deductVoicemailCredit = authMutation({
 
     if (!persona) throw new Error("No persona found");
 
-    const currentCredits = persona.voicemailCredits ?? 0;
+    const currentCredits = (persona.voicemailCredits as unknown as number | undefined) ?? 0;
     if (currentCredits <= 0) return;
 
-    await ctx.db.patch(persona._id, {
+    await ctx.db.patch(persona._id as any, {
       voicemailCredits: currentCredits - 1,
       updatedAt: Date.now(),
     });
@@ -239,7 +239,7 @@ export const getVoicemailStatus = authQuery({
 
     if (!persona) return { unlocked: false, credits: 0, tier: "free" as const, streak: 0 };
 
-    const credits = persona.voicemailCredits ?? 0;
+    const credits = (persona.voicemailCredits as number | undefined) ?? 0;
     const tier = persona.tier ?? "free";
     const unlocked = credits > 0 || tier === "premium";
 
@@ -247,9 +247,9 @@ export const getVoicemailStatus = authQuery({
       unlocked,
       credits,
       tier,
-      streak: persona.streak,
-      voicemailUnlockedAt: persona.voicemailUnlockedAt,
-      nextMilestone: getNextMilestoneStreak(persona.streak),
+      streak: persona.streak as unknown as number,
+      voicemailUnlockedAt: persona.voicemailUnlockedAt as unknown as number | undefined,
+      nextMilestone: getNextMilestoneStreak(persona.streak as unknown as number),
     };
   },
 });

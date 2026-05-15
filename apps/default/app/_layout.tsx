@@ -1,4 +1,4 @@
-import { ConvexReactClient } from "convex/react";
+import { ConvexReactClient, Authenticated } from "convex/react";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -25,7 +25,9 @@ function AvatarPreloader() {
 export default function RootLayout() {
     return (
         <ConvexAuthProvider client={convex} storage={isNative ? secureStorage : undefined}>
-            <AvatarPreloader />
+            <Authenticated>
+                <AvatarPreloader />
+            </Authenticated>
             <Stack>
                 <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="landing" options={{ headerShown: false }} />
