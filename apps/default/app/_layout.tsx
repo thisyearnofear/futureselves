@@ -28,6 +28,7 @@ export default function RootLayout() {
             <AvatarPreloader />
             <Stack>
                 <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen name="landing" options={{ headerShown: false }} />
                 <Stack.Screen
                     name="archive"
                     options={{

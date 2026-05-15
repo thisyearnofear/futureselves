@@ -55,6 +55,7 @@ import {
 } from "@/components/memory-archive-section";
 import { FutureselfProfileSheet } from "@/components/futureself-profile-sheet";
 import { FutureselfSettingsSheet } from "@/components/futureself-settings-sheet";
+import { TransmissionShareCard } from "@/components/transmission-share-card";
 import { styles } from "@/components/futureself-home.styles";
 
 interface FutureselfHomeProps {
@@ -198,6 +199,7 @@ export function FutureselfHome({
   const arrivalPulse = useSharedValue(0);
   const arrivalSweep = useSharedValue(-280);
   const welcomeVoicemailTriggered = useRef(false);
+  const shareCardRef = useRef<View>(null);
 
   const persona = state.persona;
   const { pinnedSignalIds, togglePinnedSignal } = useSavedSignalPins();
@@ -382,7 +384,33 @@ export function FutureselfHome({
       `🔮 futureself.app`,
     ].join("\n");
 
-    if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.share) {
+    if (Platform.OS !== "web" && shareCardRef.current) {
+      // Native: capture the styled card as an image and share it
+      try {
+        const { captureRef } = await import("react-native-view-shot");
+        const uri = await captureRef(shareCardRef, {
+          format: "png",
+          quality: 1,
+          result: "tmpfile",
+        });
+        const { Share: RNShare } = await import("react-native");
+        await RNShare.share({
+          url: uri,
+          message: shareText,
+          title: `${castLabel} — Future Selves`,
+        });
+        setShareStatus("Shared");
+      } catch {
+        // Fallback to text-only if capture fails
+        const { Share: RNShare } = await import("react-native");
+        try {
+          await RNShare.share({ message: shareText, title: `${castLabel} — Future Selves` });
+          setShareStatus("Shared");
+        } catch {
+          setShareStatus(null);
+        }
+      }
+    } else if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
           title: `${castLabel} — Future Selves`,
@@ -398,15 +426,6 @@ export function FutureselfHome({
         setShareStatus("Copied to clipboard");
       } catch {
         setShareStatus("Could not share");
-      }
-    } else {
-      // Native: use Share API from react-native
-      const { Share: RNShare } = await import("react-native");
-      try {
-        await RNShare.share({ message: shareText, title: `${castLabel} — Future Selves` });
-        setShareStatus("Shared");
-      } catch {
-        setShareStatus(null);
       }
     }
     if (shareStatus) setTimeout(() => setShareStatus(null), 2500);
@@ -991,6 +1010,19 @@ export function FutureselfHome({
         persona={persona}
         visible={showProfileSheet}
       />
+
+      {/* Off-screen share card for native image capture */}
+      {state.todayTransmission && persona && Platform.OS !== "web" ? (
+        <View style={{ position: "absolute", left: -9999, top: -9999 }}>
+          <TransmissionShareCard
+            ref={shareCardRef}
+            text={state.todayTransmission.text}
+            castMember={state.todayTransmission.castMember}
+            streak={persona.streak}
+            title={state.todayTransmission.title}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
