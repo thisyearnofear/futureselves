@@ -13,8 +13,11 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeInUp, LinearTransition } from "react-native-reanimated";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import Animated, { FadeInUp, FadeIn, LinearTransition } from "react-native-reanimated";
 import { useMutation } from "convex/react";
+
+const bgAudio = require("@/assets/audio/spacious-hum.mp3");
 import { api } from "@/convex/_generated/api";
 import type {
   Arc,
@@ -91,6 +94,16 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
   const [draft, setDraft] = useState<OnboardingDraft>(initialDraft);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Background atmospheric audio
+  const player = useAudioPlayer(bgAudio);
+  const status = useAudioPlayerStatus(player);
+  
+  useEffect(() => {
+    player.loop = true;
+    player.play();
+    return () => player.pause();
+  }, [player]);
 
   const chapters = useMemo(
     () => ["The threshold", "The pull", "The voice"],
@@ -286,18 +299,21 @@ function renderChapter(
     return (
       <View style={styles.formStack}>
         <Field
+          index={0}
           label="What name should the voice use?"
           value={draft.name}
           onChangeText={(value) => updateDraft("name", value)}
           placeholder="Your name"
         />
         <Field
+          index={1}
           label="Where are you right now?"
           value={draft.city}
           onChangeText={(value) => updateDraft("city", value)}
           placeholder="City"
         />
         <Field
+          index={2}
           label="What scene are you living through right now?"
           multiline
           value={draft.currentChapter}
@@ -305,40 +321,47 @@ function renderChapter(
           placeholder="A transition, a rebuild, a quiet beginning, a hard truth..."
           suggestions={chapterNudges.currentChapter}
         />
-        <Text style={styles.optionLabel}>How would someone spot you in a crowd?</Text>
-        <Text style={styles.deferText}>Optional. Helps future-you look more like you.</Text>
-        <ChipGrid
-          values={skinToneValues}
-          selected={(draft.skinTone || "") as SkinTone | ""}
-          labels={skinToneLabels as Record<string, string>}
-          onSelect={(value) => updateDraft("skinTone", value === draft.skinTone ? "" : value)}
-        />
-        <ChipGrid
-          values={hairStyleValues}
-          selected={(draft.hairStyle || "") as HairStyle | ""}
-          labels={hairStyleLabels as Record<string, string>}
-          onSelect={(value) => updateDraft("hairStyle", value === draft.hairStyle ? "" : value)}
-        />
-        <ChipGrid
-          values={distinguishingValues}
-          selected={(draft.distinguishing || "") as Distinguishing | ""}
-          labels={distinguishingLabels as Record<string, string>}
-          onSelect={(value) => updateDraft("distinguishing", value === draft.distinguishing ? "" : value)}
-        />
+        <Animated.View entering={Platform.OS === "web" ? undefined : FadeInUp.delay(3 * 150).duration(500)}>
+          <Text style={styles.optionLabel}>How would someone spot you in a crowd?</Text>
+          <Text style={styles.deferText}>Optional. Helps future-you look more like you.</Text>
+        </Animated.View>
+        <Animated.View entering={Platform.OS === "web" ? undefined : FadeInUp.delay(4 * 150).duration(500)}>
+          <ChipGrid
+            values={skinToneValues}
+            selected={(draft.skinTone || "") as SkinTone | ""}
+            labels={skinToneLabels as Record<string, string>}
+            onSelect={(value) => updateDraft("skinTone", value === draft.skinTone ? "" : value)}
+          />
+          <ChipGrid
+            values={hairStyleValues}
+            selected={(draft.hairStyle || "") as HairStyle | ""}
+            labels={hairStyleLabels as Record<string, string>}
+            onSelect={(value) => updateDraft("hairStyle", value === draft.hairStyle ? "" : value)}
+          />
+          <ChipGrid
+            values={distinguishingValues}
+            selected={(draft.distinguishing || "") as Distinguishing | ""}
+            labels={distinguishingLabels as Record<string, string>}
+            onSelect={(value) => updateDraft("distinguishing", value === draft.distinguishing ? "" : value)}
+          />
+        </Animated.View>
       </View>
     );
   }
   if (chapter === 1) {
     return (
       <View style={styles.formStack}>
-        <Text style={styles.optionLabel}>The gravitational pull</Text>
-        <ChipGrid
-          values={arcValues}
-          selected={draft.primaryArc}
-          labels={arcLabels}
-          onSelect={(value) => updateDraft("primaryArc", value)}
-        />
+        <Animated.View entering={Platform.OS === "web" ? undefined : FadeInUp.delay(0).duration(500)}>
+          <Text style={styles.optionLabel}>The gravitational pull</Text>
+          <ChipGrid
+            values={arcValues}
+            selected={draft.primaryArc}
+            labels={arcLabels}
+            onSelect={(value) => updateDraft("primaryArc", value)}
+          />
+        </Animated.View>
         <Field
+          index={1}
           label="If a year from now worked, what would be different?"
           multiline
           value={draft.miraculousYear}
@@ -347,6 +370,7 @@ function renderChapter(
           suggestions={chapterNudges.miraculousYear}
         />
         <Field
+          index={2}
           label="What door are you not opening?"
           multiline
           value={draft.avoiding}
@@ -355,6 +379,7 @@ function renderChapter(
           suggestions={chapterNudges.avoiding}
         />
         <Field
+          index={3}
           label="What future do you almost not let yourself want?"
           multiline
           value={draft.afraidWontHappen}
@@ -368,20 +393,22 @@ function renderChapter(
   if (chapter === 2) {
     return (
       <View style={styles.formStack}>
-        <Text style={styles.optionLabel}>First voice</Text>
-        <ChipGrid
-          values={firstVoiceCastMembers}
-          selected={draft.firstVoice}
-          labels={firstVoiceLabels}
-          onSelect={(value) => updateDraft("firstVoice", value)}
-        />
-        <View style={styles.deferCard}>
+        <Animated.View entering={Platform.OS === "web" ? undefined : FadeInUp.delay(0).duration(500)}>
+          <Text style={styles.optionLabel}>First voice</Text>
+          <ChipGrid
+            values={firstVoiceCastMembers}
+            selected={draft.firstVoice}
+            labels={firstVoiceLabels}
+            onSelect={(value) => updateDraft("firstVoice", value)}
+          />
+        </Animated.View>
+        <Animated.View entering={Platform.OS === "web" ? undefined : FadeInUp.delay(1 * 150).duration(500)} style={styles.deferCard}>
           <Text style={styles.deferTitle}>We’ll keep the rest lightweight for now.</Text>
           <Text style={styles.deferText}>
             Timeline depth, voice tone, and rare-voice consent can all be refined
             after your first transmission in settings.
           </Text>
-        </View>
+        </Animated.View>
       </View>
     );
   }
@@ -389,6 +416,7 @@ function renderChapter(
 }
 
 interface FieldProps {
+  index: number;
   label: string;
   value: string;
   onChangeText: (value: string) => void;
@@ -398,6 +426,7 @@ interface FieldProps {
 }
 
 function Field({
+  index,
   label,
   value,
   onChangeText,
@@ -406,11 +435,16 @@ function Field({
   suggestions = [],
 }: FieldProps) {
   return (
-    <View style={styles.fieldWrap}>
+    <Animated.View 
+      entering={Platform.OS === "web" ? undefined : FadeInUp.delay(index * 150).duration(500)} 
+      style={styles.fieldWrap}
+    >
       <Text style={styles.label}>{label}</Text>
       <TextInput
         multiline={multiline}
-        onChangeText={onChangeText}
+        onChangeText={(text) => {
+          onChangeText(text);
+        }}
         placeholder={placeholder}
         placeholderTextColor="#6F7591"
         style={[styles.input, multiline && styles.inputMultiline]}
@@ -420,7 +454,7 @@ function Field({
       {suggestions.length > 0 ? (
         <SuggestionRow suggestions={suggestions} onSelect={onChangeText} />
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 

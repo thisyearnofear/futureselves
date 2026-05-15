@@ -28,7 +28,7 @@ import Animated, {
 
 const TAGLINE_FULL = "Hear from the future version of your life.";
 
-const sampleAudio = require("@/assets/audio/room-tone.mp3");
+const sampleAudio = require("@/assets/audio/sample-transmission.mp3");
 
 function useTypewriter(text: string, speed = 38, delay = 600) {
   const [displayed, setDisplayed] = useState("");
