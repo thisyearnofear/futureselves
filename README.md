@@ -139,6 +139,8 @@ See `scripts/README.md`.
 - **Agent Orchestration:** Melius MCP
 - **Monorepo tooling:** Bun workspaces + Turbo
 
+> **Strategic direction (June 2026):** We are pivoting the AI + audio layer onto the [QVAC](https://qvac.tether.io) on-device SDK so transmissions, TTS, and STT all run **fully on the device** — no cloud LLM, no ElevenLabs. See `docs/edge-ai-qvac.md` for the full plan and `docs/privacy-posture.md` for the public-facing privacy statement. The public site (`futureselves.vercel.app`) is a demo surface, not a product — see §12 of the plan.
+
 ## The Last Voicemail
 
 A milestone-gated feature where your future self sends a cinematic voicemail synthesized from your emotional journey.

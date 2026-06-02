@@ -46,6 +46,18 @@ Most important values:
 - `CONVEX_DEPLOYMENT`
 - `CONVEX_SITE_URL`
 - `SITE_URL`
-- optional `ANTHROPIC_API_KEY`
-- optional `ELEVENLABS_API_KEY`
+- optional `ANTHROPIC_API_KEY` (emergency fallback only — see QVAC note below)
+- optional `ELEVENLABS_API_KEY` (emergency fallback only — see QVAC note below)
 - optional `MELIUS_API_KEY` (enables "The Last Voicemail" feature)
+- optional `QVAC_HTTP_URL` (local QVAC HTTP server, OpenAI-compatible — used by the soft-de-risk path)
+
+## QVAC soft-de-risk path (internal/dev only)
+
+The existing `OpenAICompatibleProvider` in `convex/ai.ts` can be pointed at a local QVAC HTTP server with no code change. This is an **internal engineering-velocity tool**, not the public submission path. Per `docs/edge-ai-qvac.md` §3.5, the public submission is fully local; the soft-swap exists so the team can demo the LLM step without waiting for the in-app `@qvac/sdk` work to land.
+
+1. Run a local QVAC HTTP server (`npx @qvac/cli serve`) on the dev machine.
+2. Set `QVAC_HTTP_URL=http://localhost:11434/v1` in `.env`.
+3. Switch the active provider in `convex/ai.ts` to the `QVAC_HTTP` URL.
+4. The cloud LLM disappears from internal demos; only TTS still routes through ElevenLabs (until Phase 2).
+
+Full switch points and per-file mapping live in `docs/edge-ai-qvac.md`.

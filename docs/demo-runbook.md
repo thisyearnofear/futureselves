@@ -7,6 +7,65 @@ Show three things in under 5 minutes:
 2. The product is premium-ready
 3. The voices feel emotionally distinct
 
+> **Submission context (QVAC "Unleash Edge AI"):** Use the **QVAC submission variant** below instead of the standard 4-minute live sequence. The standard sequence still works for general demo-day pitches. Full plan: `docs/edge-ai-qvac.md`.
+
+---
+
+## QVAC submission variant (60–90 seconds, on-camera)
+
+Use this when recording or presenting for the QVAC "Unleash Edge AI" submission. The whole thing is screen-record + voiceover; no live staging.
+
+### Pre-recording setup
+
+- Build the app with the QVAC integration (Phase 2 minimum).
+- **Primary device: a mid-range Android** (not the latest iPhone). A 2-year-old Android that still runs the local loop is the visual that wins. iPhone is fine for parallel testing but is not the headliner.
+- On the device: Settings → toggle on **"Demo mode"** (or set the persona to "Maya / Founder" with 21-day streak so the cast is rich).
+- Have a second device or simulator visible in a small picture-in-picture for the cloud-path comparison — *or* use a pre-rendered cloud-path animation.
+- Have a Network Kill Switch control ready (an in-app toggle bound to `expo-network`).
+- **The memory-readout dev overlay is on by default** during the entire recording. *bytes uploaded: 0 · inference: on-device · last model · cache hit*.
+- Pre-warm the QVAC TTS model once before recording so cold-start latency doesn't show.
+- **Do not hide the cold start.** If a 25-second warm-up happens at any point in the take, the splash-screen progress UI must be visible. The speaker acknowledges it: *"the first transmission takes ~25 seconds while the model warms up."* Hiding it is worse than showing it.
+
+### Operator flow (record in one take)
+
+| Time | On screen | What to say |
+|---|---|---|
+| 0:00–0:08 | Title card: *The Future of Private Memories* | "People tell their future self things they would never type into a chatbot." |
+| 0:08–0:18 | Onboarding question: "What are you afraid won't happen?" | "Things they're avoiding. Things they haven't said out loud." |
+| 0:18–0:30 | Side-by-side diagram: **cloud path** (phone → API → cloud → API → phone) | "Today, every confession leaves the phone. It goes to a third-party LLM to write the reply and a third-party voice lab to speak it." |
+| 0:30–0:42 | Side-by-side diagram: **QVAC on-device path** (phone with chip, no arrows leaving) | "We rebuilt it on the QVAC SDK. The narrative model runs on this device. The voice runs on this device." |
+| 0:42–0:58 | User submits a one-word check-in (`threshold`). On-device transmission arrives. | "A daily transmission from a future self — generated entirely on the phone." |
+| 0:58–1:10 | **Network-kill moment.** Toggle Wi-Fi off, cellular off. Submit another check-in (`repair`). Transmission still arrives. | "And it still works when the network is gone." |
+| 1:10–1:20 | Closing card: *Future Selves — Built with QVAC* | "The future of private memories is local." |
+
+### What to emphasize in the edit
+
+- The **moment of the network kill** is the single most important visual. Hold on it for 2–3 seconds after the transmission arrives.
+- Use QVAC's pillar language at least once in voiceover: *Sovereign Mind* or *unstoppable intelligence*.
+- Show a small dev-overlay chip ("on-device · 0 KB uploaded") during the second transmission.
+
+### What to avoid (hard rules for the QVAC variant)
+
+- **No `The Shadow`. No `the_flatlined`.** The lead cast member is `Future Self` or `Future Best Friend` — full stop. Grim cast members read as a wellness app, not a privacy thesis. (The standard 4-minute live sequence can still use `The Shadow`; this hard rule applies only to the 60–90s QVAC submission video.)
+- **No cloud-error visuals in the same take as the network kill.** Judges will read it as a stunt, not a feature.
+- **No narration of provider fallback, prompt architecture, or rate limiting.** This is a privacy pitch, not an engineering talk.
+- **No "we use Anthropic for the cold start" hybrid framing.** The story is fully local. The submission video shows fully local. No half-measures.
+- **No pre-warmed model that disguises the cold start.** If a 25-second warm-up happens at any point in the take, the splash-screen progress UI must be visible.
+
+### The unforgeable network-kill test
+
+The single most important visual in the entire video. It must be on screen for at least 2–3 seconds after the transmission arrives, and it must include **all three** of the following:
+
+1. **OS-level airplane mode engaged.** Not just a software toggle. Airplane mode is the only thing judges will accept.
+2. **A visible `fetch('https://example.com')` in the dev console returning `TypeError: Network request failed`.** This is the receipts.
+3. **A new transmission arriving after the kill.** This is the proof.
+
+If any one of the three is missing, re-record. The unforgeable version is the version that wins.
+
+### If the kill switch is unavailable on a particular platform
+
+Record the cloud-side data flow with a network inspector (Charles / Proxyman) showing the upload. Then engage airplane mode and record the second transmission. The narrative is the same: *no traffic, voice still arrives.*
+
 ---
 
 ## Recommended demo sequence

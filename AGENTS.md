@@ -9,12 +9,27 @@ Set the following environment variables to configure AI inference providers:
 
 Providers are tried in order. If one is rate limited (HTTP 429), the system automatically falls back to the next configured provider.
 
+> **Strategic direction (June 2026):** We are pivoting the AI + audio layer onto the [QVAC](https://qvac.tether.io) on-device SDK so transmissions, TTS, and STT run **fully on the device**. The submission path is fully local — no cloud LLM, no ElevenLabs. Cloud providers above become emergency fallbacks for the backend Convex code only, and even there they are not on the public submission path. See `docs/edge-ai-qvac.md` for the full plan and `docs/privacy-posture.md` for the public-facing privacy statement.
+
 ## Project Structure
 
 - `packages/backend/convex/game.ts` - Game actions including transmission generation
 - `packages/backend/convex/melius.ts` - Melius MCP client for agentic workflows
 - `packages/backend/convex/voicemail.ts` - 'The Last Voicemail' critique-driven pipeline
+- `docs/edge-ai-qvac.md` - Canonical QVAC edge-AI plan (LLM, TTS, STT, switch points, phases, tracks, public-surface rules)
+- `docs/privacy-posture.md` - Public-facing privacy statement (hosted on the marketing site)
 
 ## Rate Limiting
 
 The `RateLimiter` class in `ai.ts` implements a token bucket algorithm for per-provider rate limiting.
+
+## QVAC SDK notes
+
+When working on the local-AI pivot, keep these in mind:
+
+- The on-device path lives in the **client** app (`apps/default`), not in Convex. QVAC is an Expo runtime target, so `@qvac/sdk` installs there.
+- The **soft-de-risk HTTP server** path (`QVAC_HTTP_URL`) is **internal/dev only** — it is not the submission path and not the public app. Per `docs/edge-ai-qvac.md` §3.5, the public submission is fully local.
+- Model lifecycle hooks (load/unload/onProgress) belong in a new `apps/default/lib/qvac.ts` and must expose clean named hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`). Do not put them in the Convex runtime.
+- Local model cache keys should be namespaced by user persona id and stored in `expo-secure-store` (already a dep). The cache encryption key is held in the device's secure enclave.
+- For tests, mock `@qvac/sdk` at the module boundary. Do not hit real on-device inference in unit tests.
+- The primary demo device is a **mid-range Android**, not the latest iPhone. Build the splash-screen progress UI on day one — it is part of the demo, not polish.

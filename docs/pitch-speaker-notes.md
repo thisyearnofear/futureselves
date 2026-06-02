@@ -1,5 +1,46 @@
 # Future Selves Pitch Speaker Notes
 
+> **Submission context (QVAC "Unleash Edge AI"):** Use the **QVAC opener** below when pitching to that audience. The original "Opening" still works for general demo-day pitches. Full plan: `docs/edge-ai-qvac.md`.
+
+## Strategic guardrails (locked in, June 2026)
+
+These rules apply to **every** QVAC pitch, demo, or video. If a future PR contradicts any of these, this section needs to be updated first.
+
+1. **The story is fully local.** No "we use Anthropic for the cold start." No hybrid framing. The pitch claims that the LLM, the TTS, and the STT all run on the device, and the demo has to prove it.
+2. **The lead cast member in any video or live demo is `Future Self` or `Future Best Friend`.** Never `The Shadow`. Never `the_flatlined`. The voice does the emotional work; grim cast members read as a wellness app, not a privacy thesis.
+3. **The network-kill test is unforgeable.** If pitching live, the demo must show OS-level airplane mode engaged, plus a visible `fetch('https://example.com')` returning `TypeError: Network request failed` in the dev console, *plus* a transmission arriving after the kill. All three on screen at the same time.
+4. **The memory-readout chip is on by default during any QVAC demo.** Small overlay: *bytes uploaded: 0 · inference: on-device · last model · cache hit*.
+5. **Time-to-first-transmission is acknowledged, not hidden.** A 25-second cold start is fine *if* the speaker says "the first transmission takes ~25 seconds while the model warms up" and the splash-screen progress is visible.
+6. **Use QVAC's pillar language at least once.** "Sovereign Mind" or "unstoppable intelligence" lands with the judging panel.
+7. **Do not narrate provider fallback, prompt architecture, or rate limiting.** That's engineering trivia; this is a privacy pitch.
+8. **The public site is a demo surface.** If asked "can I try it in my browser?", the answer is: "You can feel the interface, but the real product runs on your device. Here's the install link."
+
+---
+
+## QVAC opener (for the "Unleash Edge AI" submission)
+
+> Every day, people confess their deepest choices to Future Selves — what they’re afraid won’t happen, what they keep avoiding, who they’re becoming.  
+> Until recently, every one of those confessions was leaving their phone. It went to a third-party LLM to write the reply, and a third-party voice lab to speak it.  
+> We rebuilt the entire loop on the QVAC SDK. The narrative model runs on-device. The voice runs on-device. Even the speech-to-text runs on-device.  
+> That means the most intimate AI experience you can build is the one whose data never leaves your hardware.  
+> The future of private memories is local. This is it.
+
+## 90-second submission video (Track A — "Private Memories")
+
+| Time | Visual | Voiceover |
+|---|---|---|
+| 0:00–0:08 | Title card: *The Future of Private Memories* | "People tell their future self things they would never type into a chatbot." |
+| 0:08–0:18 | Onboarding question: "What are you afraid won't happen?" | "Things they're avoiding. Things they haven't said out loud." |
+| 0:18–0:32 | Side-by-side: **Cloud path** (icons: phone → API → cloud → API → phone) | "Today, that goes to a third-party LLM and a third-party voice lab." |
+| 0:32–0:46 | Side-by-side: **QVAC on-device path** (icons: phone with chip, no arrows leaving) | "We rebuilt it on the QVAC SDK. The model runs on this device. The voice runs on this device." |
+| 0:46–1:02 | User submits a check-in word. Transmission generates on-device. | "A daily transmission from a future self — generated entirely on the phone." |
+| 1:02–1:18 | Network-kill toggle flips. Wi-Fi + cellular off. New transmission still arrives. | "And it still works when the network is gone." |
+| 1:18–1:30 | Closing card: *Future Selves — Built with QVAC* | "The future of private memories is local." |
+
+Use QVAC's pillar language at least once: *Sovereign Mind* or *unstoppable intelligence*.
+
+---
+
 ## Opening
 > Future Selves is a daily ritual for hearing from the person you’re becoming.  
 > Instead of starting with a blank journal page, you start with one word.  
