@@ -65,7 +65,7 @@ Valid values for `EXPO_PUBLIC_AI_PROVIDER`:
 
 The app is being extended so transmissions, TTS, and STT run locally via the [QVAC SDK](https://github.com/tetherto/qvac). **The submission path is fully local** — no cloud LLM, no ElevenLabs. New files planned for this work:
 
-- `lib/qvac.ts` — model load/unload lifecycle, on-device cache keys, model selection; exposes clean named hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`)
+- `lib/qvac.ts` — QVAC SDK lifecycle wrapper with three named hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`). Platform-guarded at the function level. Type-only import of `@qvac/sdk` on web (no bundle impact). SDK calls are stubs in this phase and will be wired by Phase D (TTS swap), Phase E (LLM swap), and Phase F (STT). See `docs/edge-ai-qvac.md` §7.
 - `hooks/use-network-kill.ts` — proves the app still works when Wi-Fi + cellular are disabled; the demo video uses this
 - `hooks/use-qvac-model.ts` — wraps `loadModel` with progress events surfaced to the splash screen
 - `components/memory-readout.tsx` — small dev-overlay chip: *bytes uploaded: 0 · inference: on-device · last model · cache hit*. In scope for the demo, not optional.

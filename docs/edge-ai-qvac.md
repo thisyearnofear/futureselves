@@ -135,9 +135,11 @@ These phases assume Tracks A + B as the core submission. Track C is a stretch la
 - **Scope:** This is an internal milestone for engineering velocity. It is **not** the submission path. Per §3.5, the public submission is fully local. The soft-swap exists so the team can demo the LLM step without waiting for the in-app `@qvac/sdk` work to land.
 
 ### Phase 2 — On-device TTS
-- Add `@qvac/sdk` to `apps/default`; new `lib/qvac.ts` for model lifecycle
-- Replace ElevenLabs call in `game.transmission.ts` and `voicemail.native.ts` with a client-side TTS call
-- Pre-warm model on app start; cache first-cast voices
+- ✅ `@qvac/sdk` installed in `apps/default`
+- ✅ `lib/qvac.ts` written (useQVACModel, useLocalTTS, useLocalSTT as stubs)
+- ⏳ Wire loadModel/unloadModel in useQVACModel (currently stubs to error message)
+- ⏳ Replace ElevenLabs call in `game.transmission.ts` and `voicemail.native.ts` with a client-side TTS call
+- ⏳ Pre-warm model on app start; cache first-cast voices
 - **Deliverable:** End-to-end on-device transmission on iOS and Android, with a "voice pre-loading" UX
 
 ### Phase 3 — On-device LLM (full offline)
