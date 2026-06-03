@@ -31,8 +31,35 @@ bun run web
 - `app/` — routes and layout
 - `components/` — UI flows and screens
 - `lib/futureself.ts` — shared client-facing game types/helpers
+- `lib/ai.ts` — AI provider runtime split (`getAIProvider()`)
 - `app.json` — Expo config
 - `metro.config.js` — monorepo + env loading
+
+## AI provider runtime split
+
+The web build at `futureselves.vercel.app` and the upcoming on-device QVAC build share one codebase but route to different AI pipelines. The seam is a single function in `lib/ai.ts`:
+
+```ts
+import { getAIProvider } from "@/lib/ai";
+
+const provider = getAIProvider();
+// → "cloud" on web, unconditionally.
+// → "cloud" | "local" | "stub" on native, based on EXPO_PUBLIC_AI_PROVIDER.
+```
+
+**Rules for contributors:**
+
+- **Do not import `@qvac/sdk` from this file or any module that is bundled into the web build.** The QVAC SDK is native-only; pulling it into the web bundle will break the Vercel deploy. The `Platform.OS === "web"` guard in `getAIProvider()` exists to keep the two runtimes partitioned, and the import boundary has to honor it.
+- **Web is always "cloud"** — `getAIProvider()` enforces this unconditionally, regardless of env vars.
+- **Native defaults to "stub"** when `EXPO_PUBLIC_AI_PROVIDER` is unset. "stub" behaves like "cloud" but is a distinct value so the QVAC submission build can flip to "local" with a single env var. See `docs/edge-ai-qvac.md` §3.5 and §7 for the strategic context.
+
+Valid values for `EXPO_PUBLIC_AI_PROVIDER`:
+
+| Value   | Behavior                                                       |
+| ------- | -------------------------------------------------------------- |
+| `cloud` | Use the existing Anthropic + ElevenLabs path via Convex.        |
+| `local` | Use the on-device QVAC SDK path (Phase C, not yet wired up).    |
+| `stub`  | Default. Behaves like "cloud" but signals "local not wired up." |
 
 ## QVAC integration (in progress)
 
