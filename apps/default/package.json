@@ -11,7 +11,7 @@
     "web": "expo start --web",
     "dev": "expo start",
     "typecheck": "tsc --noEmit",
-    "build": "npx expo export --platform web",
+    "build": "npx expo export --platform web && node scripts/inject-og-tags.js",
     "lint": "expo lint"
   },
   "dependencies": {
