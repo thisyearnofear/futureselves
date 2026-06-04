@@ -136,8 +136,9 @@ These phases assume Tracks A + B as the core submission. Track C is a stretch la
 
 ### Phase 2 — On-device TTS
 - ✅ `@qvac/sdk` installed in `apps/default`
-- ✅ `lib/qvac.ts` written (useQVACModel, useLocalTTS, useLocalSTT as stubs)
-- ⏳ Wire loadModel/unloadModel in useQVACModel (currently stubs to error message)
+- ✅ `lib/qvac.ts` written (useQVACModel, useLocalTTS, useLocalSTT)
+- ✅ Wire loadModel/unloadModel in useQVACModel (real SDK calls via dynamic import)
+- ✅ Wire textToSpeech in useLocalTTS (PCM→WAV conversion, 24kHz mono)
 - ⏳ Replace ElevenLabs call in `game.transmission.ts` and `voicemail.native.ts` with a client-side TTS call
 - ⏳ Pre-warm model on app start; cache first-cast voices
 - **Deliverable:** End-to-end on-device transmission on iOS and Android, with a "voice pre-loading" UX

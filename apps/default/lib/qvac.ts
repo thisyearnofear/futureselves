@@ -20,12 +20,10 @@
  *   SDK calls go through a single lazy import inside the hook body,
  *   platform-guarded. This pattern keeps the web Metro bundle clean
  *   even though the SDK is in `dependencies`.
- * - **The hooks are stubs in this PR.** They declare the public
- *   surface and the platform-guard pattern; the actual SDK calls
- *   will be wired in by Phase D (TTS swap), Phase E (LLM swap), and
- *   Phase F (STT). The stubs return a stable shape so call sites can
- *   be written today and enabled later by flipping
- *   `EXPO_PUBLIC_AI_PROVIDER` to `"local"`.
+ * - **Phase D is wired.** `useQVACModel` (loadModel/unloadModel) and
+ *   `useLocalTTS` (textToSpeech) call the real SDK. `useLocalSTT`
+ *   remains a stub for Phase F. All hooks keep the platform-guard
+ *   pattern and the type-only top-level import.
  *
  * See `docs/edge-ai-qvac.md` §3.5, §7, and §12 for the full context.
  * See `docs/privacy-posture.md` for the public-facing privacy story.
@@ -96,28 +94,26 @@ export interface UseQVACModelResult extends QVACModelState {
 /**
  * Load and unload a QVAC model with progress reporting.
  *
- * Phase C of `docs/edge-ai-qvac.md`. The hook signature is stable;
- * the runtime SDK calls are stubs in this PR and will be enabled when
- * `EXPO_PUBLIC_AI_PROVIDER=local` is set on a native build that has
- * `@qvac/sdk` linked.
+ * Wired in Phase D of `docs/edge-ai-qvac.md`. The SDK is loaded
+ * lazily via dynamic import so the web bundle stays clean.
  */
 export function useQVACModel(): UseQVACModelResult {
   const [state, setState] = useState<QVACModelState>({ status: "idle" });
-  // We use a ref to track the modelId across renders so an
-  // unmounting consumer can unload without a stale closure.
   const modelIdRef = useRef<string | null>(null);
 
-  // On unmount, attempt to unload any model we still hold. This is
-  // a no-op on web and a no-op until Phase D wires loadModel.
   useEffect(() => {
     return () => {
-      // Intentional cleanup. Phase D will replace this with a
-      // platform-guarded `unloadModel({ modelId })` call.
-      modelIdRef.current = null;
+      if (Platform.OS !== "web" && modelIdRef.current) {
+        const id = modelIdRef.current;
+        modelIdRef.current = null;
+        import("@qvac/sdk")
+          .then(({ unloadModel }) => unloadModel({ modelId: id }))
+          .catch(() => {});
+      }
     };
   }, []);
 
-  const load = useCallback(async (_options: LoadModelOptions) => {
+  const load = useCallback(async (options: LoadModelOptions) => {
     if (Platform.OS === "web") {
       setState(UNSUPPORTED_STATE);
       return;
@@ -125,36 +121,32 @@ export function useQVACModel(): UseQVACModelResult {
 
     setState({ status: "loading" });
 
-    // Phase D will replace this stub with the real call:
-    //
-    //   const response: LoadModelResponse = await loadModel({
-    //     ...options,
-    //     onProgress: (progress) =>
-    //       setState((s) => ({ ...s, progress })),
-    //   });
-    //   if (!response.success) {
-    //     setState({ status: "error", error: response.error ?? "load failed" });
-    //     return;
-    //   }
-    //   modelIdRef.current = response.modelId ?? null;
-    //   setState({ status: "ready", modelId: response.modelId });
-    //
-    // For now, we surface the same shape without doing the work.
-    setState({
-      status: "error",
-      error:
-        "QVAC on-device loadModel is not yet wired up. See docs/edge-ai-qvac.md §7 Phase D.",
-    });
+    try {
+      const { loadModel } = await import("@qvac/sdk");
+      const id: string = await loadModel({
+        ...options,
+        onProgress: (progress: ModelProgressUpdate) =>
+          setState((s) => ({ ...s, progress })),
+      });
+      modelIdRef.current = id;
+      setState((s) => ({ ...s, status: "ready", modelId: id }));
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      setState({ status: "error", error });
+    }
   }, []);
 
   const unload = useCallback(async () => {
     if (Platform.OS === "web") return;
     if (!modelIdRef.current) return;
 
-    // Phase D will replace this stub with:
-    //   await unloadModel({ modelId: modelIdRef.current });
-    modelIdRef.current = null;
-    setState({ status: "idle" });
+    try {
+      const { unloadModel } = await import("@qvac/sdk");
+      await unloadModel({ modelId: modelIdRef.current });
+    } finally {
+      modelIdRef.current = null;
+      setState({ status: "idle" });
+    }
   }, []);
 
   return { ...state, load, unload };
@@ -164,10 +156,9 @@ export function useQVACModel(): UseQVACModelResult {
 /**
  * Hook return value for `useLocalTTS`.
  *
- * `speak` is a no-op on web. On native, once Phase D wires the SDK,
- * it will return generated audio as a `Uint8Array` (PCM samples per
- * the SDK's `textToSpeech` contract). The on-device TTS engine
- * defaults to `chatterbox` (see `docs/edge-ai-qvac.md` §3.5).
+ * `speak` is a no-op on web. On native, it returns WAV-encoded audio
+ * as a `Uint8Array` (16-bit PCM, 24 kHz, mono) suitable for playback
+ * via `expo-av` or any WAV-compatible audio player.
  */
 export interface UseLocalTTSResult {
   speak: (text: string) => Promise<Uint8Array | null>;
@@ -175,13 +166,15 @@ export interface UseLocalTTSResult {
 }
 
 /**
- * Local TTS hook. Stub in this PR; enabled when the QVAC on-device
- * build is wired up.
+ * Local TTS hook. Wired in Phase D. The consumer controls model
+ * lifecycle via `useQVACModel`; this hook sets `isReady = true` when
+ * a modelId is provided and calls `textToSpeech()` on `speak()`.
  *
- * Consumer code is expected to be small and stable. Example:
+ * Returns WAV-encoded audio as a `Uint8Array` (16-bit PCM, 24 kHz,
+ * mono). Consumer code:
  *
  * ```ts
- * const { speak, isReady } = useLocalTTS();
+ * const { speak, isReady } = useLocalTTS(modelId);
  * const audio = await speak("hello from the other side");
  * if (audio) await playBytes(audio);
  * ```
@@ -194,19 +187,24 @@ export function useLocalTTS(modelId?: string): UseLocalTTSResult {
       setIsReady(false);
       return;
     }
-    // Phase D will: load the chatterbox TTS model on mount if a
-    // modelId is provided, set isReady to true when the model is
-    // loaded, and unload on unmount.
-    setIsReady(false);
+    setIsReady(!!modelId);
   }, [modelId]);
 
   const speak = useCallback(
-    async (_text: string): Promise<Uint8Array | null> => {
+    async (text: string): Promise<Uint8Array | null> => {
       if (Platform.OS === "web") return null;
-      // Phase D will replace this stub with:
-      //   const response = await textToSpeech({ modelId, text });
-      //   return response.buffer;
-      return null;
+      if (!modelId) return null;
+
+      const { textToSpeech } = await import("@qvac/sdk");
+      const result = textToSpeech({
+        modelId,
+        inputType: "text",
+        text,
+        stream: false,
+      });
+      const samples = await result.buffer;
+      await result.done;
+      return pcmToWav(samples, CHATTERBOX_SAMPLE_RATE);
     },
     [modelId],
   );
@@ -255,4 +253,39 @@ export function useLocalSTT(modelId?: string): UseLocalSTTResult {
   );
 
   return { transcribe, isReady };
+}
+
+const CHATTERBOX_SAMPLE_RATE = 24000;
+
+function writeString(view: DataView, offset: number, str: string) {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}
+
+function pcmToWav(samples: number[], sampleRate: number): Uint8Array {
+  const numSamples = samples.length;
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+
+  writeString(view, 0, "RIFF");
+  view.setUint32(4, 36 + numSamples * 2, true);
+  writeString(view, 8, "WAVE");
+  writeString(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(view, 36, "data");
+  view.setUint32(40, numSamples * 2, true);
+
+  for (let i = 0; i < numSamples; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]!));
+    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+
+  return new Uint8Array(buffer);
 }

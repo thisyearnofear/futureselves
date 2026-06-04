@@ -58,14 +58,14 @@ Valid values for `EXPO_PUBLIC_AI_PROVIDER`:
 | Value   | Behavior                                                       |
 | ------- | -------------------------------------------------------------- |
 | `cloud` | Use the existing Anthropic + ElevenLabs path via Convex.        |
-| `local` | Use the on-device QVAC SDK path (Phase C, not yet wired up).    |
+| `local` | Use the on-device QVAC SDK path (model load/unload + TTS wired). |
 | `stub`  | Default. Behaves like "cloud" but signals "local not wired up." |
 
 ## QVAC integration (in progress)
 
 The app is being extended so transmissions, TTS, and STT run locally via the [QVAC SDK](https://github.com/tetherto/qvac). **The submission path is fully local** — no cloud LLM, no ElevenLabs. New files planned for this work:
 
-- `lib/qvac.ts` — QVAC SDK lifecycle wrapper with three named hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`). Platform-guarded at the function level. Type-only import of `@qvac/sdk` on web (no bundle impact). SDK calls are stubs in this phase and will be wired by Phase D (TTS swap), Phase E (LLM swap), and Phase F (STT). See `docs/edge-ai-qvac.md` §7.
+- `lib/qvac.ts` — QVAC SDK lifecycle wrapper with three named hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`). Platform-guarded at the function level. Type-only import of `@qvac/sdk` on web (no bundle impact). Model load/unload and TTS are wired (Phase D complete); STT remains a stub for Phase F. See `docs/edge-ai-qvac.md` §7.
 - `hooks/use-network-kill.ts` — proves the app still works when Wi-Fi + cellular are disabled; the demo video uses this
 - `hooks/use-qvac-model.ts` — wraps `loadModel` with progress events surfaced to the splash screen
 - `components/memory-readout.tsx` — small dev-overlay chip: *bytes uploaded: 0 · inference: on-device · last model · cache hit*. In scope for the demo, not optional.
@@ -76,7 +76,7 @@ QVAC is an officially supported Expo runtime target, so it slots into this works
 - TTS: `chatterbox` (ONNX via `lib-infer-onnx-tts`)
 - STT: `parakeet` (NVIDIA Parakeet)
 
-The primary demo device is a **mid-range Android**, not the latest iPhone.
+The primary demo device is an **iPhone**. macOS (Apple Silicon) is the dev/test target.
 
 ## Public surface vs. product
 

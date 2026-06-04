@@ -13,9 +13,11 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 
 ## Project Structure
 
+- `apps/default/lib/qvac.ts` - QVAC SDK lifecycle hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`), platform-guarded; model load/unload and TTS wired (Phase D), STT remains stub
 - `packages/backend/convex/game.ts` - Game actions including transmission generation
 - `packages/backend/convex/melius.ts` - Melius MCP client for agentic workflows
 - `packages/backend/convex/voicemail.ts` - 'The Last Voicemail' critique-driven pipeline
+- `scripts/trim-node-modules.mjs` - Postinstall script that trims unused @qvac runtimes and non-target platform prebuilds
 - `docs/edge-ai-qvac.md` - Canonical QVAC edge-AI plan (LLM, TTS, STT, switch points, phases, tracks, public-surface rules)
 - `docs/privacy-posture.md` - Public-facing privacy statement (hosted on the marketing site)
 
@@ -32,4 +34,5 @@ When working on the local-AI pivot, keep these in mind:
 - Model lifecycle hooks (load/unload/onProgress) belong in a new `apps/default/lib/qvac.ts` and must expose clean named hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`). Do not put them in the Convex runtime.
 - Local model cache keys should be namespaced by user persona id and stored in `expo-secure-store` (already a dep). The cache encryption key is held in the device's secure enclave.
 - For tests, mock `@qvac/sdk` at the module boundary. Do not hit real on-device inference in unit tests.
-- The primary demo device is a **mid-range Android**, not the latest iPhone. Build the splash-screen progress UI on day one — it is part of the demo, not polish.
+- The primary demo device is an **iPhone**. macOS (Apple Silicon) is the dev/test target — the `darwin-arm64` prebuild runs the full SDK natively on your Mac for fast iteration. iOS builds ship via EAS (`eas build --profile development --platform ios`). Android is not required.
+- **node_modules trim:** `@qvac/sdk` installs ~4.2 GB of native ML runtimes as direct deps. `scripts/trim-node-modules.mjs` runs on postinstall and keeps only the three runtimes we use (`llm-llamacpp`, `tts-ggml`, `transcription-parakeet`) and only for `darwin-arm64`, `ios-arm64`, and `android-arm64`. It also removes heavy transitive deps (`bare-ffmpeg`, `react-native-bare-kit`, `rocksdb-native`). Reduces node_modules from ~5.6 GB to ~1.3 GB. The trim is fragile — it will break if the SDK internally imports a removed package at runtime.
