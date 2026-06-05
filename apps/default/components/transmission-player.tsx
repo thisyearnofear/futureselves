@@ -819,8 +819,9 @@ function LocalTTSAudioPlayer({ transmission }: { transmission: TransmissionState
   const personaId = transmission.id; // Used as cache key scope; refine if a real persona id is available
   const { speak, isReady } = useLocalTTS(modelId ?? undefined);
 
-  // Load the model on mount.
+  // Load the model on mount (native only).
   useEffect(() => {
+    if (Platform.OS === "web") return;
     let mounted = true;
     (async () => {
       try {
