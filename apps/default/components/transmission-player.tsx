@@ -29,6 +29,7 @@ import type { CastMember, TransmissionState } from "@/lib/futureself";
 import { formatCastMember } from "@/lib/futureself";
 import { AvatarReveal } from "@/components/avatar-reveal";
 import { isLocalMode } from "@/lib/ai";
+import { loadQvacSdk } from "@/lib/qvac-sdk-loader";
 import { useLocalTTS } from "@/lib/qvac";
 import { getCachedAudio, setCachedAudio } from "@/lib/audio-cache";
 
@@ -825,8 +826,7 @@ function LocalTTSAudioPlayer({ transmission }: { transmission: TransmissionState
     let mounted = true;
     (async () => {
       try {
-        const sdkPath = "@qvac/sdk";
-        const { loadModel } = await import(sdkPath);
+        const { loadModel } = await loadQvacSdk();
         // `chatterbox` is the model descriptor constant from the registry.
         const id = await loadModel({
           // @ts-expect-error - registry descriptor constant typing varies by version
