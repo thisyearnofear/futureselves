@@ -825,7 +825,8 @@ function LocalTTSAudioPlayer({ transmission }: { transmission: TransmissionState
     let mounted = true;
     (async () => {
       try {
-        const { loadModel } = await import("@qvac/sdk");
+        const sdkPath = "@qvac/sdk";
+        const { loadModel } = await import(sdkPath);
         // `chatterbox` is the model descriptor constant from the registry.
         const id = await loadModel({
           // @ts-expect-error - registry descriptor constant typing varies by version
