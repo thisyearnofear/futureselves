@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Future Selves x QVAC</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1080px;
+    height: 1080px;
+    overflow: hidden;
+    background: #080A17;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #F7F0DF;
+  }
+
+  /* Root composition container */
+  #root {
+    position: relative;
+    width: 1080px;
+    height: 1080px;
+    overflow: hidden;
+  }
+
+  /* Particle canvas - global background, beneath all scenes */
+  #bg-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1080px;
+    height: 1080px;
+    z-index: 0;
+  }
+
+  /* Scene containers */
+  .scene {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1080px;
+    height: 1080px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #scene1 { z-index: 1; background: #080A17; }
+  #scene2 { z-index: 2; background: #080A17; opacity: 0; }
+  #scene3 { z-index: 3; background: #080A17; opacity: 0; }
+
+  /* ─── Ambient layers ─── */
+  .scene-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow {
+    position: absolute;
+    width: 700px;
+    height: 700px;
+    border-radius: 50%;
+    filter: blur(120px);
+  }
+
+  .glow-gold {
+    background: rgba(247, 211, 139, 0.08);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .ghost-text {
+    position: absolute;
+    font-size: 220px;
+    font-weight: 900;
+    color: rgba(247, 211, 139, 0.03);
+    letter-spacing: -8px;
+    white-space: nowrap;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* ─── Scene 1: The Confession ─── */
+  .s1-eyebrow {
+    position: absolute;
+    top: 120px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #F7D38B;
+    z-index: 1;
+  }
+
+  .s1-words {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 1;
+  }
+
+  .s1-word {
+    font-size: 80px;
+    font-weight: 900;
+    color: #F7F0DF;
+    letter-spacing: -2px;
+    line-height: 1.15;
+    text-align: center;
+  }
+
+  .s1-stream {
+    position: absolute;
+    bottom: 140px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: #C5CAE0;
+    z-index: 1;
+  }
+
+  /* ─── Scene 2: The Arrest ─── */
+  .s2-words {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    z-index: 2;
+  }
+
+  .s2-word {
+    font-size: 64px;
+    font-weight: 900;
+    color: #F7F0DF;
+    letter-spacing: -1.5px;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .s2-border-frame {
+    position: absolute;
+    top: 200px;
+    left: 140px;
+    right: 140px;
+    bottom: 300px;
+    border: 3px solid #F7D38B;
+    border-radius: 24px;
+    z-index: 1;
+  }
+
+  .s2-specs {
+    position: absolute;
+    bottom: 160px;
+    display: flex;
+    gap: 64px;
+    z-index: 1;
+  }
+
+  .s2-spec {
+    text-align: center;
+  }
+
+  .s2-spec-label {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #F7D38B;
+    margin-bottom: 8px;
+  }
+
+  .s2-spec-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #C5CAE0;
+  }
+
+  .s2-tag {
+    position: absolute;
+    bottom: 100px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #F7D38B;
+    z-index: 1;
+  }
+
+  /* ─── Scene 3: The Proof ─── */
+  .s3-text {
+    font-size: 72px;
+    font-weight: 900;
+    color: #F7F0DF;
+    letter-spacing: -1.5px;
+    text-align: center;
+    line-height: 1.2;
+    z-index: 1;
+  }
+
+  .s3-chip {
+    position: absolute;
+    bottom: 240px;
+    display: flex;
+    gap: 28px;
+    padding: 16px 36px;
+    border: 1px solid rgba(247, 211, 139, 0.3);
+    border-radius: 16px;
+    background: rgba(247, 211, 139, 0.06);
+    z-index: 1;
+  }
+
+  .s3-chip span {
+    font-size: 16px;
+    font-weight: 700;
+    color: #C5CAE0;
+  }
+
+  .s3-chip .gold {
+    color: #F7D38B;
+  }
+
+  .s3-close {
+    position: absolute;
+    bottom: 120px;
+    text-align: center;
+    z-index: 1;
+  }
+
+  .s3-product {
+    font-size: 36px;
+    font-weight: 900;
+    color: #F7D38B;
+    letter-spacing: -0.5px;
+    margin-bottom: 10px;
+  }
+
+  .s3-qvac {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #9BA2BE;
+  }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-width="1080" data-height="1080" data-start="0" data-duration="30">
+
+  <!-- Narration audio -->
+  <audio
+    id="narration"
+    data-start="0.5"
+    data-duration="26"
+    data-track-index="5"
+    data-volume="1"
+    src="narration.wav"
+  ></audio>
+
+  <!-- Global particle canvas -->
+  <canvas id="bg-canvas" width="1080" height="1080"></canvas>
+
+  <!-- Scene 1: The Confession (0-8s) -->
+  <div id="scene1" class="scene">
+    <div class="scene-bg">
+      <div class="glow glow-gold" id="s1-glow"></div>
+      <div class="ghost-text" id="s1-ghost" data-layout-ignore style="top: 380px; left: -80px;">FEAR</div>
+    </div>
+    <div class="s1-eyebrow" id="s1-eyebrow">the confession</div>
+    <div class="s1-words">
+      <div class="s1-word" id="s1-w1">What are</div>
+      <div class="s1-word" id="s1-w2">you afraid</div>
+      <div class="s1-word" id="s1-w3">won't happen?</div>
+    </div>
+    <div class="s1-stream" id="s1-stream">sending to cloud...</div>
+  </div>
+
+  <!-- Scene 2: The Arrest (8-22s) -->
+  <div id="scene2" class="scene">
+    <div class="scene-bg">
+      <div class="glow glow-gold" id="s2-glow"></div>
+      <div class="ghost-text" id="s2-ghost" data-layout-ignore style="top: 340px; left: -40px;">STAY</div>
+    </div>
+    <div class="s2-border-frame" id="s2-border"></div>
+    <div class="s2-words">
+      <div class="s2-word" id="s2-w1">What are</div>
+      <div class="s2-word" id="s2-w2">you afraid</div>
+      <div class="s2-word" id="s2-w3">won't happen?</div>
+    </div>
+    <div class="s2-specs" id="s2-specs">
+      <div class="s2-spec">
+        <div class="s2-spec-label">LLM</div>
+        <div class="s2-spec-value">LLAMA 3.2 1B</div>
+      </div>
+      <div class="s2-spec">
+        <div class="s2-spec-label">TTS</div>
+        <div class="s2-spec-value">Chatterbox</div>
+      </div>
+      <div class="s2-spec">
+        <div class="s2-spec-label">STT</div>
+        <div class="s2-spec-value">Parakeet</div>
+      </div>
+    </div>
+    <div class="s2-tag" id="s2-tag">all on-device</div>
+  </div>
+
+  <!-- Scene 3: The Proof (22-30s) -->
+  <div id="scene3" class="scene">
+    <div class="scene-bg">
+      <div class="glow glow-gold" id="s3-glow"></div>
+      <div class="ghost-text" id="s3-ghost" data-layout-ignore style="top: 360px; left: -60px;">ZERO</div>
+    </div>
+    <div class="s3-text" id="s3-text">Airplane mode.<br>Still works.</div>
+    <div class="s3-chip" id="s3-chip">
+      <span>bytes uploaded: <span class="gold">0</span></span>
+      <span>inference: <span class="gold">on-device</span></span>
+      <span>cache hit: <span class="gold">yes</span></span>
+    </div>
+    <div class="s3-close" id="s3-close">
+      <div class="s3-product">Future Selves</div>
+      <div class="s3-qvac">built with @qvac</div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.__timelines = window.__timelines || {};
+var tl = gsap.timeline({ paused: true });
+
+/* ═══════════════════════════════════════════
+   SCENE 1: THE CONFESSION (0-8s)
+   ═══════════════════════════════════════════ */
+
+/* Ambient: glow breathing */
+tl.fromTo("#s1-glow",
+  { scale: 0.9 },
+  { scale: 1.15, duration: 3.5, ease: "sine.inOut", yoyo: true, repeat: 1 },
+  0);
+
+/* Ambient: ghost text drift */
+tl.fromTo("#s1-ghost",
+  { x: 0, opacity: 0.03 },
+  { x: 40, opacity: 0.05, duration: 7, ease: "sine.inOut" },
+  0);
+
+/* Eyebrow enters from above */
+tl.fromTo("#s1-eyebrow",
+  { y: -20, opacity: 0 },
+  { y: 0, opacity: 1, duration: 0.4, ease: "power2.out" },
+  0.15);
+
+/* Words enter sequentially - varied eases and distances (kinetic type) */
+tl.fromTo("#s1-w1",
+  { x: 80, y: 14, opacity: 0 },
+  { x: 0, y: 0, opacity: 1, duration: 0.5, ease: "power3.out" },
+  0.5);
+
+tl.fromTo("#s1-w2",
+  { x: 60, y: 14, opacity: 0 },
+  { x: 0, y: 0, opacity: 1, duration: 0.45, ease: "expo.out" },
+  1.2);
+
+tl.fromTo("#s1-w3",
+  { x: 40, y: 14, opacity: 0 },
+  { x: 0, y: 0, opacity: 1, duration: 0.5, ease: "power2.out" },
+  1.9);
+
+/* Data stream enters from below */
+tl.fromTo("#s1-stream",
+  { y: 20, opacity: 0 },
+  { y: 0, opacity: 1, duration: 0.4, ease: "sine.out" },
+  4.2);
+
+/* ═══════════════════════════════════════════
+   TRANSITION 1-2: BLUR CROSSFADE (calm)
+   At T=7.0s, outgoing blurs + scales,
+   incoming fades in from blur
+   ═══════════════════════════════════════════ */
+
+tl.to("#scene1", {
+  filter: "blur(25px)",
+  scale: 1.05,
+  duration: 0.6,
+  ease: "power1.in"
+}, 7.0);
+
+tl.to("#scene1", {
+  opacity: 0,
+  duration: 0.4,
+  ease: "power1.in"
+}, 7.4);
+tl.set("#scene1", { visibility: "hidden" }, 7.8);
+
+tl.fromTo("#scene2",
+  { filter: "blur(25px)", scale: 0.95, opacity: 0 },
+  { filter: "blur(25px)", scale: 0.95, opacity: 1, duration: 0.3, ease: "power1.inOut" },
+  7.5);
+
+tl.to("#scene2", {
+  filter: "blur(0px)",
+  scale: 1,
+  duration: 0.6,
+  ease: "power1.out"
+}, 7.8);
+
+/* ═══════════════════════════════════════════
+   SCENE 2: THE ARREST (8-22s)
+   ═══════════════════════════════════════════ */
+
+/* Ambient: glow breathing */
+tl.fromTo("#s2-glow",
+  { scale: 0.85 },
+  { scale: 1.2, duration: 4, ease: "sine.inOut", yoyo: true, repeat: 1 },
+  8);
+
+/* Ambient: ghost text drift */
+tl.fromTo("#s2-ghost",
+  { x: 0, opacity: 0.03 },
+  { x: -30, opacity: 0.05, duration: 12, ease: "sine.inOut" },
+  8);
+
+/* Words re-enter with staggered fade+slide (different rhythm from scene 1) */
+tl.fromTo("#s2-w1",
+  { y: 30, opacity: 0 },
+  { y: 0, opacity: 1, duration: 0.4, ease: "power2.out" },
+  8.4);
+
+tl.fromTo("#s2-w2",
+  { y: 30, opacity: 0 },
+  { y: 0, opacity: 1, duration: 0.35, ease: "sine.out" },
+  8.9);
+
+tl.fromTo("#s2-w3",
+  { y: 30, opacity: 0 },
+  { y: 0, opacity: 1, duration: 0.4, ease: "expo.out" },
+  9.4);
+
+/* Border frame draws in via scale (confident entrance) */
+tl.fromTo("#s2-border",
+  { scale: 0.8, opacity: 0 },
+  { scale: 1, opacity: 1, duration: 0.7, ease: "power3.out" },
+  11.5);
+
+/* Specs enter staggered */
+tl.fromTo("#s2-specs",
+  { y: 40, opacity: 0 },
+  { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" },
+  14.5);
+
+/* Tag enters last */
+tl.fromTo("#s2-tag",
+  { y: 15, opacity: 0 },
+  { y: 0, opacity: 1, duration: 0.4, ease: "sine.out" },
+  17.0);
+
+/* ═══════════════════════════════════════════
+   TRANSITION 2-3: BLUR CROSSFADE (calm)
+   At T=21.0s
+   ═══════════════════════════════════════════ */
+
+tl.to("#scene2", {
+  filter: "blur(25px)",
+  scale: 1.05,
+  duration: 0.6,
+  ease: "power1.in"
+}, 21.0);
+
+tl.to("#scene2", {
+  opacity: 0,
+  duration: 0.4,
+  ease: "power1.in"
+}, 21.4);
+tl.set("#scene2", { visibility: "hidden" }, 21.8);
+
+tl.fromTo("#scene3",
+  { filter: "blur(25px)", scale: 0.95, opacity: 0 },
+  { filter: "blur(25px)", scale: 0.95, opacity: 1, duration: 0.3, ease: "power1.inOut" },
+  21.5);
+
+tl.to("#scene3", {
+  filter: "blur(0px)",
+  scale: 1,
+  duration: 0.6,
+  ease: "power1.out"
+}, 21.8);
+
+/* ═══════════════════════════════════════════
+   SCENE 3: THE PROOF (22-30s, FINAL)
+   ═══════════════════════════════════════════ */
+
+/* Ambient: glow breathing */
+tl.fromTo("#s3-glow",
+  { scale: 0.9 },
+  { scale: 1.1, duration: 3, ease: "sine.inOut", yoyo: true, repeat: 1 },
+  22);
+
+/* Ambient: ghost text drift */
+tl.fromTo("#s3-ghost",
+  { x: 0, opacity: 0.03 },
+  { x: 25, opacity: 0.05, duration: 6, ease: "sine.inOut" },
+  22);
+
+/* Main text enters with confident power ease */
+tl.fromTo("#s3-text",
+  { y: 50, opacity: 0 },
+  { y: 0, opacity: 1, duration: 0.6, ease: "power4.out" },
+  22.3);
+
+/* Chip enters from below */
+tl.fromTo("#s3-chip",
+  { y: 30, opacity: 0 },
+  { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" },
+  24.0);
+
+/* Close enters last */
+tl.fromTo("#s3-close",
+  { y: 25, opacity: 0 },
+  { y: 0, opacity: 1, duration: 0.5, ease: "sine.out" },
+  25.5);
+
+/* ─── Final scene exit (allowed on final scene) ─── */
+tl.to("#s3-text", { opacity: 0, filter: "blur(8px)", duration: 0.6, ease: "power2.in" }, 29.0);
+tl.to("#s3-chip", { opacity: 0, duration: 0.4, ease: "power2.in" }, 29.2);
+tl.to("#s3-close", { opacity: 0, duration: 0.6, ease: "power2.in" }, 29.0);
+tl.to("#s3-glow", { opacity: 0, duration: 0.8, ease: "power1.in" }, 29.0);
+
+/* Deterministic kill for final elements */
+tl.set("#s3-text", { visibility: "hidden" }, 29.6);
+tl.set("#s3-chip", { visibility: "hidden" }, 29.6);
+tl.set("#s3-close", { visibility: "hidden" }, 29.6);
+
+/* ═══════════════════════════════════════════
+   BACKDROP CANVAS (deterministic, GSAP-driven)
+   Multi-layer: gradient pulse + ripple rings +
+   particles + grain + vignette
+   ═══════════════════════════════════════════ */
+
+var canvas = document.getElementById("bg-canvas");
+var ctx = canvas.getContext("2d");
+
+function hash(n) {
+  n = ((n >> 16) ^ n) * 0x45d9f3b;
+  n = ((n >> 16) ^ n) * 0x45d9f3b;
+  n = (n >> 16) ^ n;
+  return (n & 0x7fffffff) / 0x7fffffff;
+}
+
+var particles = [];
+for (var i = 0; i < 50; i++) {
+  particles.push({
+    baseX: hash(i * 3) * 1080,
+    baseY: hash(i * 3 + 1) * 1080,
+    r: hash(i * 3 + 2) * 2 + 0.5,
+    opacity: hash(i * 7) * 0.15 + 0.03,
+    speedX: (hash(i * 11) - 0.5) * 0.3,
+    speedY: (hash(i * 13) - 0.5) * 0.3
+  });
+}
+
+var CX = 540, CY = 540;
+var RING_COUNT = 5;
+var RING_CYCLE = 12;
+
+var bgProxy = { time: 0 };
+
+tl.to(bgProxy, {
+  time: 30,
+  duration: 30,
+  ease: "none",
+  onUpdate: function() {
+    var t = bgProxy.time;
+    ctx.clearRect(0, 0, 1080, 1080);
+
+    /* Layer 1: Breathing radial gradient */
+    var breathe = 0.5 + 0.5 * Math.sin(t * 0.4);
+    var gradR = 350 + breathe * 150;
+    var grad = ctx.createRadialGradient(CX, CY, 0, CX, CY, gradR);
+    grad.addColorStop(0, "rgba(247,211,139," + (0.04 + breathe * 0.03) + ")");
+    grad.addColorStop(0.5, "rgba(247,211,139," + (0.01 + breathe * 0.01) + ")");
+    grad.addColorStop(1, "rgba(8,10,23,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1080, 1080);
+
+    /* Layer 2: Concentric ripple rings expanding from center */
+    for (var r = 0; r < RING_COUNT; r++) {
+      var phase = ((t / RING_CYCLE) + r / RING_COUNT) % 1;
+      var radius = phase * 600;
+      var alpha = (1 - phase) * 0.06;
+      if (alpha > 0.005) {
+        ctx.beginPath();
+        ctx.arc(CX, CY, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(247,211,139," + alpha + ")";
+        ctx.lineWidth = 1.5 - phase * 0.8;
+        ctx.stroke();
+      }
+    }
+
+    /* Layer 3: Floating particles */
+    for (var j = 0; j < particles.length; j++) {
+      var p = particles[j];
+      var x = (p.baseX + p.speedX * t * 20) % 1080;
+      var y = (p.baseY + p.speedY * t * 20) % 1080;
+      if (x < 0) x += 1080;
+      if (y < 0) y += 1080;
+      ctx.beginPath();
+      ctx.arc(x, y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(247,211,139," + p.opacity + ")";
+      ctx.fill();
+    }
+
+    /* Layer 4: Film grain (deterministic lightweight dots) */
+    var frame = Math.floor(t * 8);
+    ctx.fillStyle = "rgba(247,211,139,0.02)";
+    for (var gi = 0; gi < 300; gi++) {
+      var gx = hash(gi + frame * 131) * 1080;
+      var gy = hash(gi + frame * 137 + 9999) * 1080;
+      ctx.fillRect(gx, gy, 2, 2);
+    }
+
+    /* Layer 5: Vignette */
+    var vig = ctx.createRadialGradient(CX, CY, 200, CX, CY, 620);
+    vig.addColorStop(0, "rgba(8,10,23,0)");
+    vig.addColorStop(1, "rgba(8,10,23,0.6)");
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, 1080, 1080);
+  }
+}, 0);
+
+/* ═══════════════════════════════════════════
+   REGISTER TIMELINE
+   ═══════════════════════════════════════════ */
+
+window.__timelines["main"] = tl;
+</script>
+</body>
+</html>

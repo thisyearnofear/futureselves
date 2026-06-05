@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Future Selves × QVAC</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #080A17; font-family: 'Inter', sans-serif; color: #F7F0DF; overflow: hidden; width: 1080px; height: 1080px; }
+  .scene { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; pointer-events: none; }
+  .scene.active { opacity: 1; pointer-events: auto; }
+
+  /* Scene 1 */
+  .scene-1 .word { font-size: 64px; font-weight: 900; color: #F7F0DF; letter-spacing: -1.5px; line-height: 1.2; opacity: 0; transform: translateY(0); text-align: center; max-width: 800px; }
+  .scene-1 .word.visible { opacity: 1; transition: opacity 0.3s ease; }
+  .scene-1 .word.exit { opacity: 0; transform: translateY(-120px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .scene-1 .eyebrow { position: absolute; top: 80px; font-size: 13px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: #F7D38B; opacity: 0; transition: opacity 0.4s ease; }
+  .scene-1 .eyebrow.visible { opacity: 1; }
+  .scene-1 .data-stream { position: absolute; bottom: 60px; font-size: 11px; font-weight: 600; letter-spacing: 2px; color: #8F96B4; opacity: 0; transition: opacity 0.4s ease; }
+  .scene-1 .data-stream.visible { opacity: 1; }
+  .scene-1 .data-stream.exit { opacity: 0; transition: opacity 0.3s ease; }
+
+  /* Scene 2 */
+  .scene-2 .word { font-size: 56px; font-weight: 900; color: #F7F0DF; letter-spacing: -1.2px; line-height: 1.25; text-align: center; max-width: 750px; opacity: 0; transition: opacity 0.25s ease; }
+  .scene-2 .word.visible { opacity: 1; }
+  .scene-2 .border-frame { position: absolute; top: 200px; left: 140px; right: 140px; bottom: 320px; border: 3px solid #F7D38B; border-radius: 24px; opacity: 0; transform: scale(0.95); transition: opacity 0.5s ease, transform 0.5s ease; }
+  .scene-2 .border-frame.visible { opacity: 1; transform: scale(1); }
+  .scene-2 .specs { position: absolute; bottom: 120px; display: flex; gap: 28px; opacity: 0; transition: opacity 0.5s ease 0.3s; }
+  .scene-2 .specs.visible { opacity: 1; }
+  .scene-2 .spec { text-align: center; }
+  .scene-2 .spec-label { font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #F7D38B; margin-bottom: 6px; }
+  .scene-2 .spec-value { font-size: 14px; font-weight: 600; color: #AEB6D4; }
+  .scene-2 .on-device-tag { position: absolute; bottom: 70px; font-size: 12px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: #F7D38B; opacity: 0; transition: opacity 0.4s ease; }
+  .scene-2 .on-device-tag.visible { opacity: 1; }
+
+  /* Scene 3 */
+  .scene-3 .main-text { font-size: 52px; font-weight: 900; color: #F7F0DF; letter-spacing: -1px; text-align: center; max-width: 700px; opacity: 0; transition: opacity 0.4s ease; }
+  .scene-3 .main-text.visible { opacity: 1; }
+  .scene-3 .chip { position: absolute; bottom: 200px; display: flex; gap: 20px; padding: 12px 24px; border: 1px solid rgba(247,211,139,0.3); border-radius: 12px; background: rgba(247,211,139,0.06); opacity: 0; transition: opacity 0.5s ease 0.2s; }
+  .scene-3 .chip.visible { opacity: 1; }
+  .scene-3 .chip span { font-size: 12px; font-weight: 700; color: #AEB6D4; }
+  .scene-3 .chip span.gold { color: #F7D38B; }
+  .scene-3 .close { position: absolute; bottom: 100px; text-align: center; opacity: 0; transition: opacity 0.5s ease 0.4s; }
+  .scene-3 .close.visible { opacity: 1; }
+  .scene-3 .close .product { font-size: 28px; font-weight: 900; color: #F7D38B; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .scene-3 .close .qvac { font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #8F96B4; }
+</style>
+</head>
+<body>
+<div class="scene scene-1" id="scene1">
+  <div class="eyebrow" id="s1-eyebrow">the confession</div>
+  <div class="word" id="s1-w1">What are</div>
+  <div class="word" id="s1-w2">you afraid</div>
+  <div class="word" id="s1-w3">won't happen?</div>
+  <div class="data-stream" id="s1-stream">→ sending to cloud...</div>
+</div>
+<div class="scene scene-2" id="scene2">
+  <div class="border-frame" id="s2-border"></div>
+  <div class="word" id="s2-w1">What are</div>
+  <div class="word" id="s2-w2">you afraid</div>
+  <div class="word" id="s2-w3">won't happen?</div>
+  <div class="specs" id="s2-specs">
+    <div class="spec"><div class="spec-label">LLM</div><div class="spec-value">LLAMA 3.2 1B</div></div>
+    <div class="spec"><div class="spec-label">TTS</div><div class="spec-value">Chatterbox</div></div>
+    <div class="spec"><div class="spec-label">STT</div><div class="spec-value">Parakeet</div></div>
+  </div>
+  <div class="on-device-tag" id="s2-tag">all on-device</div>
+</div>
+<div class="scene scene-3" id="scene3">
+  <div class="main-text" id="s3-text">Airplane mode.<br>Still works.</div>
+  <div class="chip" id="s3-chip">
+    <span>bytes uploaded: <span class="gold">0</span></span>
+    <span>inference: <span class="gold">on-device</span></span>
+    <span>cache hit: <span class="gold">yes</span></span>
+  </div>
+  <div class="close" id="s3-close">
+    <div class="product">Future Selves</div>
+    <div class="qvac">built with @qvac</div>
+  </div>
+</div>
+<canvas id="bg-canvas" width="1080" height="1080" style="position:absolute;inset:0;z-index:-1;"></canvas>
+<script>
+// Scene controller
+const scenes = [
+  { el: document.getElementById('scene1'), duration: 8000 },
+  { el: document.getElementById('scene2'), duration: 14000 },
+  { el: document.getElementById('scene3'), duration: 8000 },
+];
+let currentScene = 0;
+let sceneStart = 0;
+
+function showScene(index) {
+  scenes.forEach((s, i) => s.el.classList.toggle('active', i === index));
+  sceneStart = performance.now();
+  currentScene = index;
+}
+
+// Scene 1: word-by-word, then exit
+function runScene1() {
+  showScene(0);
+  const words = ['s1-w1', 's1-w2', 's1-w3'];
+  document.getElementById('s1-eyebrow').classList.add('visible');
+  words.forEach((id, i) => {
+    setTimeout(() => document.getElementById(id).classList.add('visible'), 800 + i * 1000);
+  });
+  setTimeout(() => document.getElementById('s1-stream').classList.add('visible'), 4500);
+  setTimeout(() => {
+    document.getElementById('s1-stream').classList.add('exit');
+    words.forEach(id => document.getElementById(id).classList.add('exit'));
+    document.getElementById('s1-eyebrow').classList.remove('visible');
+  }, 6200);
+}
+
+// Scene 2: words reappear, freeze, border, specs
+function runScene2() {
+  showScene(1);
+  const words = ['s2-w1', 's2-w2', 's2-w3'];
+  words.forEach((id, i) => {
+    setTimeout(() => document.getElementById(id).classList.add('visible'), 600 + i * 800);
+  });
+  setTimeout(() => document.getElementById('s2-border').classList.add('visible'), 3800);
+  setTimeout(() => document.getElementById('s2-specs').classList.add('visible'), 6500);
+  setTimeout(() => document.getElementById('s2-tag').classList.add('visible'), 9000);
+}
+
+// Scene 3: the proof
+function runScene3() {
+  showScene(2);
+  setTimeout(() => document.getElementById('s3-text').classList.add('visible'), 400);
+  setTimeout(() => document.getElementById('s3-chip').classList.add('visible'), 2500);
+  setTimeout(() => document.getElementById('s3-close').classList.add('visible'), 4500);
+}
+
+const sceneFns = [runScene1, runScene2, runScene3];
+
+function tick(now) {
+  const elapsed = now - sceneStart;
+  if (elapsed >= scenes[currentScene].duration && currentScene < scenes.length - 1) {
+    currentScene++;
+    sceneFns[currentScene]();
+  }
+  requestAnimationFrame(tick);
+}
+
+sceneFns[0]();
+requestAnimationFrame(tick);
+
+// Background: subtle gold particles
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+const particles = Array.from({ length: 40 }, () => ({
+  x: Math.random() * 1080, y: Math.random() * 1080,
+  r: Math.random() * 1.5 + 0.5,
+  dx: (Math.random() - 0.5) * 0.3, dy: (Math.random() - 0.5) * 0.3,
+  o: Math.random() * 0.15 + 0.05,
+}));
+
+function drawBg() {
+  ctx.clearRect(0, 0, 1080, 1080);
+  particles.forEach(p => {
+    p.x += p.dx; p.y += p.dy;
+    if (p.x < 0) p.x = 1080; if (p.x > 1080) p.x = 0;
+    if (p.y < 0) p.y = 1080; if (p.y > 1080) p.y = 0;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(247,211,139,${p.o})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+</script>
+</body>
+</html>

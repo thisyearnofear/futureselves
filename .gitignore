@@ -57,6 +57,11 @@ yarn-error.*
 *.lock
 package-lock.json
 
+# Demo media (video files are large; docs stay tracked)
+demo/qvac-video/*.mp4
+demo/qvac-video/*.gif
+demo/qvac-video/*.wav
+
 # Filesystem recovery
 lost+found/
 .blackboxcli/
