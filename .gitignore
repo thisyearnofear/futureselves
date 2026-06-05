@@ -28,6 +28,10 @@ web-build/
 *.key
 *.mobileprovision
 
+# Local tooling
+.qoder/
+.agents/
+
 # Metro
 .metro-health-check*
 
@@ -43,6 +47,7 @@ yarn-error.*
 # local env files
 .env*.local
 .env
+.env.production
 
 # typescript
 *.tsbuildinfo
