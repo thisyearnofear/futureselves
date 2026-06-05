@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Install git hooks for this repo.
 # Run once after cloning: bash scripts/install-hooks.sh
+# NOTE: On Vercel (and other CI) .git may not exist — skip gracefully.
+
+if ! git rev-parse --show-toplevel &>/dev/null 2>&1; then
+  echo "Not a git repository; skipping hook install."
+  exit 0
+fi
 
 set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"

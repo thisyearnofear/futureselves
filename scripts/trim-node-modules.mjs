@@ -24,6 +24,7 @@ const KEEP_RUNTIMES = new Set([
   "@qvac/llm-llamacpp",       // LLAMA 3.2 1B narrative
   "@qvac/tts-ggml",           // Chatterbox TTS
   "@qvac/transcription-parakeet", // Parakeet STT
+  "@qvac/decoder-audio",      // Required by @qvac/sdk/dist/constants/audio.js
   // Shared infra (small, required by the above)
   "@qvac/infer-base",
   "@qvac/logging",
