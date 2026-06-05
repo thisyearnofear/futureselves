@@ -3,8 +3,16 @@
 # dependencies
 node_modules/
 
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.sw?
+
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
 # expo-env.d.ts — kept in version control so TS doesn't error on fresh clones
