@@ -128,6 +128,12 @@ These phases assume Tracks A + B as the core submission. Track C is a stretch la
 - ✅ Demo runbook + pitch notes updated
 - ⏳ Team review
 
+### Phase 0 — Alignment (this document)
+- ✅ Canonical plan doc
+- ✅ Cross-links from `README.md`, `AGENTS.md`, app/backend READMEs
+- ✅ Demo runbook + pitch notes updated
+- ⏳ Team review
+
 ### Phase 1 — Soft swap (internal/dev only — NOT the public submission path)
 - Local QVAC HTTP server on dev hardware
 - Point existing `OpenAICompatibleProvider` at it; remove `ANTHROPIC_API_KEY` from the required env

@@ -56,7 +56,12 @@ import {
 import { FutureselfProfileSheet } from "@/components/futureself-profile-sheet";
 import { FutureselfSettingsSheet } from "@/components/futureself-settings-sheet";
 import { TransmissionShareCard } from "@/components/transmission-share-card";
+import { MemoryReadout } from "@/components/memory-readout";
 import { styles } from "@/components/futureself-home.styles";
+import { isLocalMode } from "@/lib/ai";
+import { generateLocalTransmission } from "@/lib/local-llm";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
+import { QVAC_MODELS } from "@/hooks/use-qvac-prewarm";
 
 interface FutureselfHomeProps {
   state: GameState;
@@ -133,28 +138,34 @@ export function FutureselfHome({
 }: FutureselfHomeProps) {
   const router = useRouter();
   const { signOut } = useAuthActions();
-  // @ts-expect-error - game property is generated dynamically by Convex
+
   const completeOnboarding = useMutation(api.game.completeOnboarding);
-  // @ts-expect-error - game property is generated dynamically by Convex
   const saveCheckIn = useMutation(api.game.saveCheckIn);
-  // @ts-expect-error - game property is generated dynamically by Convex
   const recordChoice = useMutation(api.game.recordChoice);
-  // @ts-expect-error - game property is generated dynamically by Convex
   const saveTransmissionResponse = useMutation(api.game.saveTransmissionResponse);
-  // @ts-expect-error - game property is generated dynamically by Convex
   const generateTransmission = useAction(api.game.generateDailyTransmission);
-  // @ts-expect-error - face property is generated dynamically by Convex
   const generateAvatar = useAction(api.face.generateAvatar);
-  // @ts-expect-error - synthesis property is generated dynamically by Convex
   const generateSynthesis = useAction(api.synthesis.generateWeeklySynthesis);
-  // @ts-expect-error - voicemail.native property is generated dynamically by Convex
   const generateWelcomeVoicemail = useAction(api.voicemail_native.generateNativeVoicemail);
 
   // Debug mutations
-  // @ts-expect-error - game property is generated dynamically by Convex
   const debugReset = useMutation(api.game.debugResetPersona);
-  // @ts-expect-error - game property is generated dynamically by Convex
   const debugSetState = useMutation(api.game.debugSetGameState);
+
+  // QVAC local-mode hooks (no-op on web, called in handleReceive when local)
+  const localMode = useMemo(() => isLocalMode(), []);
+  const beginLocalTransmission = useAction(api.game.beginTransmissionGenerationLocal);
+  const attachLocalText = useMutation(api.game.attachLocalTransmission);
+
+  // On-device speech recognition (Parakeet via QVAC). Only active in local mode.
+  const speech = useSpeechRecognition({
+    sttModelId: localMode ? QVAC_MODELS.stt : null,
+    onResult: (transcribedText) => {
+      // Take the first word if the model transcribed a full sentence.
+      const firstWord = transcribedText.split(/\s+/)[0] ?? transcribedText;
+      setWord(firstWord.toLowerCase());
+    },
+  });
 
   const [word, setWord] = useState(state.todayCheckIn?.word ?? "");
   const [note, setNote] = useState(state.todayCheckIn?.note ?? "");
@@ -595,11 +606,35 @@ export function FutureselfHome({
         word: trimmedWord,
         note: note.trim() || undefined,
       });
-      await generateTransmission({
-        dateKey,
-        localNow: new Date().toLocaleString(),
-        forcedCastMember: forcedCastMember ?? undefined,
-      });
+      if (isLocalMode() && state.persona) {
+        // Local path: generate text on-device, attach via internal mutation.
+        const started = await beginLocalTransmission({
+          dateKey,
+          castMember: forcedCastMember ?? "future_self",
+        });
+        // Generate the LLM text on-device.
+        const generated = await generateLocalTransmission({
+          personaId: state.persona.id,
+          modelId: "LLAMA_3_2_1B_INST_Q4_0",
+          castMember: forcedCastMember ?? "future_self",
+          context: buildLocalGenerationContext(state),
+          localNow: new Date().toLocaleString(),
+        });
+        await attachLocalText({
+          transmissionId: started as any,
+          title: generated.title,
+          text: generated.text,
+          actionPrompt: generated.actionPrompt,
+          cliffhanger: generated.cliffhanger,
+        });
+      } else {
+        // Cloud path: existing Convex action.
+        await generateTransmission({
+          dateKey,
+          localNow: new Date().toLocaleString(),
+          forcedCastMember: forcedCastMember ?? undefined,
+        });
+      }
       setForcedCastMember(null);
     } catch (caughtError) {
       setCelebrateNextTransmission(false);
@@ -829,6 +864,8 @@ export function FutureselfHome({
 
   return (
     <View style={{ flex: 1 }}>
+      {/* Memory readout chip — only visible on native + local mode */}
+      <MemoryReadout />
       <ScrollView
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
@@ -879,6 +916,11 @@ export function FutureselfHome({
             word={word}
             wordNudges={wordNudges}
             yesterdayCliffhanger={state.recentTransmissions[0]?.cliffhanger}
+            onSpeakWord={(w) => setWord(w.toLowerCase())}
+            isSpeaking={speech.isRecording || speech.isTranscribing}
+            onStartSpeak={speech.startRecording}
+            onStopSpeak={speech.stopRecording}
+            speakDuration={speech.durationSeconds}
           />
         )}
 
@@ -1053,4 +1095,66 @@ function getNextUnlock(
     requirement,
     emotionalRegister: candidate.emotionalRegister,
   };
+}
+
+/**
+ * Build the LLM generation context for the local QVAC path.
+ * Mirrors the shape used by `packages/backend/convex/game.transmission.ts`
+ * but reads from the React `GameState` instead of running a Convex query.
+ */
+function buildLocalGenerationContext(state: GameState) {
+  const persona = state.persona!;
+  const checkInWord = state.todayCheckIn?.word;
+  const checkInNote = state.todayCheckIn?.note;
+  return {
+    persona: {
+      name: persona.name,
+      city: persona.city,
+      currentChapter: persona.currentChapter,
+      primaryArc: persona.primaryArc,
+      miraculousYear: persona.miraculousYear,
+      avoiding: persona.avoiding,
+      afraidWontHappen: persona.afraidWontHappen,
+      draining: persona.draining,
+      streak: persona.streak,
+      timelineDivergenceScore: persona.timelineDivergenceScore,
+      towardCount: persona.towardCount,
+      steadyCount: persona.steadyCount,
+      releaseCount: persona.releaseCount,
+      repairCount: persona.repairCount,
+      selectedVoiceName: persona.selectedVoiceName,
+      selectedVoiceDescription: persona.selectedVoiceDescription,
+    },
+    checkIn:
+      checkInWord !== undefined ? { word: checkInWord, note: checkInNote } : null,
+    recentTransmissions: state.recentTransmissions.slice(0, 5).map((t) => ({
+      dateKey: t.dateKey,
+      title: t.title,
+      cliffhanger: t.cliffhanger,
+    })),
+    recentChoices: ((state as unknown as { recentChoices?: Array<{ choice: Choice }> }).recentChoices ?? [])
+      .slice(0, 10)
+      .map((c) => ({
+        dateKey: tDateKeyFallback(c),
+        choice: c.choice,
+        prompt: "",
+      })),
+    recentResponses: state.recentTransmissions.slice(0, 5).map((t) => ({
+      reaction: t.response?.reaction,
+      replyNote: t.response?.replyNote,
+    })),
+    openThreads: state.openThreads.map((th) => ({
+      title: th.title,
+      seed: th.seed,
+      castMember: th.castMember,
+    })),
+  };
+}
+
+function tDateKeyFallback(_c: { choice: string }): string {
+  // The lightweight `state.recentChoices` shape only carries the
+  // choice, not the date. Use today as a stable fallback for prompt
+  // accounting purposes — the LLM doesn't strictly need the per-day
+  // date to produce a coherent accountability block.
+  return new Date().toISOString().split("T")[0]!;
 }

@@ -28,6 +28,9 @@ import AnimatedReanimated, {
 import type { CastMember, TransmissionState } from "@/lib/futureself";
 import { formatCastMember } from "@/lib/futureself";
 import { AvatarReveal } from "@/components/avatar-reveal";
+import { isLocalMode } from "@/lib/ai";
+import { useLocalTTS } from "@/lib/qvac";
+import { getCachedAudio, setCachedAudio } from "@/lib/audio-cache";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -603,6 +606,11 @@ interface AudioPlayerProps {
 function AudioPlayer({ audioUrl, title, castMember, transmission }: AudioPlayerProps) {
   if (Platform.OS === "web")
     return <WebAudioPlayer audioUrl={audioUrl} title={title} castMember={castMember} />;
+  // In local mode, generate the WAV on-device via QVAC. The remote
+  // `audioUrl` is not used; we synthesise fresh audio on demand.
+  if (isLocalMode() && transmission) {
+    return <LocalTTSAudioPlayer transmission={transmission} />;
+  }
   return <NativeAudioPlayer audioUrl={audioUrl} castMember={castMember ?? ""} transmission={transmission!} />;
 }
 
@@ -792,6 +800,154 @@ function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+// ─── Local TTS Player ────────────────────────────────────────────────────────
+
+/**
+ * On-device TTS player. Used when `EXPO_PUBLIC_AI_PROVIDER === "local"`.
+ * Loads (or generates) the WAV bytes for the transmission text via
+ * QVAC's `useLocalTTS` hook, caches them in the persona-scoped store,
+ * and plays the audio through `expo-audio` via a data: URI.
+ */
+function LocalTTSAudioPlayer({ transmission }: { transmission: TransmissionState }) {
+  const [modelId, setModelId] = useState<string | null>(null);
+  const [wavUri, setWavUri] = useState<string | null>(null);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [hasStarted, setHasStarted] = useState(false);
+  const personaId = transmission.id; // Used as cache key scope; refine if a real persona id is available
+  const { speak, isReady } = useLocalTTS(modelId ?? undefined);
+
+  // Load the model on mount.
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { loadModel } = await import("@qvac/sdk");
+        // `chatterbox` is the model descriptor constant from the registry.
+        const id = await loadModel({
+          // @ts-expect-error - registry descriptor constant typing varies by version
+          modelSrc: "chatterbox",
+        });
+        if (mounted) setModelId(id);
+      } catch (e) {
+        if (mounted) setErrorMsg(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Generate (or fetch from cache) the WAV bytes on demand.
+  async function ensureWav() {
+    if (wavUri) return wavUri;
+    if (!isReady || !modelId) return null;
+    setIsPreparing(true);
+    try {
+      const cacheKeyText = transmission.text;
+      const cached = await getCachedAudio(personaId, cacheKeyText);
+      let bytes: Uint8Array | null = null;
+      if (cached) {
+        // Read the WAV file from disk.
+        const FileSystem = await import("expo-file-system/legacy");
+        const b64 = await FileSystem.readAsStringAsync(cached.filePath, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const binStr = atob(b64);
+        bytes = new Uint8Array(binStr.length);
+        for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+      } else {
+        bytes = await speak(transmission.text);
+        if (bytes) {
+          await setCachedAudio(personaId, cacheKeyText, bytes);
+        }
+      }
+      if (!bytes) return null;
+      // Build a data URI so expo-audio can play it.
+      let bin = "";
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
+      const base64 = globalThis.btoa?.(bin) ?? uint8ToBase64(bytes);
+      const uri = `data:audio/wav;base64,${base64}`;
+      setWavUri(uri);
+      return uri;
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : String(e));
+      return null;
+    } finally {
+      setIsPreparing(false);
+    }
+  }
+
+  if (errorMsg) {
+    return (
+      <View style={styles.playerShellCentered}>
+        <View style={[styles.playButton, styles.playButtonMuted]}>
+          <Ionicons name="alert-circle-outline" size={22} color="#FF9A9A" />
+        </View>
+        <View style={styles.progressColumn}>
+          <Text style={styles.pendingTitle}>Local voice unavailable.</Text>
+          <Text style={styles.pendingText}>{errorMsg}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (wavUri) {
+    return (
+      <NativeAudioPlayer
+        audioUrl={wavUri}
+        castMember={transmission.castMember}
+        transmission={transmission}
+      />
+    );
+  }
+
+  return (
+    <View style={styles.nativePlayerShell}>
+      <Pressable
+        onPress={async () => {
+          if (Platform.OS !== "web") await Haptics.selectionAsync();
+          setHasStarted(true);
+          await ensureWav();
+        }}
+        style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
+      >
+        {isPreparing ? (
+          <ActivityIndicator color="#101320" />
+        ) : (
+          <Ionicons name="play" size={28} color="#101320" />
+        )}
+      </Pressable>
+      <View style={styles.playerControls}>
+        <View style={styles.playerStatusRowCentered}>
+          <Text style={styles.playerStatusText}>
+            {isPreparing
+              ? "Synthesizing voice locally…"
+              : hasStarted
+                ? "Loading voice…"
+                : "Tap to hear the voice on this device"}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let result = "";
+  for (let i = 0; i < bytes.length; i += 3) {
+    const b0 = bytes[i]!;
+    const b1 = i + 1 < bytes.length ? bytes[i + 1]! : 0;
+    const b2 = i + 2 < bytes.length ? bytes[i + 2]! : 0;
+    result += chars[(b0 >> 2) & 0x3f];
+    result += chars[((b0 & 0x03) << 4) | ((b1 >> 4) & 0x0f)];
+    result += i + 1 < bytes.length ? chars[((b1 & 0x0f) << 2) | ((b2 >> 6) & 0x03)] : "=";
+    result += i + 2 < bytes.length ? chars[b2 & 0x3f] : "=";
+  }
+  return result;
 }
 
 // ─── Styles ──────────────────────────────────────────────────────────────────

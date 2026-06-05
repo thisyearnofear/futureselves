@@ -383,8 +383,14 @@ export const styles = StyleSheet.create({
     fontStyle: "italic",
     flex: 1,
   },
-  wordInput: {
+  wordInputRow: {
     width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  wordInput: {
+    flex: 1,
     minHeight: 58,
     borderRadius: 20,
     borderCurve: "continuous",
@@ -394,6 +400,28 @@ export const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "900",
     textAlign: "center",
+  },
+  micButton: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.3)",
+  },
+  micButtonActive: {
+    backgroundColor: "rgba(255,107,107,0.15)",
+    borderColor: "rgba(255,107,107,0.5)",
+  },
+  micDuration: {
+    position: "absolute",
+    bottom: -18,
+    color: "#FF6B6B",
+    fontSize: 11,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
   },
   noteInput: {
     width: "100%",

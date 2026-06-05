@@ -655,6 +655,28 @@ export const beginTransmissionGeneration = internalMutation({
   },
 });
 
+/**
+ * Client-callable wrapper for the QVAC on-device build. The local
+ * pipeline runs the LLM on the client, then calls this action to
+ * create the transmission record (status: "generating") so the UI
+ * shows the arrival sequence. The client then calls
+ * `attachLocalTransmission` to fill in the text once the LLM returns.
+ */
+export const beginTransmissionGenerationLocal = authMutation({
+  args: {
+    dateKey: v.string(),
+    castMember: castMemberValidator,
+  },
+  returns: v.id("transmissions"),
+  handler: async (ctx, args) => {
+    return await ctx.runMutation(internal.game.beginTransmissionGeneration, {
+      userId: ctx.user._id,
+      dateKey: args.dateKey,
+      castMember: args.castMember,
+    });
+  },
+});
+
 export const storeGeneratedTransmission = internalMutation({
   args: {
     userId: v.id("users"),
@@ -739,6 +761,28 @@ export const markTransmissionAudioFailed = internalMutation({
     }
     await ctx.db.patch(args.transmissionId, {
       status: "failed",
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const attachLocalTransmission = internalMutation({
+  args: {
+    transmissionId: v.id("transmissions"),
+    title: v.string(),
+    text: v.string(),
+    actionPrompt: v.string(),
+    cliffhanger: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.transmissionId, {
+      title: args.title,
+      text: args.text,
+      actionPrompt: args.actionPrompt,
+      cliffhanger: args.cliffhanger,
+      status: "text_ready",
       updatedAt: Date.now(),
     });
     return null;

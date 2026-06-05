@@ -272,6 +272,29 @@ export default function LandingPage() {
             <Text style={s.footerCopy}>
               A daily narrative ritual. Built with love and AI.
             </Text>
+            <View style={s.footerPrivacyRow}>
+              <View style={s.networkIndicator}>
+                <View style={[s.networkDot, { backgroundColor: "#4ADE80" }]} />
+                <Text style={s.networkLabel}>Network: live</Text>
+              </View>
+              <Text style={s.footerPrivacyText}>
+                This is a demo with sample data. The installed app runs entirely
+                on your device.{" "}
+                <Text
+                  style={s.footerPrivacyLink}
+                  onPress={() => {
+                    if (Platform.OS === "web") {
+                      window.open(
+                        "https://github.com/thisyearnofear/futureselves/blob/main/docs/privacy-posture.md",
+                        "_blank",
+                      );
+                    }
+                  }}
+                >
+                  Privacy statement
+                </Text>
+              </Text>
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -554,5 +577,46 @@ const s = StyleSheet.create({
     color: "#6F7591",
     fontSize: 12,
     fontWeight: "600",
+  },
+  footerPrivacyRow: {
+    width: "100%",
+    maxWidth: 720,
+    gap: 6,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  networkIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(74,222,128,0.08)",
+  },
+  networkDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  networkLabel: {
+    color: "#4ADE80",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  footerPrivacyText: {
+    color: "#5A6180",
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: "600",
+    textAlign: "center",
+    maxWidth: 460,
+  },
+  footerPrivacyLink: {
+    color: "#A0B4D0",
+    textDecorationLine: "underline",
+    cursor: "pointer",
   },
 });

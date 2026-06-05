@@ -13,7 +13,12 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 
 ## Project Structure
 
-- `apps/default/lib/qvac.ts` - QVAC SDK lifecycle hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`), platform-guarded; model load/unload and TTS wired (Phase D), STT remains stub
+- `apps/default/lib/qvac.ts` - QVAC SDK lifecycle hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`, `useQVACChat`), platform-guarded; model load/unload, TTS, and LLM chat wired (Phases D+3), STT remains stub
+- `apps/default/lib/ai.ts` - AI provider runtime split (`getAIProvider()`, `isLocalMode()`, `isLocalLLMMode()`); web=cloud, native=local when `EXPO_PUBLIC_AI_PROVIDER=local`
+- `apps/default/lib/local-llm.ts` - Client-side LLM orchestrator: builds the transmission prompt locally, calls QVAC `chatCompletion`, parses JSON, falls back to built-in script
+- `apps/default/lib/audio-cache.ts` - Persona-scoped TTS audio cache (WAV files on disk, metadata in `expo-secure-store`); evict, getCacheSizeBytes for the readout chip
+- `apps/default/hooks/use-network-kill.ts` - Network status hook (`isOffline`, `toggleKillSwitch`) for the demo's network-off proof
+- `apps/default/components/memory-readout.tsx` - Privacy readout chip (bytes uploaded, inference location, last model, cache hit)
 - `packages/backend/convex/game.ts` - Game actions including transmission generation
 - `packages/backend/convex/melius.ts` - Melius MCP client for agentic workflows
 - `packages/backend/convex/voicemail.ts` - 'The Last Voicemail' critique-driven pipeline

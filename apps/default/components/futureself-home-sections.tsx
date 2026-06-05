@@ -431,6 +431,16 @@ interface ReceiveSignalSectionProps {
   wordNudges: Array<string>;
   noteNudges: Array<string>;
   yesterdayCliffhanger?: string;
+  /** When non-null, the mic button appears. `onSpeakWord` fires with the recognized word. */
+  onSpeakWord?: (word: string) => void;
+  /** `true` while the microphone is capturing or STT is transcribing. */
+  isSpeaking?: boolean;
+  /** Start recording. Only used when `onSpeakWord` is set. */
+  onStartSpeak?: () => void;
+  /** Stop recording and begin STT. Only used when `onSpeakWord` is set. */
+  onStopSpeak?: () => void;
+  /** Duration in seconds of the current recording. */
+  speakDuration?: number;
   onWordChange: (value: string) => void;
   onNoteChange: (value: string) => void;
   onToggleDetail: () => void;
@@ -445,6 +455,11 @@ export function ReceiveSignalSection({
   wordNudges,
   noteNudges,
   yesterdayCliffhanger,
+  onSpeakWord,
+  isSpeaking = false,
+  onStartSpeak,
+  onStopSpeak,
+  speakDuration = 0,
   onWordChange,
   onNoteChange,
   onToggleDetail,
@@ -476,13 +491,34 @@ export function ReceiveSignalSection({
         </View>
       ) : null}
 
-      <TextInput
-        onChangeText={onWordChange}
-        placeholder="threshold"
-        placeholderTextColor="#6F7591"
-        style={styles.wordInput}
-        value={word}
-      />
+      <View style={styles.wordInputRow}>
+        <TextInput
+          onChangeText={onWordChange}
+          placeholder="threshold"
+          placeholderTextColor="#6F7591"
+          style={styles.wordInput}
+          value={word}
+        />
+        {onSpeakWord && onStartSpeak && onStopSpeak ? (
+          <Pressable
+            onPress={isSpeaking ? onStopSpeak : onStartSpeak}
+            style={({ pressed }) => [
+              styles.micButton,
+              isSpeaking && styles.micButtonActive,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons
+              name={isSpeaking ? "stop-circle" : "mic"}
+              size={22}
+              color={isSpeaking ? "#FF6B6B" : "#F7D38B"}
+            />
+            {isSpeaking ? (
+              <Text style={styles.micDuration}>{Math.round(speakDuration)}s</Text>
+            ) : null}
+          </Pressable>
+        ) : null}
+      </View>
       <NudgeRow
         label="Suggested words"
         options={wordNudges}

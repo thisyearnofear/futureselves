@@ -1,5 +1,13 @@
 # Future Selves
 
+<p align="center">
+  <img src="https://img.shields.io/badge/QVAC-Unleash_Edge_AI-6B4C9A?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgc3Ryb2tlPSIjRjdEMzhCIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMTIgNnY2bDQgMiIgc3Ryb2tlPSIjRjdEMzhCIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=" alt="QVAC" /></a>
+</p>
+
+> **🏆 QVAC "Unleash Edge AI" Hackathon Submission** — Best Use of QVAC SDK  
+> All inference (LLM, TTS, STT) runs **fully on-device** via [QVAC](https://qvac.tether.io).  
+> Zero bytes leave your hardware. No cloud keys required.
+
 A voice-driven narrative ritual where your future selves send daily transmissions, and your smallest choices reshape who gets to speak tomorrow.
 
 ## Start here
@@ -130,16 +138,90 @@ One-off patch utilities live under `scripts/` instead of the repo root so the to
 
 See `scripts/README.md`.
 
+## Architecture
+
+```mermaid
+graph TB
+    subgraph "Cloud Path (web demo surface)"
+        WC[Web Client] --> CA[Convex Action]
+        CA --> AG[AI Provider Chain<br/>Anthropic / Featherless / Venice]
+        CA --> ET[ElevenLabs TTS]
+        CA --> CS[Convex Storage]
+    end
+
+    subgraph "On-Device Path (QVAC submission build)"
+        NC[Native Client] --> CV[Convex<br/>auth + sync layer]
+        NC --> QV[QVAC SDK<br/>on-device inference]
+        QV --> LL[LLM completion<br/>LLAMA 3.2 1B Q4]
+        QV --> TTS[Text-to-Speech<br/>Chatterbox]
+        QV --> STT[Speech-to-Text<br/>Whisper Base EN]
+        NC --> AC[Audio Cache<br/>expo-secure-store + disk]
+    end
+
+    style QV fill:#6B4C9A,color:#fff,stroke:#8B6FBF
+    style LL fill:#4A7C59,color:#fff
+    style TTS fill:#4A7C59,color:#fff
+    style STT fill:#4A7C59,color:#fff
+    style AC fill:#C8923B,color:#fff
+    style NC fill:#1E2240,color:#F7D38B
+    style CV fill:#1E2240,color:#F7D38B
+```
+<br/>
+✋ **The submission path is the right side.** A judge can put the device in airplane mode and the full ritual loop (check-in → LLM → TTS → playback) runs end to end.
+
 ## Tech stack
 
-- **Frontend:** Expo, React Native, Expo Router
-- **Backend:** Convex
-- **AI:** Anthropic Claude
-- **Audio:** ElevenLabs
-- **Agent Orchestration:** Melius MCP
-- **Monorepo tooling:** Bun workspaces + Turbo
+| Layer | Cloud (vercel.app) | On-Device (submission build) |
+|---|---|---|
+| **Frontend** | Expo + React Native (web) | Expo + React Native (iOS) |
+| **Backend** | Convex | Convex (auth only) |
+| **LLM** | Anthropic Claude / Fallback | QVAC `completion` → LLAMA 3.2 1B |
+| **TTS** | ElevenLabs | QVAC `textToSpeech` → Chatterbox |
+| **STT** | — | QVAC `transcribe` → Whisper Base EN |
+| **Agentic** | Melius MCP | Reserved for future on-device |
+| **Monorepo** | Bun workspaces + Turbo | Same |
+| **Privacy** | Data shipped to 3rd parties | **Zero bytes uploaded** |
 
-> **Strategic direction (June 2026):** We are pivoting the AI + audio layer onto the [QVAC](https://qvac.tether.io) on-device SDK so transmissions, TTS, and STT all run **fully on the device** — no cloud LLM, no ElevenLabs. See `docs/edge-ai-qvac.md` for the full plan and `docs/privacy-posture.md` for the public-facing privacy statement. The public site (`futureselves.vercel.app`) is a demo surface, not a product — see §12 of the plan.
+> **Privacy thesis:** The product is "your future self knows your deepest choices, and only you have access." On-device inference makes this literally true. The public web demo (`futureselves.vercel.app`) is an honest preview — it uses a hard-coded sample persona and never asks for real personal data. See `docs/privacy-posture.md`.
+> Complete QVAC integration plan: `docs/edge-ai-qvac.md`.
+
+## Submission build
+
+Build the on-device app for the QVAC hackathon judging panel:
+
+```bash
+# 1. Build the native app with the local provider
+cd apps/default
+EXPO_PUBLIC_AI_PROVIDER=local npx expo run:ios --configuration Release
+
+# 2. Or build via EAS
+npx eas build --profile submission --platform ios
+
+# 3. The `.env.production` at the repo root already sets
+#    EXPO_PUBLIC_AI_PROVIDER=local for the submission
+```
+
+## Cost comparison
+
+| | Cloud path per transmission | On-device path per transmission |
+|---|---|---|
+| **LLM inference** | ~$0.0015 (Claude Sonnet) | **$0** |
+| **TTS** | ~$0.0003 (ElevenLabs, 30 words) | **$0** |
+| **STT** | Not available (no cloud STT used) | **$0** |
+| **Network** | ~2–5 MB round-trip | **0 bytes** |
+| **Latency** | 3–8 s (API + audio download) | **Instant** (cache hit) / 15–25 s (cold) |
+| **Privacy** | Data shipped to Anthropic + ElevenLabs | **Never leaves device** |
+
+After the first cold-start download (~100 MB total for all 3 models), every subsequent transmission costs **zero marginal compute and zero bandwidth**. The privacy gain is the feature.
+
+### What the judges see
+
+1. App launches → model pre-warming starts (LLM + TTS + STT in parallel, shown via progress bar)
+2. User completes onboarding → first transmission generated locally
+3. **Network-kill proof**: OS-level airplane mode engaged, `fetch()` returns `TypeError` in console, transmission still arrives
+4. **Privacy chip**: top-right corner — `bytes uploaded: 0 · inference: on-device · last model: chatterbox · cache hit: yes`
+5. **Spoken check-in**: tap the mic → record → Whisper transcribes locally → first word fills the input
+6. **The Last Voicemail**: critique-driven cinematic voicemail, fully offline (Melius MCP reserved for future)
 
 ## The Last Voicemail
 

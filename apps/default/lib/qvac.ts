@@ -213,19 +213,33 @@ export function useLocalTTS(modelId?: string): UseLocalTTSResult {
 }
 
 /**
- * Hook return value for `useLocalSTT`.
+ * Local STT hook return value.
  *
- * `transcribe` returns the recognized text, or `null` on web / when
- * the local STT is not ready. Phase F (STT) will wire this up.
+ * `transcribe` accepts audio as a `Uint8Array` of raw PCM or WAV bytes
+ * and returns the recognized text, or `null` on web / when the local
+ * STT is not ready.
+ *
+ * `transcribeFromUri` accepts a `file://` URI pointing to an audio
+ * file and returns the recognized text. This is the preferred path
+ * when recording via `expo-audio` (the recorder writes to disk).
  */
 export interface UseLocalSTTResult {
   transcribe: (audioBytes: Uint8Array) => Promise<string | null>;
+  transcribeFromUri: (fileUri: string) => Promise<string | null>;
   isReady: boolean;
 }
 
 /**
- * Local STT hook. Stub in this PR; enabled when the QVAC on-device
- * build is wired up.
+ * Local STT hook. Wraps QVAC's `transcribe` function.
+ * Requires the Parakeet model to be loaded (via `useQVACModel` with
+ * the appropriate model descriptor). Platform-guarded: web returns null.
+ *
+ * Consumer code:
+ *
+ * ```ts
+ * const { transcribeFromUri, isReady } = useLocalSTT(sttModelId);
+ * const text = await transcribeFromUri(recordedFileUri);
+ * ```
  */
 export function useLocalSTT(modelId?: string): UseLocalSTTResult {
   const [isReady, setIsReady] = useState(false);
@@ -235,24 +249,141 @@ export function useLocalSTT(modelId?: string): UseLocalSTTResult {
       setIsReady(false);
       return;
     }
-    // Phase F will: load the parakeet STT model on mount if a
-    // modelId is provided, set isReady to true when the model is
-    // loaded, and unload on unmount.
-    setIsReady(false);
+    setIsReady(!!modelId);
   }, [modelId]);
 
-  const transcribe = useCallback(
-    async (_audioBytes: Uint8Array): Promise<string | null> => {
+  const transcribeFromUri = useCallback(
+    async (fileUri: string): Promise<string | null> => {
       if (Platform.OS === "web") return null;
-      // Phase F will replace this stub with:
-      //   const response = await transcribe({ modelId, audio: audioBytes });
-      //   return response.text;
-      return null;
+      if (!modelId) return null;
+
+      try {
+        const { transcribe } = await import("@qvac/sdk");
+        const result = await transcribe({
+          modelId,
+          audioChunk: { type: "filePath", value: fileUri },
+        });
+        return result;
+      } catch (error) {
+        console.warn("[LocalSTT] Transcription failed:", error);
+        return null;
+      }
     },
     [modelId],
   );
 
-  return { transcribe, isReady };
+  const transcribe = useCallback(
+    async (audioBytes: Uint8Array): Promise<string | null> => {
+      if (Platform.OS === "web") return null;
+      if (!modelId) return null;
+
+      try {
+        const { transcribe: qvacTranscribe } = await import("@qvac/sdk");
+        // Encode raw bytes as base64 for the SDK.
+        const b64 = uint8ArrayToBase64(audioBytes);
+        const result = await qvacTranscribe({
+          modelId,
+          audioChunk: { type: "base64", value: b64 },
+        });
+        return result;
+      } catch (error) {
+        console.warn("[LocalSTT] Transcription failed:", error);
+        return null;
+      }
+    },
+    [modelId],
+  );
+
+  return { transcribe, transcribeFromUri, isReady };
+}
+
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let result = "";
+  for (let i = 0; i < bytes.length; i += 3) {
+    const b0 = bytes[i]!;
+    const b1 = i + 1 < bytes.length ? bytes[i + 1]! : 0;
+    const b2 = i + 2 < bytes.length ? bytes[i + 2]! : 0;
+    result += chars[(b0 >> 2) & 0x3f];
+    result += chars[((b0 & 0x03) << 4) | ((b1 >> 4) & 0x0f)];
+    result += i + 1 < bytes.length ? chars[((b1 & 0x0f) << 2) | ((b2 >> 6) & 0x03)] : "=";
+    result += i + 2 < bytes.length ? chars[b2 & 0x3f] : "=";
+  }
+  return result;
+}
+
+
+// ─── useQVACChat ──────────────────────────────────────────────────────────────
+
+/**
+ * Hook return value for `useQVACChat`.
+ *
+ * `complete` sends a chat completion request to the on-device LLM.
+ * On web or when no modelId is provided, it returns `null`.
+ */
+export interface UseQVACChatResult {
+  complete: (params: {
+    messages: Array<{ role: string; content: string }>;
+    maxTokens?: number;
+    temperature?: number;
+  }) => Promise<string | null>;
+  isReady: boolean;
+}
+
+/**
+ * On-device LLM chat completion hook. Wired in Phase 3 of
+ * `docs/edge-ai-qvac.md`. Requires a loaded LLM model (via
+ * `useQVACModel`) and a modelId.
+ *
+ * Consumer code:
+ *
+ * ```ts
+ * const { complete, isReady } = useQVACChat(llmModelId);
+ * const result = await complete({
+ *   messages: [{ role: "user", content: "Hello" }],
+ * });
+ * ```
+ */
+export function useQVACChat(modelId?: string): UseQVACChatResult {
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      setIsReady(false);
+      return;
+    }
+    setIsReady(!!modelId);
+  }, [modelId]);
+
+  const complete = useCallback(
+    async (params: {
+      messages: Array<{ role: string; content: string }>;
+      maxTokens?: number;
+      temperature?: number;
+    }): Promise<string | null> => {
+      if (Platform.OS === "web") return null;
+      if (!modelId) return null;
+
+      const { completion } = await import("@qvac/sdk");
+      const run = completion({
+        modelId,
+        history: params.messages.map((m) => ({
+          role: m.role as "user" | "assistant" | "system",
+          content: m.content,
+        })),
+        stream: false,
+        generationParams: {
+          predict: params.maxTokens ?? 700,
+          temp: params.temperature ?? 0.8,
+        },
+      });
+      const final = await run.final;
+      return final.contentText ?? null;
+    },
+    [modelId],
+  );
+
+  return { complete, isReady };
 }
 
 const CHATTERBOX_SAMPLE_RATE = 24000;
