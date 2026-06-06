@@ -428,13 +428,14 @@ async function callReplicateForPersonalizedAvatar(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          version: "e221c0c6c1fd04d5c6e2a4e3b6e2f5e6f1a8b9c0d1e2f3a4b5c6d7e8f9a0b1c",
+          version: "ddfc2b08d209f9fa8c1eca692712918bd449f695dabb4a958da31802a9570fe4",
           input: {
             input_image: selfieUrl,
-            prompt,
+            prompt: prompt.includes("img") ? prompt : `${prompt} img`.trim(),
             num_outputs: 1,
             num_steps: 20,
             guidance_scale: 5,
+            style_name: "Photographic (Default)",
           },
         }),
       },
