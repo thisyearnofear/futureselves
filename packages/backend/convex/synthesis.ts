@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { action, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { AI } from "./ai";
+import { generateWithAI } from "./ai";
 
 export const getSyntheses = query({
   args: {},
@@ -74,7 +74,7 @@ Provide exactly 2 to 3 actionItems. Do not wrap the JSON in markdown code blocks
 
     const userPrompt = `Here is the user's 7-day log:\n\n${args.transmissionsText}\n\nPlease generate the synthesis.`;
 
-    const responseText = await AI.generate(userPrompt, systemPrompt);
+    const responseText = await generateWithAI(userPrompt, systemPrompt);
     if (!responseText) {
       throw new Error("AI failed to generate synthesis.");
     }

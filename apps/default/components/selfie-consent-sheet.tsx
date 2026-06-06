@@ -68,19 +68,6 @@ export function SelfieConsentSheet({
 
       setStep("uploading");
 
-      // Upload selfie to Convex storage
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
-      const convex = await import("@convex-dev/auth/react").then(m =>
-        // We need the Convex client to upload. The uploadMutation approach:
-        // Use the generic upload URL from the Convex client.
-        // For now, we use a direct fetch to the Convex storage endpoint.
-        null
-      );
-
-      // Alternative: use convex's storage store via a dedicated mutation
-      // The simplest approach: create an internal mutation to store the selfie
-      // and return the storageId, then call generatePersonalizedAvatar
       const formData = new FormData();
       formData.append("file", {
         uri: asset.uri,

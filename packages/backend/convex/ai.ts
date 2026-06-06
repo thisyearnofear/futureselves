@@ -311,3 +311,26 @@ export class AIFactoryWithRateLimit {
     return this.provider.generate(prompt, systemPrompt);
   }
 }
+
+/**
+ * Default AI instance used by `synthesis.ts` and other modules.
+ * Lazily initialized so that missing API keys only cause an error
+ * when `generate()` is first called, not at module load time.
+ */
+let _defaultAI: AIFactoryWithRateLimit | null = null;
+
+/** @internal */
+function getDefaultAI(): AIFactoryWithRateLimit {
+  if (!_defaultAI) {
+    _defaultAI = new AIFactoryWithRateLimit(getAIProvider());
+  }
+  return _defaultAI;
+}
+
+/** Convenience async function matching the old `AI.generate(prompt, system)` pattern. */
+export async function generateWithAI(
+  prompt: string,
+  systemPrompt: string,
+): Promise<string | null> {
+  return getDefaultAI().generate(prompt, systemPrompt);
+}
