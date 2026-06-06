@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ConvexReactClient, Authenticated, useQuery } from "convex/react";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { Stack } from "expo-router";
@@ -5,6 +6,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { useAvatarPreloading } from "@/hooks/use-avatar-preloading";
 import { useQVACPrewarm } from "@/hooks/use-qvac-prewarm";
+import { QVACPrewarmProvider, type QVACPrewarmState } from "@/lib/qvac-prewarm-context";
 import { api } from "@/convex/_generated/api";
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
@@ -19,45 +21,51 @@ const secureStorage = {
 
 const isNative = Platform.OS === "ios" || Platform.OS === "android";
 
+const IDLE_PREWARM: QVACPrewarmState = {
+    llm: { status: "idle" },
+    tts: { status: "idle" },
+    stt: { status: "idle" },
+    isReady: false,
+};
+
 function AvatarPreloader() {
     useAvatarPreloading();
     return null;
 }
 
-/**
- * Pre-warms the on-device QVAC models (LLM + TTS) so the first
- * transmission arrives without a cold-start wait. Only active on
- * native when `EXPO_PUBLIC_AI_PROVIDER === "local"`.
- * The QVAC SDK is loaded lazily inside the hook body.
- */
-function QVACPrewarmer() {
+function QVACPrewarmUpdater({ onState }: { onState: (state: QVACPrewarmState) => void }) {
     const persona = useQuery(api.game.getState, { dateKey: new Date().toISOString().split("T")[0]! });
-    useQVACPrewarm({ personaId: persona?.persona?.id ?? null });
+    const prewarm = useQVACPrewarm({ personaId: persona?.persona?.id ?? null });
+    onState({ llm: prewarm.llm, tts: prewarm.tts, stt: prewarm.stt, isReady: prewarm.isReady });
     return null;
 }
 
 export default function RootLayout() {
+    const [prewarmState, setPrewarmState] = useState<QVACPrewarmState>(IDLE_PREWARM);
+
     return (
         <ConvexAuthProvider client={convex} storage={isNative ? secureStorage : undefined}>
-            <Authenticated>
-                <AvatarPreloader />
-                <QVACPrewarmer />
-            </Authenticated>
-            <Stack>
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="landing" options={{ headerShown: false }} />
-                <Stack.Screen
-                    name="archive"
-                    options={{
-                        title: "Archive",
-                        headerShown: true,
-                        headerTransparent: true,
-                        headerShadowVisible: false,
-                        headerTintColor: "#F8F0DE",
-                        headerBackButtonDisplayMode: "minimal",
-                    }}
-                />
-            </Stack>
+            <QVACPrewarmProvider value={prewarmState}>
+                <Authenticated>
+                    <AvatarPreloader />
+                    <QVACPrewarmUpdater onState={setPrewarmState} />
+                </Authenticated>
+                <Stack>
+                    <Stack.Screen name="index" options={{ headerShown: false }} />
+                    <Stack.Screen name="landing" options={{ headerShown: false }} />
+                    <Stack.Screen
+                        name="archive"
+                        options={{
+                            title: "Archive",
+                            headerShown: true,
+                            headerTransparent: true,
+                            headerShadowVisible: false,
+                            headerTintColor: "#F8F0DE",
+                            headerBackButtonDisplayMode: "minimal",
+                        }}
+                    />
+                </Stack>
+            </QVACPrewarmProvider>
         </ConvexAuthProvider>
     );
 }

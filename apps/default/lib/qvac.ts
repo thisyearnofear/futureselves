@@ -3,8 +3,8 @@
  *
  * This file is the SDK-facing layer of the local-first build. It wraps
  * the `@qvac/sdk` so the rest of the app talks to clean React hooks
- * (`useQVACModel`, `useLocalTTS`, `useLocalSTT`) instead of the SDK's
- * raw lifecycle functions.
+ * (`useQVACModel`, `useLocalTTS`, `useLocalSTT`, `useQVACChat`)
+ * instead of the SDK's raw lifecycle functions.
  *
  * ## Rules for this file
  *
@@ -20,10 +20,10 @@
  *   SDK calls go through a single lazy import inside the hook body,
  *   platform-guarded. This pattern keeps the web Metro bundle clean
  *   even though the SDK is in `dependencies`.
- * - **Phase D is wired.** `useQVACModel` (loadModel/unloadModel) and
- *   `useLocalTTS` (textToSpeech) call the real SDK. `useLocalSTT`
- *   remains a stub for Phase F. All hooks keep the platform-guard
- *   pattern and the type-only top-level import.
+ * - **All four hooks are wired.** `useQVACModel` (loadModel/unloadModel),
+ *   `useLocalTTS` (textToSpeech), `useLocalSTT` (transcribe), and
+ *   `useQVACChat` (completion) all call the real SDK. All hooks keep
+ *   the platform-guard pattern and the type-only top-level import.
  *
  * See `docs/edge-ai-qvac.md` §3.5, §7, and §12 for the full context.
  * See `docs/privacy-posture.md` for the public-facing privacy story.
@@ -419,4 +419,61 @@ function pcmToWav(samples: number[], sampleRate: number): Uint8Array {
   }
 
   return new Uint8Array(buffer);
+}
+
+// ─── LoRA Adapter (Track C) ───────────────────────────────────────────────────
+
+/**
+ * Hook return value for `useLoRAAdapter`.
+ *
+ * `attach` loads a LoRA adapter on top of a loaded base model. The adapter
+ * modifies the model's behavior without changing the base weights — enabling
+ * cast members that are "fine-tuned variants" of the personality LLM.
+ *
+ * QVAC SDK support for on-device LoRA is tracked upstream. Until the SDK
+ * exposes a `loadAdapter` API, this hook is a no-op scaffold that logs the
+ * intended behavior.
+ *
+ * See `docs/edge-ai-qvac.md` Phase 5 / Track C.
+ */
+export interface UseLoRAAdapterResult {
+  attach: (params: {
+    baseModelId: string;
+    adapterSrc: string;
+  }) => Promise<string | null>;
+  detach: (adapterId: string) => Promise<void>;
+  isAvailable: boolean;
+}
+
+/**
+ * Load and unload a LoRA adapter on top of a QVAC model.
+ *
+ * This is a **scaffold** — the underlying SDK call does not exist yet.
+ * When the SDK ships `loadAdapter`, replace the `console.warn` body with:
+ *
+ * ```ts
+ * const { loadAdapter } = await import("@qvac/sdk");
+ * return loadAdapter({ modelId: baseModelId, adapterSrc });
+ * ```
+ *
+ * Until then, `attach` returns `null` and logs a warning. The consumer
+ * should fall back to a prompt-based variant.
+ */
+export function useLoRAAdapter(): UseLoRAAdapterResult {
+  const attach = async (params: {
+    baseModelId: string;
+    adapterSrc: string;
+  }): Promise<string | null> => {
+    console.warn(
+      "[QVAC LoRA] `loadAdapter` is not yet available in @qvac/sdk. " +
+        `Skipping LoRA attach for adapter=${params.adapterSrc} on model=${params.baseModelId}.`,
+    );
+    return null;
+  };
+
+  const detach = async (_adapterId: string) => {
+    // No-op until LoRA is supported.
+  };
+
+  return { attach, detach, isAvailable: false };
 }

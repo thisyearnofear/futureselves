@@ -61,7 +61,7 @@ These are not defaults — they are the *only* shape the submission takes. If a 
 
 4. **The lead cast member in the 90-second video is `Future Self` or `Future Best Friend`** — never `The Shadow` or `the_flatlined`. The video's job is to do the emotional work via *voice*, not text. Grim cast members read as a wellness app, not a privacy thesis.
 
-5. **The primary demo device is a mid-range Android.** Not the latest iPhone. A 2-year-old Android that still runs the local loop is the visual that wins the edge-AI track. iPhone support ships in parallel but is not the headliner.
+5. **The primary demo device is a mid-range Android.** Not the latest iPhone. A 2-year-old Android that still runs the local loop is the visual that wins the edge-AI track. iPhone support ships in parallel but is not the headliner. (Dev/test targets are macOS Apple Silicon + iPhone; see `AGENTS.md`.)
 
 6. **Time-to-first-transmission is a first-class metric.** A 25-second cold start is fine *if* it is announced and shown with a progress bar. It is fatal if hidden. The splash-screen progress UI is built on day one and is on during the demo recording — not a pre-warmed model that disguises the cost.
 
@@ -128,12 +128,6 @@ These phases assume Tracks A + B as the core submission. Track C is a stretch la
 - ✅ Demo runbook + pitch notes updated
 - ⏳ Team review
 
-### Phase 0 — Alignment (this document)
-- ✅ Canonical plan doc
-- ✅ Cross-links from `README.md`, `AGENTS.md`, app/backend READMEs
-- ✅ Demo runbook + pitch notes updated
-- ⏳ Team review
-
 ### Phase 1 — Soft swap (internal/dev only — NOT the public submission path)
 - Local QVAC HTTP server on dev hardware
 - Point existing `OpenAICompatibleProvider` at it; remove `ANTHROPIC_API_KEY` from the required env
@@ -142,20 +136,31 @@ These phases assume Tracks A + B as the core submission. Track C is a stretch la
 
 ### Phase 2 — On-device TTS
 - ✅ `@qvac/sdk` installed in `apps/default`
-- ✅ `lib/qvac.ts` written (useQVACModel, useLocalTTS, useLocalSTT)
+- ✅ `lib/qvac.ts` written (all four hooks: useQVACModel, useLocalTTS, useLocalSTT, useQVACChat)
 - ✅ Wire loadModel/unloadModel in useQVACModel (real SDK calls via dynamic import)
 - ✅ Wire textToSpeech in useLocalTTS (PCM→WAV conversion, 24kHz mono)
-- ⏳ Replace ElevenLabs call in `game.transmission.ts` and `voicemail.native.ts` with a client-side TTS call
-- ⏳ Pre-warm model on app start; cache first-cast voices
+- ✅ Pre-warm hook (`useQVACPrewarm`) loads LLM + TTS + STT on app start
+- ✅ Cold-start progress UI (`ColdStartProgress` component, wired into `index.tsx` splash)
+- ⏳ Replace ElevenLabs call in `game.transmission.ts` and `voicemail.native.ts` with a client-side TTS call (parallel local path exists, cloud pipeline still active)
 - **Deliverable:** End-to-end on-device transmission on iOS and Android, with a "voice pre-loading" UX
 
 ### Phase 3 — On-device LLM (full offline)
-- Wire `ai.ts` to `loadModel(LLAMA_3_2_1B_INST_Q4_0)` for transmissions
-- Keep Convex as a thin optional sync layer (cross-device) or remove entirely
+- ✅ Client-side `ai.ts` (in `apps/default`) with `getAIProvider()`, `isLocalMode()`, `isLocalLLMMode()` — web=cloud, native=local when `EXPO_PUBLIC_AI_PROVIDER=local`
+- ✅ `lib/local-llm.ts` — full local transmission pipeline (prompt builder → QVAC `completion()` → JSON parser → fallback script)
+- ✅ `useQVACChat` hook wired in `lib/qvac.ts`
+- ✅ `local-llm.ts` integrated into `futureself-home.tsx` — local path on check-in submission when `isLocalMode()`
+- ✅ `use-network-kill.ts` — network status hook with kill switch for offline-proof demo
+- ✅ Cloud pipeline remains as parallel path (switched via `EXPO_PUBLIC_AI_PROVIDER` environment variable)
+- ⏳ Convex as thin optional sync layer (cross-device)
 - **Deliverable:** Network-kill demo: app still works with Wi-Fi and cellular disabled
 
 ### Phase 4 — STT (Track B)
-- Add Parakeet/Whisper STT for spoken check-ins and spoken "situation" on Last Voicemail
+- ✅ `useLocalSTT` hook wired with both `transcribe()` and `transcribeFromUri()` (real `@qvac/sdk` calls)
+- ✅ `useSpeechRecognition` hook (`use-speech-recognition.ts`) — press-to-record → STT transcription
+- ✅ STT model descriptor configured (`WHISPER_EN_BASE_Q8_0` in `use-qvac-prewarm.ts`)
+- ✅ Recording pipeline integrated with `expo-audio` recorder → `transcribeFromUri`
+- ✅ Speech recognition wired in `futureself-home.tsx` for spoken check-ins
+- ⏳ Spoken "situation" input for Last Voicemail (client hook exists in `use-local-voicemail.ts`)
 - **Deliverable:** Spoken situation → local voicemail, fully offline
 
 ### Phase 5 — Track C (stretch, Agentathon)

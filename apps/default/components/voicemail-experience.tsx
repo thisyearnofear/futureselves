@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -11,14 +11,13 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { useAction, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { Image } from "expo-image";
 import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
+import { useLocalVoicemail } from "@/hooks/use-local-voicemail";
 import { styles } from "./voicemail-experience.styles";
-
-// ─── Main Component ──────────────────────────────────────────────────────────
 
 export function VoicemailExperience() {
   // @ts-expect-error - voicemail property is generated dynamically by Convex
@@ -44,8 +43,6 @@ export function VoicemailExperience() {
     />
   );
 }
-
-// ─── Locked State ────────────────────────────────────────────────────────────
 
 function LockedState({
   streak,
@@ -114,8 +111,6 @@ function LockedState({
   );
 }
 
-// ─── Unlocked Experience ─────────────────────────────────────────────────────
-
 function UnlockedExperience({
   credits,
   tier,
@@ -125,20 +120,11 @@ function UnlockedExperience({
   tier: string;
   streak: number;
 }) {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [step, setStep] = useState(0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"context" | "manual">("context");
   const [situation, setSituation] = useState("");
+  const { generate, isGenerating, result, error, step, reset } = useLocalVoicemail();
 
   const isPremium = tier === "premium";
-
-  // @ts-expect-error - voicemail property is generated dynamically by Convex
-  const generateFree = useAction(api.voicemailNative?.generateNativeVoicemail);
-  // @ts-expect-error - voicemail property is generated dynamically by Convex
-  const generatePremium = useAction(api.voicemail?.generatePremiumVoicemail);
 
   const steps = [
     "Reading your emotional journey...",
@@ -149,44 +135,8 @@ function UnlockedExperience({
     "Assembling the voicemail...",
   ];
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isGenerating && step < steps.length - 1) {
-      interval = setInterval(() => {
-        setStep((s) => Math.min(s + 1, steps.length - 1));
-      }, 3500);
-    }
-    return () => clearInterval(interval);
-  }, [isGenerating, step]);
-
   const handleGenerate = async () => {
-    setIsGenerating(true);
-    setStep(0);
-    setError(null);
-    try {
-      let data;
-      if (isPremium && mode === "manual" && situation.trim()) {
-        data = await generatePremium({ situation });
-      } else if (isPremium) {
-        data = await generatePremium({});
-      } else {
-        data = await generateFree({});
-      }
-      setResult(data);
-      setStep(steps.length - 1);
-    } catch (e: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setError((e as any).message || "Something went wrong in the timeline.");
-      setIsGenerating(false);
-    }
-  };
-
-  const reset = () => {
-    setResult(null);
-    setSituation("");
-    setIsGenerating(false);
-    setStep(0);
-    setError(null);
+    await generate();
   };
 
   if (result) {
@@ -202,7 +152,6 @@ function UnlockedExperience({
           : "Your future self has a message, built from your emotional journey."}
       </Text>
 
-      {/* Credits display */}
       <View style={unlockedStyles.creditsRow}>
         <Ionicons name="mail-outline" size={18} color="#F7D38B" />
         <Text style={unlockedStyles.creditsText}>
@@ -219,7 +168,6 @@ function UnlockedExperience({
 
       {!isGenerating ? (
         <Animated.View entering={SlideInDown} style={styles.inputContainer}>
-          {/* Mode toggle — premium only */}
           {isPremium && (
             <View style={unlockedStyles.modeToggle}>
               <TouchableOpacity
@@ -257,7 +205,6 @@ function UnlockedExperience({
             </View>
           )}
 
-          {/* Manual input — premium only */}
           {isPremium && mode === "manual" && (
             <TextInput
               style={styles.input}
@@ -269,20 +216,19 @@ function UnlockedExperience({
             />
           )}
 
-          {/* Context summary — free and premium context mode */}
           {mode === "context" && (
             <View style={unlockedStyles.contextSummary}>
               <Text style={unlockedStyles.contextTitle}>
                 Your voicemail will be built from:
               </Text>
               <Text style={unlockedStyles.contextItem}>
-                📝 Your last {Math.min(streak, 14)} days of check-ins
+                Your last {Math.min(streak, 14)} days of check-ins
               </Text>
               <Text style={unlockedStyles.contextItem}>
-                🔀 Your recent choices and emotional arc
+                Your recent choices and emotional arc
               </Text>
               <Text style={unlockedStyles.contextItem}>
-                🎭 Delivered by your Future Self
+                Delivered by your Future Self
               </Text>
             </View>
           )}
@@ -314,8 +260,6 @@ function UnlockedExperience({
   );
 }
 
-// ─── Step Progress ───────────────────────────────────────────────────────────
-
 interface StepProgressProps {
   currentStep: number;
   steps: string[];
@@ -338,10 +282,17 @@ function StepProgress({ currentStep, steps }: StepProgressProps) {
   );
 }
 
-// ─── Voicemail Result ────────────────────────────────────────────────────────
+interface LocalVoicemailResult {
+  transcript: string;
+  emotionalCore: string;
+  audioUrl: string | null;
+  generationTier?: string;
+  critique?: string;
+  imageUrl?: string;
+  videoUrl?: string;
+}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function VoicemailResult({ result, onReset, isPremium }: { result: any; onReset: () => void; isPremium: boolean }) {
+function VoicemailResult({ result, onReset, isPremium }: { result: LocalVoicemailResult; onReset: () => void; isPremium: boolean }) {
   const player = useAudioPlayer(result.audioUrl);
   const status = useAudioPlayerStatus(player);
 
@@ -368,7 +319,6 @@ function VoicemailResult({ result, onReset, isPremium }: { result: any; onReset:
         <Text style={styles.emotionalCore}>Feeling: {result.emotionalCore}</Text>
         <View style={styles.divider} />
 
-        {/* Premium: atmospheric image + audio overlay */}
         {isPremium && result.imageUrl ? (
           <View style={styles.mediaPlaceholder}>
             <Image
@@ -386,7 +336,6 @@ function VoicemailResult({ result, onReset, isPremium }: { result: any; onReset:
             </TouchableOpacity>
           </View>
         ) : (
-          /* Free: simple audio player */
           <TouchableOpacity onPress={togglePlayback} style={freePlayerStyles.audioPlayer}>
             <Ionicons
               name={status.playbackState === "playing" ? "pause-circle" : "play-circle"}
@@ -411,7 +360,7 @@ function VoicemailResult({ result, onReset, isPremium }: { result: any; onReset:
         {result.generationTier && (
           <View style={tierBadgeStyles.container}>
             <Text style={tierBadgeStyles.text}>
-              {result.generationTier === "premium" ? "✨ Premium" : "🎙️ Free Tier"}
+              {result.generationTier === "premium" ? "Premium" : "Free Tier"}
             </Text>
           </View>
         )}
@@ -427,8 +376,6 @@ function VoicemailResult({ result, onReset, isPremium }: { result: any; onReset:
     </ScrollView>
   );
 }
-
-// ─── Additional Styles ───────────────────────────────────────────────────────
 
 const lockedStyles = StyleSheet.create({
   iconContainer: {

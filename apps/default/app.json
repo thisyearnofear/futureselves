@@ -12,7 +12,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.futureselves.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Future Selves uses the microphone to transcribe your spoken check-in responses.",
+        "NSSpeechRecognitionUsageDescription": "Future Selves uses speech recognition to convert your voice to text for check-in responses."
+      }
     },
     "android": {
       "adaptiveIcon": {

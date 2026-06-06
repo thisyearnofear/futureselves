@@ -1,8 +1,8 @@
 /**
  * use-qvac-prewarm.ts
  *
- * Pre-warms the on-device QVAC models (LLM + TTS) on app start so the
- * user's first transmission arrives without a cold-start wait.
+ * Pre-warms the on-device QVAC models (LLM + TTS + STT) on app start so
+ * the user's first transmission arrives without a cold-start wait.
  *
  * ## Per `docs/edge-ai-qvac.md` §3.5 #6:
  *   "Time-to-first-transmission is a first-class metric. A 25-second
@@ -173,9 +173,10 @@ export function useQVACPrewarm(options: UseQVACPrewarmOptions = { personaId: nul
   return {
     llm,
     tts,
+    stt,
     /** Manually re-trigger (e.g. after a model eviction). */
     prewarm,
-    /** `true` when both models are ready. */
+    /** `true` when all three models are ready. */
     isReady: llm.status === "ready" && tts.status === "ready" && stt.status === "ready",
   };
 }

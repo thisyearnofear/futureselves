@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -11,8 +11,12 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Platform } from "react-native";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import type {
   Archetype,
+  CastMember,
   FirstVoiceCastMember,
   PersonaState,
   Timeline,
@@ -24,6 +28,7 @@ import {
   archetypeValues,
   firstVoiceCastMembers,
   firstVoiceLabels,
+  formatCastMember,
   inferVoicePresetFromSelectedVoice,
   timelineLabels,
   timelineValues,
@@ -31,6 +36,7 @@ import {
   voicePresetLabels,
   voicePresetValues,
 } from "@/lib/futureself";
+import { SelfieConsentSheet } from "@/components/selfie-consent-sheet";
 
 interface SettingsPreferences {
   timeline: Timeline;
@@ -69,6 +75,17 @@ export function FutureselfSettingsSheet({
   const [futureChildOptIn, setFutureChildOptIn] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderHour, setReminderHour] = useState(9);
+  const [personalizingCastMember, setPersonalizingCastMember] = useState<CastMember | null>(null);
+
+  const avatars = useQuery(api.face.getAvatarsForUser);
+  const personalizedCastMembers = useMemo(() => {
+    if (!avatars) return new Set<CastMember>();
+    return new Set(
+      avatars
+        .filter((a) => a.tier === "personalized")
+        .map((a) => a.castMember),
+    );
+  }, [avatars]);
 
   useEffect(() => {
     if (!visible || !persona) return;
@@ -315,6 +332,51 @@ export function FutureselfSettingsSheet({
               </View>
             </Section>
 
+            {Platform.OS !== "web" ? (
+              <Section
+                title="Personalize your cast"
+                copy="Upload a photo and we'll show you what your future selves look like — with your face."
+              >
+                <View style={styles.castPersonalizeGrid}>
+                  {(["future_self", "future_mentor", "future_partner", "future_best_friend"] as CastMember[]).map((member) => {
+                    const isDone = personalizedCastMembers.has(member);
+                    return (
+                      <Pressable
+                        key={member}
+                        onPress={() => setPersonalizingCastMember(member)}
+                        style={({ pressed }) => [
+                          styles.castPersonalizeCard,
+                          isDone && styles.castPersonalizeCardDone,
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <View style={styles.castPersonalizeIcon}>
+                          <Ionicons
+                            name={isDone ? "checkmark-circle" : "person-outline"}
+                            size={20}
+                            color={isDone ? "#4ADE80" : "#F7D38B"}
+                          />
+                        </View>
+                        <Text style={styles.castPersonalizeLabel}>
+                          {formatCastMember(member)}
+                        </Text>
+                        <Text style={styles.castPersonalizeStatus}>
+                          {isDone ? "Personalized" : "Add face"}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <View style={styles.infoCard}>
+                  <Ionicons name="shield-checkmark-outline" size={18} color="#F7D38B" />
+                  <Text style={styles.infoText}>
+                    Your photo is uploaded temporarily, used once to generate the avatar, then
+                    deleted. No biometric data is stored.
+                  </Text>
+                </View>
+              </Section>
+            ) : null}
+
             <Section
               title="Trust and account"
               copy="Small, explicit controls. Nothing here resets your ritual unless you choose to leave the session."
@@ -391,6 +453,12 @@ export function FutureselfSettingsSheet({
               )}
             </Pressable>
           </View>
+          <SelfieConsentSheet
+            visible={personalizingCastMember !== null}
+            castMember={personalizingCastMember ?? "future_self"}
+            onClose={() => setPersonalizingCastMember(null)}
+            onComplete={() => setPersonalizingCastMember(null)}
+          />
         </View>
       </View>
     </Modal>
@@ -691,6 +759,48 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontWeight: "700",
+  },
+  castPersonalizeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  castPersonalizeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    minWidth: "47%",
+  },
+  castPersonalizeCardDone: {
+    backgroundColor: "rgba(74,222,128,0.08)",
+    borderColor: "rgba(74,222,128,0.2)",
+  },
+  castPersonalizeIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(247,211,139,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  castPersonalizeLabel: {
+    color: "#F8F0DE",
+    fontSize: 13,
+    fontWeight: "800",
+    flex: 1,
+  },
+  castPersonalizeStatus: {
+    color: "#7E86A6",
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
   signOutButton: {
     flexDirection: "row",

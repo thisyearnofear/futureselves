@@ -9,6 +9,7 @@ import { api } from "@/convex/_generated/api";
 import { AuthScreen } from "@/components/auth-screen";
 import { FutureselfHome } from "@/components/futureself-home";
 import { OnboardingFlow } from "@/components/onboarding-flow";
+import { ColdStartProgress } from "@/components/cold-start-progress";
 import type { GameState } from "@/lib/futureself";
 import { getLocalDateKey } from "@/lib/futureself";
 import { useReminderPreferences } from "@/lib/reminder-preferences";
@@ -74,6 +75,7 @@ function LoadingState({ label }: LoadingStateProps) {
         <View style={styles.loadingContainer}>
             <ActivityIndicator color="#F7D38B" size="large" />
             <Text style={styles.loadingText}>{label}</Text>
+            <ColdStartProgress />
         </View>
     );
 }

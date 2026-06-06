@@ -293,6 +293,77 @@ export const generateAvatar = authAction({
   },
 });
 
+export const generatePersonalizedAvatar = authAction({
+  args: {
+    castMember: castMemberValidator,
+    selfieStorageId: v.id("_storage"),
+  },
+  returns: v.object({
+    status: v.union(
+      v.literal("generated"),
+      v.literal("skipped"),
+      v.literal("no_api_key"),
+    ),
+    storageId: v.union(v.id("_storage"), v.null()),
+  }),
+  handler: async (ctx, args): Promise<{
+    status: "generated" | "skipped" | "no_api_key";
+    storageId: Id<"_storage"> | null;
+  }> => {
+    if (NO_IMAGE_CAST_MEMBERS.has(args.castMember)) {
+      return { status: "skipped", storageId: null };
+    }
+
+    const existing = await ctx.runQuery(internal.face.getExistingAvatar, {
+      userId: ctx.userId,
+      castMember: args.castMember,
+    });
+
+    if (existing && existing.tier === "personalized") {
+      return { status: "generated", storageId: existing.storageId };
+    }
+
+    const selfieUrl = await ctx.storage.getUrl(args.selfieStorageId);
+    if (!selfieUrl) return { status: "skipped", storageId: null };
+
+    const prompt = buildAvatarPrompt(args.castMember);
+    if (!prompt) return { status: "skipped", storageId: null };
+
+    const replicateKey = process.env.REPLICATE_API_TOKEN;
+    if (!replicateKey) return { status: "no_api_key", storageId: null };
+
+    const status = await rateLimiter.limit(ctx, "generateAvatar", { key: ctx.userId });
+    if (!status.ok) {
+      return { status: "skipped", storageId: null };
+    }
+    const burstStatus = await rateLimiter.limit(ctx, "generateAvatarBurst", { key: ctx.userId });
+    if (!burstStatus.ok) {
+      return { status: "skipped", storageId: null };
+    }
+
+    const imageUrl = await callReplicateForPersonalizedAvatar(prompt, selfieUrl, replicateKey);
+    if (!imageUrl) return { status: "skipped", storageId: null };
+
+    const imageResponse = await fetch(imageUrl);
+    const imageBlob = await imageResponse.blob();
+    const storageId = await ctx.storage.store(imageBlob);
+
+    await ctx.storage.delete(args.selfieStorageId);
+
+    await ctx.runMutation(internal.face.saveAvatar, {
+      userId: ctx.userId,
+      castMember: args.castMember,
+      storageId,
+      prompt,
+      tier: "personalized",
+      sourcePhotoId: args.selfieStorageId,
+      generatedAt: Date.now(),
+    });
+
+    return { status: "generated", storageId };
+  },
+});
+
 // ─── Replicate Integration ───────────────────────────────────────────────────
 
 async function callReplicateForAvatar(
@@ -338,6 +409,51 @@ async function callReplicateForAvatar(
     return result.output[0] as string;
   } catch (error) {
     console.error("Replicate avatar generation failed:", error);
+    return null;
+  }
+}
+
+async function callReplicateForPersonalizedAvatar(
+  prompt: string,
+  selfieUrl: string,
+  apiKey: string,
+): Promise<string | null> {
+  try {
+    const response = await fetch(
+      "https://api.replicate.com/v1/predictions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          version: "e221c0c6c1fd04d5c6e2a4e3b6e2f5e6f1a8b9c0d1e2f3a4b5c6d7e8f9a0b1c",
+          input: {
+            input_image: selfieUrl,
+            prompt,
+            num_outputs: 1,
+            num_steps: 20,
+            guidance_scale: 5,
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      console.error(`Replicate API error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    const prediction = await response.json();
+
+    const result = await pollReplicatePrediction(prediction.id, apiKey);
+    if (!result?.output?.length) {
+      console.error(`Replicate prediction failed or timed out: ${prediction.id}`);
+      return null;
+    }
+    return result.output[0] as string;
+  } catch (error) {
+    console.error("Replicate personalized avatar generation failed:", error);
     return null;
   }
 }

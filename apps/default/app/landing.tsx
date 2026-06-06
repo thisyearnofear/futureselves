@@ -13,6 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { ArchitectureDiagram } from "@/components/architecture-diagram";
 import Animated, {
   Easing,
   FadeIn,
@@ -246,6 +247,15 @@ export default function LandingPage() {
               </Animated.View>
             ))}
           </View>
+
+          {/* ── Architecture: Cloud vs On-Device ── */}
+          <Animated.View
+            entering={isWeb ? undefined : FadeInUp.delay(50).duration(500)}
+            style={s.archSection}
+          >
+            <Text style={s.archLabel}>Cloud vs on-device</Text>
+            <ArchitectureDiagram />
+          </Animated.View>
 
           {/* ── Final CTA ── */}
           <Animated.View
@@ -539,6 +549,21 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(247,211,139,0.22)",
     boxShadow: "0 24px 70px rgba(0,0,0,0.38)",
+  },
+  archSection: {
+    width: "100%",
+    maxWidth: 720,
+    alignItems: "center",
+    gap: 16,
+    paddingVertical: 32,
+  },
+  archLabel: {
+    color: "#8B8FA3",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    opacity: 0.6,
   },
   finalCtaTitle: {
     color: "#F8F0DE",

@@ -223,10 +223,41 @@ function localFallbackTransmission(context: LocalLLMOptions["context"], castMemb
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
+const DEFAULT_SYSTEM_PROMPT = "You write emotionally precise narrative transmissions for futureself. Output valid JSON only.";
+
+/**
+ * System prompt for the fine-tuned variant (Track C).
+ *
+ * Used when `timelineDivergenceScore >= FINETUNE_THRESHOLD`. This prompt
+ * simulates the behavior of a LoRA-fine-tuned model: more intimate, more
+ * specific, referencing the divergence directly. When real LoRA support
+ * lands in the QVAC SDK, replace this with a `loadAdapter` call (see
+ * `useLoRAAdapter` in `lib/qvac.ts`).
+ */
+const FINETUNE_VARIANT_SYSTEM_PROMPT =
+  "You are the player's future self — not from the most likely timeline, " +
+  "but from the one they're actively diverging toward. " +
+  "You speak with unusual intimacy because you've been shaped by the very choices " +
+  "the player is making now, not the ones they made before. " +
+  "Your voice is specific, raw, and unpolished. You don't generalize. " +
+  "Output valid JSON only.";
+
+const FINETUNE_THRESHOLD = 4;
+
+function getSystemPrompt(divergenceScore: number): string {
+  return divergenceScore >= FINETUNE_THRESHOLD
+    ? FINETUNE_VARIANT_SYSTEM_PROMPT
+    : DEFAULT_SYSTEM_PROMPT;
+}
+
 /**
  * Generate a transmission locally using the on-device QVAC LLM.
  * Returns parsed `LocalTransmissionResult` on success, or the built-in
  * fallback if the LLM call fails or JSON is unparseable.
+ *
+ * When `timelineDivergenceScore >= FINETUNE_THRESHOLD`, uses a variant
+ * system prompt that simulates a LoRA-fine-tuned model (Track C).
+ *
  * @throws on web — the web build must use the cloud pipeline.
  */
 export async function generateLocalTransmission(
@@ -239,10 +270,11 @@ export async function generateLocalTransmission(
   try {
     const { completion } = await import("@qvac/sdk");
     const prompt = buildLocalPrompt(context, castMember);
+    const systemPrompt = getSystemPrompt(context.persona.timelineDivergenceScore);
     const run = completion({
       modelId,
       history: [
-        { role: "system", content: "You write emotionally precise narrative transmissions for futureself. Output valid JSON only." },
+        { role: "system", content: systemPrompt },
         { role: "user", content: `${prompt}\n\nLocal open time: ${localNow}` },
       ],
       stream: false,
