@@ -2011,13 +2011,13 @@ setupInteractions();
                 checkin_btn.click(
                     fn=lambda w, n, s: (_render_awaiting(s), s.to_dict(), s) if (setattr(s, 'check_in_word', w.strip()[:40]), setattr(s, 'check_in_note', n.strip() if n.strip() else ''), setattr(s, 'checked_in', True)) else (None, None, None),
                     inputs=[word, note, state], outputs=[content, browser_state, state],
-                ).then(fn=lambda: (gr.Accordion(open=False), gr.Accordion(open=True)), outputs=[checkin_acc, receive_acc])
+                )
 
                 # Wire generate
                 generate_btn.click(
                     fn=lambda s: (_render_generating(s.today_cast or "future_self"), s.to_dict(), s) if (setattr(s, 'generating', True), setattr(s, 'generation_done', False), setattr(s, 'today_audio', ''), setattr(s, 'today_cast', _choose_cast(s)), threading.Thread(target=_gen_async, args=(s, s.to_context(), s.today_cast, date.today().strftime("%Y-%m-%d %H:%M")), daemon=True).start()) else (None, None, None),
                     inputs=[state], outputs=[content, browser_state, state],
-                ).then(fn=lambda: gr.Accordion(open=False), outputs=[receive_acc])
+                )
 
                 # Poll for generation.
                 # gr.Timer in Gradio 5 fires `tick` at the given interval. We keep
@@ -2029,16 +2029,18 @@ setupInteractions();
                 # when idle, at the cost of one tiny /queue/join call every 2s.
                 poll_timer = gr.Timer(value=2, active=True)
                 def _poll(s: AppState):
+                    if s is None:
+                        return None, None, None
                     if s.generation_done and s.today_transmission:
                         # Clear the generating flag so we don't keep rendering
                         # the tuning display on subsequent ticks.
                         s.generating = False
-                        return _render_transmission(s), s.to_dict(), s, gr.Accordion(visible=True)
+                        return _render_transmission(s), s.to_dict(), s
                     if s.generating:
-                        return _render_generating(s.today_cast or "future_self"), s.to_dict(), s, gr.Accordion(visible=False)
+                        return _render_generating(s.today_cast or "future_self"), s.to_dict(), s
                     # Idle: no-op. Returning Nones leaves the components unchanged.
-                    return None, None, None, None
-                poll_timer.tick(fn=_poll, inputs=[state], outputs=[content, browser_state, state, choice_acc])
+                    return None, None, None
+                poll_timer.tick(fn=_poll, inputs=[state], outputs=[content, browser_state, state])
 
                 # Wire choice
                 choice_btn.click(
@@ -2050,7 +2052,7 @@ setupInteractions();
                         setattr(s, 'today_choice', c),
                     ) else (None, None, None),
                     inputs=[choice, state], outputs=[content, browser_state, state],
-                ).then(fn=lambda: (gr.Accordion(open=False), gr.Accordion(open=True)), outputs=[choice_acc, reaction_acc])
+                ).then(fn=lambda: None, outputs=[])  # Accordion state handled via JS
 
                 # Wire reaction
                 react_btn.click(
@@ -2061,16 +2063,11 @@ setupInteractions();
                         setattr(s, 'check_in_word', ""), setattr(s, 'check_in_note', ""),
                     ) else (None, None, None),
                     inputs=[reaction, reply_note, state], outputs=[content, browser_state, state],
-                ).then(fn=lambda: (gr.Accordion(open=False), gr.Accordion(open=True)), outputs=[reaction_acc, checkin_acc])
+                ).then(fn=lambda: None, outputs=[])
 
                 # Maya demo button: skip onboarding, go straight to the transmission.
-                # Wired here (after the accordions) so the lambda can close them.
                 demo_btn.click(fn=_load_maya_demo, inputs=[state], outputs=[content, browser_state, state]).then(
-                    fn=lambda: gr.Column(visible=False), outputs=[onboard_col]).then(
-                    # Close receive + check-in accordions; open the "your move" one
-                    # so the judge can immediately pick toward/steady/release/repair
-                    fn=lambda: (gr.Accordion(open=False), gr.Accordion(open=False), gr.Accordion(open=True, visible=True)),
-                    outputs=[receive_acc, checkin_acc, choice_acc],
+                    fn=lambda: gr.Column(visible=False), outputs=[onboard_col]
                 )
 
             # ── History tab ────────────────────────────────────────────
