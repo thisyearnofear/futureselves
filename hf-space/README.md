@@ -80,8 +80,9 @@ python app.py
 
 - **[Live Space](https://huggingface.co/spaces/Papajams/futureselves)** — deployed on T4 GPU
 - [Source (monorepo)](https://github.com/udingethe/futureselves/tree/main/hf-space)
+- [Demo video](demo.mp4) — 2-minute walkthrough
 - [Demo walkthrough](FIELD_NOTES.md#the-artifact-end-to-end) — step-by-step guide for judges
+- [Social post](https://medium.com/@ungethe/building-small-9aea8bf5236e) — Medium article
 - [Agent trace](traces/agent-trace.jsonl) — open record of every transmission
 - [Field Notes blog post](FIELD_NOTES.md) — what we built and what we learned
-- [Agent trace](traces/agent-trace.jsonl) — open record of every transmission
 - [Modal app](traces/modal_app.py) — serverless persona summarizer
