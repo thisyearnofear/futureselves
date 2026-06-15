@@ -20,7 +20,7 @@ import threading
 import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import date
-from typing import Optional
+from typing import Any, Optional
 
 import gradio as gr
 
@@ -145,6 +145,35 @@ class AppState:
     def divergence(self) -> int:
         return self.persona.timeline_divergence_score if self.persona else 0
 
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        d["persona"] = asdict(self.persona) if self.persona else None
+        return d
+
+    @staticmethod
+    def from_dict(d: dict | None) -> AppState:
+        if not d:
+            return AppState()
+        d = {k: v for k, v in d.items() if k in AppState.__dataclass_fields__}
+        if d.get("persona"):
+            d["persona"] = PersonaContext(**{
+                k: v for k, v in d["persona"].items()
+                if k in PersonaContext.__dataclass_fields__
+            })
+        if d.get("recent_transmissions"):
+            d["recent_transmissions"] = [
+                RecentTransmission(**t) for t in d["recent_transmissions"]
+            ]
+        if d.get("recent_choices"):
+            d["recent_choices"] = [
+                RecentChoice(**c) for c in d["recent_choices"]
+            ]
+        if d.get("recent_responses"):
+            d["recent_responses"] = [
+                RecentResponse(**r) for r in d["recent_responses"]
+            ]
+        return AppState(**d)
+
 
 # ─── Choose cast member ──────────────────────────────────────────────────────
 
@@ -188,42 +217,75 @@ def _constellation(state: AppState) -> list[tuple[str, str, str, str]]:
 CSS = """
 :root{--primary:#c4842d;--primary-dark:#a06820;--bg:#0c0c18;--surface:#16162a;--surface2:#1e1e38;--text:#e0dcd0;--text-muted:#9e9488;--border:#2a2a3e;--green:#4caf50;--purple:#6a5acd;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden;}
+::selection{background:#c4842d40;color:#fff;}
 .gr-box{border-radius:12px!important;border:1px solid var(--border)!important;}
-.gr-button{border-radius:8px!important;font-weight:600!important;transition:all .2s!important;}
-.gr-button-primary{background:linear-gradient(135deg,#c4842d,#a06820)!important;border:none!important;color:#fff!important;}
+.gr-button{border-radius:8px!important;font-weight:600!important;transition:all .25s cubic-bezier(.4,0,.2,1)!important;}
+.gr-button:hover{transform:translateY(-1px);filter:brightness(1.1);}
+.gr-button-primary{background:linear-gradient(135deg,#c4842d,#a06820)!important;border:none!important;color:#fff!important;position:relative;overflow:hidden;}
+.gr-button-primary::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.1),transparent);transform:translateX(-100%);transition:transform .6s;}
+.gr-button-primary:hover::after{transform:translateX(100%);}
 .gr-button-secondary{background:var(--surface)!important;border:1px solid var(--border)!important;color:var(--text)!important;}
-.gr-input,.gr-textarea{background:var(--surface)!important;border:1px solid var(--border)!important;color:var(--text)!important;border-radius:8px!important;}
-.gr-input:focus,.gr-textarea:focus{border-color:var(--primary)!important;box-shadow:0 0 0 2px #c4842d20!important;}
+.gr-button-secondary:hover{background:var(--surface2)!important;}
+.gr-input,.gr-textarea{background:var(--surface)!important;border:1px solid var(--border)!important;color:var(--text)!important;border-radius:8px!important;transition:border-color .3s,box-shadow .3s!important;}
+.gr-input:focus,.gr-textarea:focus{border-color:var(--primary)!important;box-shadow:0 0 0 3px #c4842d25!important;}
 .gradio-container{max-width:680px!important;margin:0 auto;padding:20px!important;}
-.tab-nav{background:var(--surface)!important;border:1px solid var(--border)!important;border-radius:8px!important;margin-bottom:12px!important;}
-.tab-nav button{color:var(--text-muted)!important;}
+.tab-nav{background:var(--surface)!important;border:1px solid var(--border)!important;border-radius:8px!important;margin-bottom:16px!important;}
+.tab-nav button{color:var(--text-muted)!important;transition:color .3s!important;}
 .tab-nav button.selected{color:var(--primary)!important;border-bottom-color:var(--primary)!important;}
 h1,h2,h3{font-family:'Inter',sans-serif;letter-spacing:-0.02em;}
 label{color:var(--text)!important;font-weight:500!important;}
 .radio-group{background:var(--surface);border-radius:8px;padding:8px;border:1px solid var(--border);}
 footer{display:none!important}
-.privacy-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:0.75em;background:#1a3a1a;border:1px solid #2a5a2a;color:#7ccc7c;margin-bottom:12px;}
+/* Privacy chips */
+.privacy-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:0.7em;background:#1a3a1a;border:1px solid #2a5a2a;color:#7ccc7c;margin-bottom:10px;animation:fadeInUp .5s ease both;}
+.privacy-chip:nth-child(2){animation-delay:.1s;}
+.privacy-chip:nth-child(3){animation-delay:.2s;}
+.privacy-chip:nth-child(4){animation-delay:.3s;}
 .privacy-chip.warning{background:#3a2a1a;border-color:#5a4a2a;color:#ccc47c;}
+.privacy-chip:hover{border-color:#7ccc7c60;box-shadow:0 0 12px #7ccc7c20;}
+/* Step bar */
 .step-bar{display:flex;gap:0;margin:16px 0;padding:0;list-style:none;overflow:hidden;border-radius:8px;background:var(--surface);border:1px solid var(--border);}
-.step-bar li{flex:1;text-align:center;padding:10px 4px;font-size:0.75em;color:var(--text-muted);position:relative;transition:all .3s;}
+.step-bar li{flex:1;text-align:center;padding:10px 4px;font-size:0.72em;color:var(--text-muted);position:relative;transition:all .4s cubic-bezier(.4,0,.2,1);}
 .step-bar li.active{color:var(--primary);font-weight:600;}
-.step-bar li.active::after{content:'';position:absolute;bottom:0;left:10%;width:80%;height:2px;background:var(--primary);border-radius:1px;}
+.step-bar li.active::after{content:'';position:absolute;bottom:0;left:10%;width:80%;height:2px;background:linear-gradient(90deg,var(--primary),#e0dcd0);border-radius:1px;animation:slideIn .4s ease;}
 .step-bar li.done{color:var(--green);}
+.step-bar li:not(.done):not(.active){opacity:0.5;}
+/* Constellation */
 .constellation{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;}
-.constellation-item{border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);background:var(--surface);transition:all .2s;}
+.constellation-item{border-radius:10px;padding:10px;text-align:center;border:1px solid var(--border);background:var(--surface);transition:all .35s cubic-bezier(.4,0,.2,1);animation:fadeInUp .5s ease both;cursor:default;}
+.constellation-item:nth-child(2){animation-delay:.05s;}
+.constellation-item:nth-child(3){animation-delay:.1s;}
+.constellation-item:nth-child(4){animation-delay:.15s;}
+.constellation-item:nth-child(5){animation-delay:.2s;}
+.constellation-item:nth-child(6){animation-delay:.25s;}
+.constellation-item:hover{transform:translateY(-2px);border-color:var(--primary)60;}
 .constellation-item.lit{border-color:#c4842d40;background:linear-gradient(135deg,#1a1a2e,#2a1a0e);}
 .constellation-item.dim{border-color:#6a5acd40;background:linear-gradient(135deg,#1a1a2e,#1e0e2e);}
-.constellation-item.locked{opacity:0.5;}
-.constellation-item .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-bottom:6px;}
-.dot-lit{background:var(--primary);box-shadow:0 0 8px #c4842d60;}
-.dot-dim{background:var(--purple);box-shadow:0 0 8px #6a5acd60;}
+.constellation-item.locked{opacity:0.4;filter:grayscale(.6);}
+.constellation-item .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-bottom:4px;}
+.dot-lit{background:var(--primary);box-shadow:0 0 10px #c4842d60;animation:glow 2s ease-in-out infinite;}
+.dot-dim{background:var(--purple);box-shadow:0 0 10px #6a5acd60;animation:glow 3s ease-in-out infinite;}
 .dot-locked{background:var(--border);}
-.constellation-item .name{font-size:0.8em;font-weight:600;color:var(--text);}
-.constellation-item .hint{font-size:0.65em;color:var(--text-muted);margin-top:2px;}
-audio{width:100%;margin:12px 0;border-radius:8px;}
+.constellation-item .name{font-size:0.78em;font-weight:600;color:var(--text);}
+.constellation-item .hint{font-size:0.6em;color:var(--text-muted);margin-top:1px;}
+/* Audio player */
+audio{width:100%;margin:8px 0;border-radius:8px;animation:fadeInUp .5s ease;}
 audio::-webkit-media-controls-panel{background:var(--surface);}
-@keyframes pulse{0%,100%{opacity:0.6;}50%{opacity:1;}}
+/* Transmission card border glow */
+.glow-card{position:relative;border-radius:12px;overflow:hidden;}
+.glow-card::before{content:'';position:absolute;inset:-2px;border-radius:14px;background:linear-gradient(60deg,transparent,var(--primary)40,transparent,var(--primary)20,transparent);background-size:300% 300%;animation:borderGlow 4s ease-in-out infinite;z-index:0;}
+.glow-card > div{position:relative;z-index:1;background:var(--surface);margin:2px;border-radius:10px;padding:16px 20px;}
+/* Animations */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideIn{from{width:0;left:50%;}to{width:80%;left:10%;}}
+@keyframes pulse{0%,100%{opacity:.6;}50%{opacity:1;}}
+@keyframes glow{0%,100%{opacity:.6;transform:scale(1);}50%{opacity:1;transform:scale(1.3);}}
+@keyframes borderGlow{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
+@keyframes shimmer{0%{transform:translateX(-100%);}100%{transform:translateX(100%);}}
 .pulse{animation:pulse 1.5s ease-in-out infinite;}
+.fade-in{animation:fadeInUp .6s ease both;}
+.shimmer{position:relative;overflow:hidden;}
+.shimmer::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.03),transparent);animation:shimmer 2s infinite;}
 """
 
 # ─── Render helpers ──────────────────────────────────────────────────────────
@@ -292,55 +354,7 @@ def _render_constellation(state: AppState) -> str:
 <div class="constellation">{"".join(items)}</div>"""
 
 
-# ─── App logic ───────────────────────────────────────────────────────────────
-
-def do_onboarding_step1(name: str, city: str, state: AppState):
-    state.persona = PersonaContext(
-        name=name.strip(), city=city.strip(),
-        selected_voice_name="Ember", selected_voice_description="warm, intimate, certain",
-    )
-    state.onboard_step = 1
-    return state
-
-
-def do_onboarding_step2(chapter: str, arc: str, state: AppState):
-    if state.persona:
-        state.persona.current_chapter = chapter.strip()
-        state.persona.primary_arc = arc
-    state.onboard_step = 2
-    return state
-
-
-def do_onboarding_step3(avoiding: str, afraid: str, draining: str, miraculous: str, state: AppState):
-    if state.persona:
-        state.persona.avoiding = avoiding.strip()
-        state.persona.afraid_wont_happen = afraid.strip()
-        state.persona.draining = draining.strip()
-        state.persona.miraculous_year = miraculous.strip()
-    state.onboarded = True
-    state.onboard_step = 3
-    return _render_home(state), state
-
-
-def do_check_in(word: str, note: str, state: AppState):
-    state.check_in_word = word.strip()[:40]
-    state.check_in_note = note.strip() if note.strip() else ""
-    state.checked_in = True
-    return _render_awaiting(state), state
-
-
-def do_generate(state: AppState):
-    state.generating = True
-    state.generation_done = False
-    state.today_audio = ""
-    cm = _choose_cast(state)
-    state.today_cast = cm
-    context = state.to_context()
-    now_str = date.today().strftime("%Y-%m-%d %H:%M")
-    thread = threading.Thread(target=_gen_async, args=(state, context, cm, now_str), daemon=True)
-    thread.start()
-    return _render_generating(cm), state
-
+# ─── App logic (async gen helper) ─────────────────────────────────────────────
 
 def _gen_async(state: AppState, context: GenerationContext, cm: CastMember, now_str: str):
     result = _generate_with_llm(context, cm, now_str)
@@ -349,39 +363,6 @@ def _gen_async(state: AppState, context: GenerationContext, cm: CastMember, now_
     state.today_audio = audio or ""
     state.generating = False
     state.generation_done = True
-
-
-def do_choice(choice: str, state: AppState):
-    if state.today_transmission:
-        state.recent_transmissions.append(RecentTransmission(
-            date_key=date.today().isoformat(), title=state.today_transmission.title,
-            cliffhanger=state.today_transmission.cliffhanger,
-            cast_member=state.today_cast or "future_self",
-        ))
-    state.recent_choices.append(RecentChoice(
-        date_key=date.today().isoformat(), choice=choice,
-        prompt=state.today_transmission.action_prompt if state.today_transmission else "",
-    ))
-    if state.persona:
-        state.persona.streak += 1
-        setattr(state.persona, f"{choice}_count", getattr(state.persona, f"{choice}_count", 0) + 1)
-    state.choice_made = True
-    return _render_choice_result(state), state
-
-
-def do_reaction(reaction: str, reply: str, state: AppState):
-    state.recent_responses.append(RecentResponse(
-        reaction=reaction if reaction else None,
-        reply_note=reply.strip() if reply.strip() else None,
-    ))
-    state.checked_in = False
-    state.generation_done = False
-    state.choice_made = False
-    state.today_transmission = None
-    state.today_audio = ""
-    state.check_in_word = ""
-    state.check_in_note = ""
-    return _render_home(state), state
 
 
 # ─── Renderers ───────────────────────────────────────────────────────────────
@@ -435,7 +416,10 @@ def _render_transmission(state: AppState) -> str:
   </div>
   <audio controls autoplay><source src="/file={state.today_audio}" type="audio/wav"></audio>
 </div>"""
-    body += _card("Transmission", t.text, "#e0dcd0")
+    body += f"""<div class="glow-card fade-in"><div>
+  <h3 style="color:var(--text);margin:0 0 6px;font-size:1em;">Transmission</h3>
+  <div style="color:#e0dcd0;line-height:1.7;white-space:pre-wrap;font-size:1.05em;">{t.text}</div>
+</div></div>"""
     body += _card("🎯 Tonight's move", t.action_prompt, "#4caf50")
     body += _card("🔮 Tomorrow", t.cliffhanger, "#6a5acd")
     return body
@@ -471,159 +455,166 @@ def _render_history(state: AppState) -> str:
 
 # ─── Build Gradio UI ─────────────────────────────────────────────────────────
 
+
 def create_app():
-    with gr.Blocks(css=CSS, theme=gr.themes.Soft(primary_hue="amber", neutral_hue="stone", font=["Inter", "system-ui", "sans-serif"]), title="FutureSelves") as demo:
+    # Off Brand: typewriter effect on transmission text
+    js_code = """
+function startTypewriter() {
+  const el = document.querySelector('.typewriter');
+  if (!el || el.dataset.typed) return;
+  el.dataset.typed = '1';
+  const text = el.textContent;
+  el.textContent = '';
+  el.style.visibility = 'visible';
+  let i = 0;
+  function type() {
+    if (i < text.length) {
+      el.textContent += text.charAt(i);
+      i++;
+      setTimeout(type, 6 + Math.random() * 12);
+    }
+  }
+  type();
+}
+setInterval(startTypewriter, 500);
+startTypewriter();
+"""
+    with gr.Blocks(css=CSS, theme=gr.themes.Soft(primary_hue="amber", neutral_hue="stone", font=["Inter", "system-ui", "sans-serif"]), title="FutureSelves", head=f"<script>{js_code}</script>") as demo:
+        browser_state = gr.BrowserState(None)
         state = gr.State(init_state())
+
+        demo.load(fn=lambda d: AppState.from_dict(d), inputs=[browser_state], outputs=[state])
 
         with gr.Tabs(elem_classes="tab-nav"):
             # ── Today tab ──────────────────────────────────────────────
             with gr.Tab("Today"):
-                content = gr.HTML(_card("Welcome", "Complete onboarding below to begin receiving transmissions.", "#6a5acd"))
+                content = gr.HTML(
+                    _header() + _card("Welcome", "Complete onboarding below to begin.", "#6a5acd")
+                )
 
-                # ── Multi-step Onboarding ──────────────────────────────
                 with gr.Column(visible=True) as onboard_col:
                     with gr.Column(visible=True) as step1_col:
                         gr.Markdown("### ✎ Step 1: Who are you?")
                         oname = gr.Textbox(label="Your name", placeholder="What do you go by?")
                         octiy = gr.Textbox(label="Your city", placeholder="Where are you right now?")
-                        step1_btn = gr.Button("Next →", variant="primary", size="lg")
+                        step1_btn = gr.Button("Next →", variant="primary")
 
                     with gr.Column(visible=False) as step2_col:
                         gr.Markdown("### ✎ Step 2: Your chapter")
-                        ochapter = gr.Textbox(label="Current life chapter", lines=2, placeholder="e.g. rebuilding after a move, mid-career pivot, raising young kids...")
+                        ochapter = gr.Textbox(label="Current life chapter", lines=2, placeholder="e.g. rebuilding after a move, mid-career pivot...")
                         oarc = gr.Radio(["money", "love", "purpose", "health"], label="Primary arc", value="purpose")
-                        step2_btn = gr.Button("Next →", variant="primary", size="lg")
+                        step2_btn = gr.Button("Next →", variant="primary")
 
                     with gr.Column(visible=False) as step3_col:
                         gr.Markdown("### ✎ Step 3: What's alive in you?")
                         with gr.Row():
                             oavoid = gr.Textbox(label="Avoiding", lines=2, scale=1, placeholder="What you keep circling?")
-                            ofraid = gr.Textbox(label="Afraid won't happen", lines=2, scale=1, placeholder="The outcome you fear?")
+                            ofraid = gr.Textbox(label="Afraid won't happen", lines=2, scale=1)
                         with gr.Row():
-                            odrain = gr.Textbox(label="Draining you", lines=2, scale=1, placeholder="The energy leak?")
-                            omira = gr.Textbox(label="Miraculous year", lines=2, scale=1, placeholder="If everything went right?")
-                        step3_btn = gr.Button("Begin receiving transmissions", variant="primary", size="lg")
+                            odrain = gr.Textbox(label="Draining you", lines=2, scale=1)
+                            omira = gr.Textbox(label="Miraculous year", lines=2, scale=1)
+                        step3_btn = gr.Button("Begin", variant="primary")
 
-                    step1_btn.click(
-                        fn=do_onboarding_step1, inputs=[oname, octiy, state],
-                        outputs=[state],
-                    ).then(
-                        fn=lambda: (gr.Column(visible=False), gr.Column(visible=True)),
-                        outputs=[step1_col, step2_col],
-                    )
+                    _onboard_step1 = lambda n, c, s: (setattr(s, 'persona', PersonaContext(name=n.strip(), city=c.strip(), selected_voice_name="Ember", selected_voice_description="warm, intimate, certain")), setattr(s, 'onboard_step', 1), s)[2]
+                    _onboard_step2 = lambda ch, a, s: (setattr(s.persona, 'current_chapter', ch.strip()) if s.persona else None, setattr(s.persona, 'primary_arc', a) if s.persona else None, setattr(s, 'onboard_step', 2), s)[3]
+                    _onboard_step3 = lambda av, af, dr, mi, s: (setattr(s.persona, 'avoiding', av.strip()) if s.persona else None, setattr(s.persona, 'afraid_wont_happen', af.strip()) if s.persona else None, setattr(s.persona, 'draining', dr.strip()) if s.persona else None, setattr(s.persona, 'miraculous_year', mi.strip()) if s.persona else None, setattr(s, 'onboarded', True), setattr(s, 'onboard_step', 3), _render_home(s), s.to_dict(), s)
 
-                    step2_btn.click(
-                        fn=do_onboarding_step2, inputs=[ochapter, oarc, state],
-                        outputs=[state],
-                    ).then(
-                        fn=lambda: (gr.Column(visible=False), gr.Column(visible=True)),
-                        outputs=[step2_col, step3_col],
-                    )
+                    step1_btn.click(fn=_onboard_step1, inputs=[oname, octiy, state], outputs=[state]).then(
+                        fn=lambda: (gr.Column(visible=False), gr.Column(visible=True)), outputs=[step1_col, step2_col])
+                    step2_btn.click(fn=_onboard_step2, inputs=[ochapter, oarc, state], outputs=[state]).then(
+                        fn=lambda: (gr.Column(visible=False), gr.Column(visible=True)), outputs=[step2_col, step3_col])
+                    step3_btn.click(fn=_onboard_step3, inputs=[oavoid, ofraid, odrain, omira, state], outputs=[content, browser_state, state]).then(
+                        fn=lambda: gr.Column(visible=False), outputs=[onboard_col])
 
-                    step3_btn.click(
-                        fn=do_onboarding_step3, inputs=[oavoid, ofraid, odrain, omira, state],
-                        outputs=[content, state],
-                    ).then(
-                        fn=lambda: gr.Column(visible=False),
-                        outputs=[onboard_col],
-                    )
-
-                # ── Check-in ───────────────────────────────────────────
                 with gr.Accordion("☀ Check in", open=False) as checkin_acc:
-                    word = gr.Textbox(label="One word for today", max_lines=1, placeholder="e.g. exhausted, hopeful, restless, grateful...")
-                    note = gr.Textbox(label="Note (optional)", lines=3, placeholder="What's alive in you right now?")
-                    checkin_btn = gr.Button("Tune the signal", variant="primary", size="lg")
+                    word = gr.Textbox(label="One word", max_lines=1, placeholder="exhausted, hopeful, restless...")
+                    note = gr.Textbox(label="Note", lines=2, placeholder="What's alive in you?")
+                    checkin_btn = gr.Button("Tune the signal", variant="primary")
 
-                # ── Generate ───────────────────────────────────────────
                 with gr.Accordion("📡 Receive transmission", open=False) as receive_acc:
-                    generate_btn = gr.Button("Open the line", variant="primary", size="lg")
-                    gen_info = gr.HTML("")
+                    generate_btn = gr.Button("Open the line", variant="primary")
 
-                # ── Choice ─────────────────────────────────────────────
                 with gr.Accordion("🎯 Your move", open=False) as choice_acc:
                     choice = gr.Radio(
-                        [("🚀 Toward — move closer to what matters", "toward"),
-                         ("🌱 Steady — hold ground and endure", "steady"),
-                         ("🕊️ Release — let something go", "release"),
-                         ("🪡 Repair — fix a frayed thread", "repair")],
-                        label="Choose your move", type="value",
-                    )
+                        [("🚀 Toward", "toward"), ("🌱 Steady", "steady"), ("🕊️ Release", "release"), ("🪡 Repair", "repair")],
+                        label="Choose your move", type="value")
                     choice_btn = gr.Button("Record choice", variant="primary")
 
-                # ── Reaction ───────────────────────────────────────────
                 with gr.Accordion("💬 Reaction", open=False) as reaction_acc:
                     reaction = gr.Radio(
-                        [("✅ Did it — I followed through", "did_it"),
-                         ("💭 Keep close — I'm sitting with it", "keep_close"),
-                         ("🎯 Landed — it hit, but I didn't act", "landed"),
-                         ("🔄 Not quite — adjust the approach", "not_quite")],
-                        label="How did it land?", type="value",
-                    )
-                    reply_note = gr.Textbox(label="Write back (optional)", lines=2, placeholder="A reply to your future self...")
-                    react_btn = gr.Button("Send response", variant="primary")
+                        [("✅ Did it", "did_it"), ("💭 Keep close", "keep_close"), ("🎯 Landed", "landed"), ("🔄 Not quite", "not_quite")],
+                        label="How did it land?", type="value")
+                    reply_note = gr.Textbox(label="Write back", lines=2, placeholder="A reply...")
+                    react_btn = gr.Button("Send", variant="primary")
 
-                # ── Wire up check-in → generate → choice → reaction ────
+                # Wire check-in
                 checkin_btn.click(
-                    fn=do_check_in, inputs=[word, note, state],
-                    outputs=[content, state],
-                ).then(
-                    fn=lambda: (gr.Accordion(open=False), gr.Accordion(open=True)),
-                    outputs=[checkin_acc, receive_acc],
-                )
+                    fn=lambda w, n, s: (_render_awaiting(s), s.to_dict(), s) if (setattr(s, 'check_in_word', w.strip()[:40]), setattr(s, 'check_in_note', n.strip() if n.strip() else ''), setattr(s, 'checked_in', True)) else (None, None, None),
+                    inputs=[word, note, state], outputs=[content, browser_state, state],
+                ).then(fn=lambda: (gr.Accordion(open=False), gr.Accordion(open=True)), outputs=[checkin_acc, receive_acc])
 
+                # Wire generate
                 generate_btn.click(
-                    fn=do_generate, inputs=[state],
-                    outputs=[gen_info, state],
-                ).then(
-                    fn=lambda: gr.Accordion(open=False),
-                    outputs=[receive_acc],
-                )
+                    fn=lambda s: (_render_generating(s.today_cast or "future_self"), s.to_dict(), s) if (setattr(s, 'generating', True), setattr(s, 'generation_done', False), setattr(s, 'today_audio', ''), setattr(s, 'today_cast', _choose_cast(s)), threading.Thread(target=_gen_async, args=(s, s.to_context(), s.today_cast, date.today().strftime("%Y-%m-%d %H:%M")), daemon=True).start()) else (None, None, None),
+                    inputs=[state], outputs=[content, browser_state, state],
+                ).then(fn=lambda: gr.Accordion(open=False), outputs=[receive_acc])
 
-                def poll(state: AppState):
-                    if not state.generating and not state.generation_done:
-                        return None, state, gr.Accordion(visible=False)
-                    if state.generation_done and state.today_transmission:
-                        state.generating = False
-                        return _render_transmission(state), state, gr.Accordion(visible=True)
-                    if state.generating:
-                        return _render_generating(state.today_cast or "future_self"), state, gr.Accordion(visible=False)
-                    return None, state, gr.Accordion(visible=False)
+                # Poll for generation
+                demo.load(
+                    fn=lambda s: (_render_transmission(s), s.to_dict(), s, gr.Accordion(visible=True)) if (s.generation_done and s.today_transmission and not setattr(s, 'generating', False)) else (_render_generating(s.today_cast or "future_self"), s.to_dict(), s, gr.Accordion(visible=False)) if s.generating else (None, None, None, None),
+                    inputs=[state], outputs=[content, browser_state, state, choice_acc], every=2)
 
-                demo.load(fn=poll, inputs=[state], outputs=[content, state, choice_acc], every=2)
-
+                # Wire choice
                 choice_btn.click(
-                    fn=do_choice, inputs=[choice, state],
-                    outputs=[content, state],
-                ).then(
-                    fn=lambda: (gr.Accordion(open=False), gr.Accordion(open=True)),
-                    outputs=[choice_acc, reaction_acc],
-                )
+                    fn=lambda c, s: (_render_choice_result(s), s.to_dict(), s) if (
+                        setattr(s, 'recent_transmissions', s.recent_transmissions + [RecentTransmission(date_key=date.today().isoformat(), title=(s.today_transmission.title if s.today_transmission else ""), cliffhanger=(s.today_transmission.cliffhanger if s.today_transmission else ""), cast_member=s.today_cast or "future_self")]),
+                        setattr(s, 'recent_choices', s.recent_choices + [RecentChoice(date_key=date.today().isoformat(), choice=c, prompt=(s.today_transmission.action_prompt if s.today_transmission else ""))]),
+                        s.persona and (setattr(s.persona, 'streak', s.persona.streak + 1) or setattr(s.persona, f'{c}_count', getattr(s.persona, f'{c}_count', 0) + 1)),
+                        setattr(s, 'choice_made', True),
+                    ) else (None, None, None),
+                    inputs=[choice, state], outputs=[content, browser_state, state],
+                ).then(fn=lambda: (gr.Accordion(open=False), gr.Accordion(open=True)), outputs=[choice_acc, reaction_acc])
 
+                # Wire reaction
                 react_btn.click(
-                    fn=do_reaction, inputs=[reaction, reply_note, state],
-                    outputs=[content, state],
-                ).then(
-                    fn=lambda: (gr.Accordion(open=False), gr.Accordion(open=True)),
-                    outputs=[reaction_acc, checkin_acc],
-                )
+                    fn=lambda r, rn, s: (_render_home(s), s.to_dict(), s) if (
+                        setattr(s, 'recent_responses', s.recent_responses + [RecentResponse(reaction=r if r else None, reply_note=rn.strip() if rn.strip() else None)]),
+                        setattr(s, 'checked_in', False), setattr(s, 'generation_done', False), setattr(s, 'choice_made', False),
+                        setattr(s, 'today_transmission', None), setattr(s, 'today_audio', ""), setattr(s, 'check_in_word', ""), setattr(s, 'check_in_note', ""),
+                    ) else (None, None, None),
+                    inputs=[reaction, reply_note, state], outputs=[content, browser_state, state],
+                ).then(fn=lambda: (gr.Accordion(open=False), gr.Accordion(open=True)), outputs=[reaction_acc, checkin_acc])
 
             # ── History tab ────────────────────────────────────────────
             with gr.Tab("History"):
-                history = gr.HTML(_render_history(init_state()))
+                history = gr.HTML("")
                 refresh = gr.Button("Refresh")
                 refresh.click(fn=lambda s: _render_history(s), inputs=[state], outputs=[history])
 
-            # ── About tab ─────────────────────────────────────────────
-            with gr.Tab("About"):
+            # ── Architecture tab ───────────────────────────────────────
+            with gr.Tab("Architecture"):
                 gr.Markdown("""
-### ✦ FutureSelves
+### Pipeline architecture
 
-A daily ritual where your future self sends you transmissions. Check in with one word, receive a personalized message from across time, and make a tiny choice that reshapes who gets to speak tomorrow.
-
-**Models (all on-device):**
-- [MiniCPM 2.5](https://huggingface.co/openbmb/MiniCPM-2.5-sft-bf16) (~2.5B) — transmission generation
-- [Nemotron-Parse](https://huggingface.co/nvidia/Nemotron-Parse-H-Base-v1) (<1B) — structured note extraction
-- [Kokoro](https://github.com/grammatek/kokoro) (82M) — text-to-speech
+```
+┌──────────────────────────────────────────────────────────────┐
+│                   FutureSelves · 3 models · 3.1B params       │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
+│  │  Nemotron     │    │  MiniCPM 2.5 │    │  Kokoro 82M  │   │
+│  │  Parse (<1B)  │───▶│  (~2.5B)     │───▶│  TTS         │   │
+│  │  NVIDIA       │    │  OpenBMB     │    │  (on-device)  │   │
+│  └──────┬───────┘    └──────┬───────┘    └──────┬───────┘   │
+│         │                   │                   │           │
+│         ▼                   ▼                   ▼           │
+│  Extract emotions     Generate narrative     Synthesize     │
+│  + themes from        transmission with     speech from     │
+│  check-in note        continuity + memory   transmission    │
+│                                                              │
+│              All inference · Zero uploads                    │
+└──────────────────────────────────────────────────────────────┘
+```
 
 **Prize targets:** Backyard AI, OpenBMB, NVIDIA Nemotron, Tiny Titan, Best Agent, Off Brand, Best Demo, Bonus Quest Champion
 
@@ -637,7 +628,9 @@ def init_state() -> AppState:
     return AppState()
 
 
-demo = create_app()
+def main():
+    demo = create_app()
+    demo.launch()
 
 if __name__ == "__main__":
-    demo.launch()
+    main()
