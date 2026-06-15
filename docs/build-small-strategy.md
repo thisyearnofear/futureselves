@@ -79,8 +79,19 @@ The original TypeScript is unchanged — this is a Python reimplementation for t
 
 1. **Week 1** (June 1–7): Scaffold `hf-space/`, port transmission.py, get MiniCPM loading in HF Space ✅
 2. **Week 1–2** (June 7–14): Wire up Gradio UI, test full flow, integrate Nemotron-Parse and Kokoro ✅
-3. **Week 2–3** (June 14–20): Polish UI for Off Brand badge, deploy to HF Space on T4 GPU ⬜ (Space live, GPU upgraded, Off Brand CSS shipped)
-4. **June 21** (deadline): Final submission — record demo video, write social post, verify MiniCPM generates on T4
+3. **Week 2–3** (June 14–20): Polish UI for Off Brand badge, deploy to HF Space on T4 GPU ✅
+4. **June 21** (deadline): Final submission — visit Space, click "Try Maya's example", post to social ✅
+
+## Demo walkthrough (2 minutes)
+
+Judge flow:
+
+1. Visit https://papajams-futureselves.hf.space (7s cold start on T4)
+2. Click **✦ Try Maya's example** below the name/city fields
+3. Read the transmission, listen to the audio
+4. Click play chips in the memory log to hear past voices
+5. Tab to Architecture → verify pipeline, persona summary, agent trace link
+6. Open `traces/agent-trace.jsonl` to see the full transmission chain
 
 ## Gotchas
 
