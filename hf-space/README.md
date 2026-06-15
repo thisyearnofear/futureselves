@@ -1,8 +1,8 @@
 ---
 title: FutureSelves
-emoji: ✦
-colorFrom: amber
-colorTo: stone
+emoji: ✨
+colorFrom: yellow
+colorTo: gray
 sdk: gradio
 sdk_version: 5.0
 app_file: app.py
@@ -49,6 +49,7 @@ Each model is well under 32B params. Total: ~3.1B across all three models — qu
 | Prize | Why we qualify |
 |---|---|
 | **Backyard AI (track)** | Practical daily-life app for personal reflection and emotional accountability |
+| **OpenAI Codex Track** | Built and maintained with OpenAI Codex as the coding agent; source repo includes Codex-attributed commits |
 | **OpenBMB** | Built with MiniCPM 2.5 as the primary generation model |
 | **NVIDIA Nemotron** | Nemotron-Parse for structured insight extraction from user notes |
 | **Tiny Titan** | ~3.1B total across all models — genuinely tiny |
@@ -76,4 +77,4 @@ python app.py
 
 - [Demo video]() <!-- TODO: upload after recording -->
 - [Social post]() <!-- TODO: post and link -->
-- [Source (monorepo)](https://github.com/udingethe/futureselves)
+- [Source (monorepo)](https://github.com/thisyearnofear/futureselves)
