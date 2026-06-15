@@ -46,7 +46,7 @@ from tts import generate_speech, get_voice_for_cast_member
 from demo.maya import build_maya_demo, MayaDemoBundle
 from modal_eval import log_agent_trace, summarize_persona_modal, write_modal_app, write_demo_trace
 from form_helpers import (
-    PLACEHOLDERS, EXAMPLES, PRIMER_HTML, BUTTON_TEXT, ARC_OPTIONS, ARC_EMOJI,
+    PLACEHOLDERS, EXAMPLES, PRIMER_HTML, BUTTON_TEXT, ARC_OPTIONS, ARC_EMOJI, VOICE_EMOJI,
     chip_html, _choice_cards_html, _reaction_cards_html, _word_chips_html, _arc_cards_html,
 )
 
@@ -947,6 +947,30 @@ audio::-webkit-media-controls-panel{background:var(--ink-3);}
 .arc-card:nth-child(3){animation-delay:.15s}
 .arc-card:nth-child(4){animation-delay:.2s}
 @keyframes fadeSlideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* Transmission entrance animation */
+.transmission-card{animation:fadeSlideIn .5s ease-out backwards}
+/* Audio player glow when playing */
+audio.playing{animation:pulseGlow 1.5s ease-in-out infinite}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(233,168,71,0)}50%{box-shadow:0 0 12px 2px rgba(233,168,71,.4)}}
+/* Memory log staggered entrance */
+.memory-entry{animation:fadeSlideIn .35s ease-out backwards}
+.memory-entry:nth-child(1){animation-delay:.05s}
+.memory-entry:nth-child(2){animation-delay:.1s}
+.memory-entry:nth-child(3){animation-delay:.15s}
+.memory-entry:nth-child(4){animation-delay:.2s}
+/* Tonight's move callout glow */
+.tonight-card{transition:all .3s ease}
+.tonight-card:hover{box-shadow:0 0 0 1px var(--amber),0 0 16px -4px var(--amber-glow)}
+/* Constellation rail hover sparkle */
+.voice-orb{transition:all .25s ease}
+.voice-orb:hover{transform:scale(1.15);filter:brightness(1.3)}
+.voice-orb:hover::after{content:'';position:absolute;width:100%;height:100%;top:0;left:0;background:radial-gradient(circle,rgba(255,255,255,.4) 0%,transparent 70%);animation:sparkle .6s ease-out}
+/* Loading skeleton shimmer */
+.skeleton{background:linear-gradient(90deg,rgba(30,40,60,.3) 25%,rgba(50,65,85,.5) 50%,rgba(30,40,60,.3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* Share toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--amber);color:#000;padding:8px 16px;border-radius:4px;font-size:12px;opacity:0;transition:opacity .3s;z-index:9999}
+.toast.show{opacity:1}
 .choice-card:hover, .reaction-card:hover, .arc-card:hover{
   border-color:var(--amber);
   background:linear-gradient(135deg,rgba(233,168,71,.08),rgba(20,26,48,.55));
@@ -1084,7 +1108,8 @@ def _chamber_body(html: str) -> str:
 
 
 def _chamber_callout(tag: str, html: str) -> str:
-    return f'<div class="chamber-callout"><span class="tag">{tag}</span>{html}</div>'
+    extra_class = " tonight-card" if tag == "tonight's move" else ""
+    return f'<div class="chamber-callout{extra_class}"><span class="tag">{tag}</span>{html}</div>'
 
 
 def _chamber_meta(pairs: list[tuple[str, str]]) -> str:
@@ -1180,7 +1205,7 @@ def _audio_module(label: str, audio_path: str) -> str:
     <span style="font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber)">voice transmission</span>
     <span style="font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--paper-mute)">· from {label}</span>
   </div>
-  <audio controls autoplay preload="auto"><source src="{src}" type="audio/wav"></audio>
+  <audio controls autoplay preload="auto" class="audio-player" onplay="this.classList.add('playing')" onpause="this.classList.remove('playing')" onended="this.classList.remove('playing')"><source src="{src}" type="audio/wav"></audio>
 </div>"""
 
 
@@ -1233,7 +1258,7 @@ def _memory_log(state: AppState, *, limit: int = 8) -> str:
                     f'title="play voice">▶</a>'
                 )
         rows.append(
-            f'<div class="memory-row">'
+            f'<div class="memory-row memory-entry">'
             f'<span class="ts">{t.date_key}</span>'
             f'<span class="body"><em>&ldquo;{t.title}&rdquo;</em></span>'
             f'<span class="tag">{CAST_MEMBER_NAMES.get(t.cast_member, ("", ""))[0] or t.cast_member}{audio_chip}</span>'
@@ -1241,7 +1266,7 @@ def _memory_log(state: AppState, *, limit: int = 8) -> str:
         )
     for c in reversed(state.recent_choices[-limit:]):
         rows.append(
-            f'<div class="memory-row">'
+            f'<div class="memory-row memory-entry">'
             f'<span class="ts">{c.date_key}</span>'
             f'<span class="body">{c.prompt}</span>'
             f'<span class="tag choice-{c.choice}">{c.choice}</span>'
@@ -1797,7 +1822,7 @@ setupInteractions();
                     # Primer line — sets emotional tone before the form
                     gr.HTML(PRIMER_HTML)
                     with gr.Column(visible=True) as step1_col:
-                        gr.Markdown("### ✎ Step 1: Who are you?")
+                        step1_heading = gr.HTML("### ✎ Step 1: Who are you? 🔥")
                         oname = gr.Textbox(
                             label="Your name",
                             placeholder=PLACEHOLDERS["name"],
@@ -2063,6 +2088,12 @@ setupInteractions();
                     ),
                     inputs=[state],
                     outputs=[step2_arc_html, step2_heading],
+                )
+                # Step 1 voice emoji based on selected voice
+                demo.load(
+                    fn=lambda s: f"### ✎ Step 1: Who are you? {VOICE_EMOJI.get(s.persona.selected_voice_name, '🔥')}" if s.persona else "### ✎ Step 1: Who are you? 🔥",
+                    inputs=[state],
+                    outputs=[step1_heading],
                 )
 
             # ── Architecture tab ───────────────────────────────────────

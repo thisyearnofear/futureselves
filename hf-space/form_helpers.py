@@ -127,6 +127,16 @@ ARC_EMOJI = {
     "health": "🌱",
 }
 
+# Voice emoji mapping for step 1 heading
+VOICE_EMOJI = {
+    "Ember": "🔥",
+    "Nova": "✨",
+    "Sol": "☀️",
+    "River": "🌊",
+    "Stone": "🪨",
+    "Wind": "💨",
+}
+
 
 # ─── Primer / warmup copy ──────────────────────────────────────────────────
 # Appears above the onboarding form. Sets the emotional tone before
