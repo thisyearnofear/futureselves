@@ -4,7 +4,7 @@ emoji: ✨
 colorFrom: yellow
 colorTo: gray
 sdk: gradio
-sdk_version: 5.0
+sdk_version: 5
 app_file: app.py
 pinned: false
 tags:
@@ -22,7 +22,7 @@ tags:
 
 **A daily ritual where your future self sends you transmissions.**
 
-Check in with one word. Receive a personalized voice transmission from across time. Make a tiny choice that reshapes who gets to speak tomorrow.
+A private future-radio, not a dashboard. Check in with one word, receive a voice transmission from across time, make a tiny choice that reshapes who gets to speak tomorrow. The whole ritual lives inside a single signal chamber — no card-grid, no SaaS, no scroll.
 
 All inference runs on-device via three small models — no cloud dependencies, no API bills, no data uploaded.
 
@@ -54,13 +54,13 @@ Each model is well under 32B params. Total: ~3.1B across all three models — qu
 | **NVIDIA Nemotron** | Nemotron-Parse for structured insight extraction from user notes |
 | **Tiny Titan** | ~3.1B total across all models — genuinely tiny |
 | **Best Agent** | Multi-step agentic pipeline: check-in → extract → generate → choice → reaction → persist |
-| **Off Brand** | Custom Gradio CSS with dark amber theme, card-based layout, animated loading state |
+| **Off Brand** | Custom transmission-console interface (Fraunces + IBM Plex Mono), atmospheric signal styling with layered gradients, animated tuning-state waves, voice-orb constellation rail, and a horizontal signal-path progress bar — no card-grid dashboard |
 | **Best Demo** | Full demo video + social post (links below) |
 | **Bonus Quest Champion** | Targeting 6+ bonus/sponsor criteria simultaneously |
 
 ## Tech
 
-- **UI:** Gradio 5 with custom CSS theme (Off Brand)
+- **UI:** Gradio 5 with a custom transmission-console skin (Fraunces serif for the chamber voice, IBM Plex Mono for instrument labels), atmospheric gradients and scanlines, a horizontal voice-orb constellation rail, and a signal-path progress bar in place of step pills
 - **LLM:** MiniCPM 2.5 via 🤗 Transformers with torch.compile + SDPA attention
 - **Extraction:** Nemotron-Parse (NVIDIA) with keyword fallback when GPU is constrained
 - **TTS:** Kokoro 82M — generates WAV output for each transmission
