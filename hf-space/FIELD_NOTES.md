@@ -1,7 +1,7 @@
 # Field Notes — FutureSelves for Build Small
 
 **Hackathon:** [Gradio + Hugging Face Build Small](https://huggingface.co/build-small-hackathon), June 2026
-**Submission:** [papajams-futureselves](https://papajams-futureselves.hf.space) · [source](https://github.com/udingethe/futureselves/tree/main/hf-space)
+**Submission:** [Papajams/futureselves](https://huggingface.co/spaces/Papajams/futureselves) · [source](https://github.com/udingethe/futureselves/tree/main/hf-space)
 **Author:** [@udingethe](https://github.com/udingethe)
 
 ## What we built
@@ -62,7 +62,7 @@ The badges we do claim have artifacts in the repo: the custom UI is in `app.py`,
 
 If you want to evaluate the build fairly, here is the order that makes the most sense:
 
-1. Land on the [Live Space](https://papajams-futureselves.hf.space).
+1. Land on the [Live Space](https://huggingface.co/spaces/Papajams/futureselves).
 2. Click **✦ Try Maya's example** on the first screen.
 3. Read Maya's transmission. Click play on the audio.
 4. Scroll to the memory log. Click the play chips beside the past 4 transmissions.

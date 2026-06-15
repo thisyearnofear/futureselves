@@ -86,7 +86,7 @@ The original TypeScript is unchanged — this is a Python reimplementation for t
 
 Judge flow:
 
-1. Visit https://papajams-futureselves.hf.space (7s cold start on T4)
+1. Visit https://huggingface.co/spaces/Papajams/futureselves (7s cold start on T4)
 2. Click **✦ Try Maya's example** below the name/city fields
 3. Read the transmission, listen to the audio
 4. Click play chips in the memory log to hear past voices

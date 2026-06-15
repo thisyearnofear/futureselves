@@ -78,7 +78,7 @@ python app.py
 
 ## Links
 
-- **[Live Space](https://papajams-futureselves.hf.space)** — deployed on T4 GPU
+- **[Live Space](https://huggingface.co/spaces/Papajams/futureselves)** — deployed on T4 GPU
 - [Source (monorepo)](https://github.com/udingethe/futureselves/tree/main/hf-space)
 - [Demo walkthrough](FIELD_NOTES.md#the-artifact-end-to-end) — step-by-step guide for judges
 - [Agent trace](traces/agent-trace.jsonl) — open record of every transmission
