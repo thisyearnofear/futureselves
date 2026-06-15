@@ -45,6 +45,10 @@ from parse_notes import extract_note_insights, fast_insights
 from tts import generate_speech, get_voice_for_cast_member
 from demo.maya import build_maya_demo, MayaDemoBundle
 from modal_eval import log_agent_trace, summarize_persona_modal, write_modal_app, write_demo_trace
+from form_helpers import (
+    PLACEHOLDERS, EXAMPLES, PRIMER_HTML, BUTTON_TEXT, ARC_OPTIONS, ARC_EMOJI,
+    chip_html, _choice_cards_html, _reaction_cards_html, _word_chips_html, _arc_cards_html,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -859,11 +863,142 @@ audio::-webkit-media-controls-panel{background:var(--ink-3);}
   .instrument .value{font-size:12px}
   .instrument .label{font-size:8px}
   .privacy-pulse{font-size:8px}
-}
-@media (prefers-reduced-motion: reduce){
+}  @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important}
 }
-"""
+
+/* ─── Example chips — inline phrase buttons ─── */
+.ex-chip-row{
+  display:flex;flex-wrap:wrap;gap:5px;
+  margin:3px 0 8px;
+}
+.ex-chip{
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:10px;
+  color:var(--paper-mute);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10px;
+  font-style:italic;
+  padding:3px 10px;
+  cursor:pointer;
+  transition:all .2s ease;
+  white-space:nowrap;
+}
+.ex-chip:hover{
+  border-color:var(--amber);
+  color:var(--amber);
+  background:rgba(233,168,71,.08);
+}
+.ex-chip.used{
+  color:var(--live);
+  border-color:rgba(122,223,155,.5);
+  font-style:normal;
+}
+
+/* ─── Choice/reaction cards ─── */
+.card-grid{
+  display:grid;
+  gap:8px;
+  margin:6px 0;
+}
+.choice-grid{grid-template-columns:repeat(2,1fr)}
+.reaction-grid{grid-template-columns:repeat(2,1fr)}
+.arc-grid{grid-template-columns:repeat(2,1fr)}
+.choice-card, .reaction-card, .arc-card{
+  display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-radius:3px;
+  background:rgba(20,26,48,.4);
+  cursor:pointer;
+  transition:all .25s cubic-bezier(.4,0,.2,1);
+  text-align:left;
+  font-family:'IBM Plex Mono',monospace;
+  animation:fadeSlideIn .35s ease-out backwards;
+}
+.arc-card:nth-child(1){animation-delay:.05s}
+.arc-card:nth-child(2){animation-delay:.1s}
+.arc-card:nth-child(3){animation-delay:.15s}
+.arc-card:nth-child(4){animation-delay:.2s}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.choice-card:hover, .reaction-card:hover, .arc-card:hover{
+  border-color:var(--amber);
+  background:linear-gradient(135deg,rgba(233,168,71,.08),rgba(20,26,48,.55));
+}
+.choice-card.active, .reaction-card.active, .arc-card.active{
+  border-color:var(--amber);
+  background:linear-gradient(135deg,rgba(233,168,71,.12),rgba(20,26,48,.55));
+  box-shadow:0 0 0 1px rgba(233,168,71,.3),0 0 14px -4px var(--amber-glow);
+}
+.card-emoji{
+  font-size:16px;
+  line-height:1;
+  margin-bottom:2px;
+}
+.card-label{
+  font-size:12px;
+  font-weight:500;
+  letter-spacing:.06em;
+  color:var(--paper);
+}
+.card-sub{
+  font-size:9px;
+  color:var(--paper-mute);
+  letter-spacing:.04em;
+  font-style:italic;
+}
+
+/* ─── Hidden radio — visually hidden but DOM-present for JS interactions ─── */
+.hidden-radio{
+  position:absolute !important;
+  width:1px !important;
+  height:1px !important;
+  padding:0 !important;
+  margin:-1px !important;
+  overflow:hidden !important;
+  clip:rect(0,0,0,0) !important;
+  white-space:nowrap !important;
+  border:0 !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+.hidden-radio .gr-form-label,
+.hidden-radio label{display:none !important}
+
+/* ─── Accordion primer — permission/guidance text ─── */
+.acc-primer{
+  font-size:10px;
+  line-height:1.5;
+  color:var(--paper-mute);
+  font-style:italic;
+  margin-bottom:8px;
+}
+
+/* ─── Onboarding primer — warmup before the form ─── */
+.onboard-primer{
+  margin-bottom:18px;
+}
+.primer-eyebrow{
+  font-size:9px;
+  letter-spacing:.28em;
+  text-transform:uppercase;
+  color:var(--paper-mute);
+  margin-bottom:8px;
+}
+.primer-line{
+  font-family:'Fraunces',serif;
+  font-size:15px;
+  line-height:1.7;
+  color:var(--paper-dim);
+  font-style:italic;
+  border-left:2px solid var(--line);
+  padding-left:14px;
+}
+
+@media (max-width: 720px){
+  .choice-grid, .reaction-grid, .arc-grid{grid-template-columns:1fr}
+}"""
 
 # ─── Render helpers — transmission console primitives ───────────────────────
 # Every renderer composes from these. No generic bordered card helper.
@@ -1455,6 +1590,83 @@ function startTypewriter() {
 }
 setInterval(startTypewriter, 500);
 startTypewriter();
+
+// ─── Example chip handler — click to populate textbox ───
+function setupExampleChips() {
+  document.querySelectorAll('.ex-chip').forEach(chip => {
+    if (chip.dataset.wired) return;
+    chip.dataset.wired = '1';
+    chip.addEventListener('click', function(e) {
+      e.preventDefault();
+      const fieldId = this.dataset.field;
+      const value = this.dataset.value;
+      // Find the textarea/input inside the field container
+      const container = document.getElementById(fieldId);
+      if (!container) return;
+      const input = container.querySelector('textarea, input');
+      if (!input) return;
+      // Set value natively so Gradio picks it up
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        input.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype,
+        'value'
+      ).set;
+      nativeSetter.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      // Visual feedback
+      const orig = this.textContent;
+      this.textContent = '\u2713';
+      this.classList.add('used');
+      setTimeout(() => { this.textContent = orig; this.classList.remove('used'); }, 1200);
+    });
+  });
+}
+
+// ─── Choice/reaction card handler — click to select ───
+function setupCardSelection() {
+  document.querySelectorAll('.choice-card, .reaction-card, .arc-card').forEach(card => {
+    if (card.dataset.wired) return;
+    card.dataset.wired = '1';
+    card.addEventListener('click', function(e) {
+      e.preventDefault();
+      const grid = this.closest('.card-grid');
+      if (!grid) return;
+      // Deselect all cards in this grid
+      grid.querySelectorAll('.choice-card, .reaction-card, .arc-card').forEach(c => c.classList.remove('active'));
+      // Select this card
+      this.classList.add('active');
+      // Find the hidden radio widget by elem_id and click the matching option
+      let gridClass = 'field-choice';
+      if (grid.classList.contains('choice-grid')) gridClass = 'field-choice';
+      else if (grid.classList.contains('reaction-grid')) gridClass = 'field-reaction';
+      else if (grid.classList.contains('arc-grid')) gridClass = 'field-oarc';
+      const radioWidget = document.getElementById(gridClass);
+      if (!radioWidget) return;
+      const val = this.dataset.value;
+      // Find the radio input with matching value attribute
+      const radio = radioWidget.querySelector('input[value="' + val + '"]');
+      if (radio) {
+        radio.click();
+      } else {
+        // Fallback: try clicking the label
+        const labels = radioWidget.querySelectorAll('.gr-radio-label');
+        labels.forEach(label => {
+          if (label.textContent.trim().toLowerCase() === val) {
+            label.click();
+          }
+        });
+      }
+    });
+  });
+}
+
+// Re-run after Gradio re-renders
+function setupInteractions() {
+  setupExampleChips();
+  setupCardSelection();
+}
+setInterval(setupInteractions, 800);
+setupInteractions();
 """
     with gr.Blocks(
         css=CSS,
@@ -1511,12 +1723,22 @@ startTypewriter();
                 )
 
                 with gr.Column(visible=True) as onboard_col:
+                    # Primer line — sets emotional tone before the form
+                    gr.HTML(PRIMER_HTML)
                     with gr.Column(visible=True) as step1_col:
                         gr.Markdown("### ✎ Step 1: Who are you?")
-                        oname = gr.Textbox(label="Your name", placeholder="What do you go by?")
-                        octiy = gr.Textbox(label="Your city", placeholder="Where are you right now?")
-                        step1_btn = gr.Button("Next →", variant="primary")
-                        # ── Demo escape hatch ──────────────────────────────
+                        oname = gr.Textbox(
+                            label="Your name",
+                            placeholder=PLACEHOLDERS["name"],
+                            elem_id="field-oname",
+                        )
+                        octiy = gr.Textbox(
+                            label="Your city",
+                            placeholder=PLACEHOLDERS["city"],
+                            elem_id="field-octiy",
+                        )
+                        step1_btn = gr.Button(BUTTON_TEXT["step1_next"], variant="primary")
+                        # ── Demo escape hatch ─────────────────────────────────────────────────────────────────────────────────
                         # One click loads Maya's fully-populated state — past
                         # transmissions, audio, today's transmission — so a
                         # judge sees the product's depth in 5 seconds. The
@@ -1532,20 +1754,66 @@ startTypewriter();
                         )
 
                     with gr.Column(visible=False) as step2_col:
-                        gr.Markdown("### ✎ Step 2: Your chapter")
-                        ochapter = gr.Textbox(label="Current life chapter", lines=2, placeholder="e.g. rebuilding after a move, mid-career pivot...")
-                        oarc = gr.Radio(["money", "love", "purpose", "health"], label="Primary arc", value="purpose")
-                        step2_btn = gr.Button("Next →", variant="primary")
+                        step2_heading = gr.HTML("### ✎ Step 2: Your chapter 🧭")
+                        ochapter = gr.Textbox(
+                            label="Current life chapter",
+                            lines=2,
+                            placeholder=PLACEHOLDERS["chapter"],
+                            elem_id="field-ochapter",
+                        )
+                        # Arc selection rendered as 4 cards, not a radio.
+                        # Click a card to select. The hidden radio holds the
+                        # state value for the step2_btn click handler.
+                        step2_arc_html = gr.HTML(_arc_cards_html("purpose"))
+                        oarc = gr.Radio(
+                            ["money", "love", "purpose", "health"],
+                            label="",
+                            value="purpose",
+                            elem_classes="hidden-radio",
+                            elem_id="field-oarc",
+                        )
+                        step2_btn = gr.Button(BUTTON_TEXT["step2_next"], variant="primary")
 
                     with gr.Column(visible=False) as step3_col:
                         gr.Markdown("### ✎ Step 3: What's alive in you?")
                         with gr.Row():
-                            oavoid = gr.Textbox(label="Avoiding", lines=2, scale=1, placeholder="What you keep circling?")
-                            ofraid = gr.Textbox(label="Afraid won't happen", lines=2, scale=1)
+                            with gr.Column(scale=1):
+                                oavoid = gr.Textbox(
+                                    label="Avoiding",
+                                    lines=2,
+                                    placeholder=PLACEHOLDERS["avoiding"],
+                                    elem_id="field-oavoid",
+                                )
+                                gr.HTML(chip_html(EXAMPLES["avoiding"], "field-oavoid"))
+                            with gr.Column(scale=1):
+                                ofraid = gr.Textbox(
+                                    label="Afraid won't happen",
+                                    lines=2,
+                                    placeholder=PLACEHOLDERS["afraid"],
+                                    elem_id="field-ofraid",
+                                )
+                                gr.HTML(chip_html(EXAMPLES["afraid"], "field-ofraid"))
                         with gr.Row():
-                            odrain = gr.Textbox(label="Draining you", lines=2, scale=1)
-                            omira = gr.Textbox(label="Miraculous year", lines=2, scale=1)
-                        step3_btn = gr.Button("Begin", variant="primary")
+                            with gr.Column(scale=1):
+                                odrain = gr.Textbox(
+                                    label="Draining you",
+                                    lines=2,
+                                    placeholder=PLACEHOLDERS["draining"],
+                                    elem_id="field-odrain",
+                                )
+                                gr.HTML(chip_html(EXAMPLES["draining"], "field-odrain"))
+                            with gr.Column(scale=1):
+                                omira = gr.Textbox(
+                                    label="Miraculous year",
+                                    lines=2,
+                                    placeholder=PLACEHOLDERS["miraculous"],
+                                    elem_id="field-omira",
+                                )
+                                gr.HTML(chip_html(EXAMPLES["miraculous"], "field-omira"))
+                        gr.HTML(
+                            '<div style="text-align:center;margin:14px 0 4px;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--paper-mute);font-style:italic;">a sentence is enough. you can come back and edit anytime.</div>'
+                        )
+                        step3_btn = gr.Button(BUTTON_TEXT["step3_begin"], variant="primary")
 
                     _onboard_step1 = lambda n, c, s: (setattr(s, 'persona', PersonaContext(name=n.strip(), city=c.strip(), selected_voice_name="Ember", selected_voice_description="warm, intimate, certain")), setattr(s, 'onboard_step', 1), s)[2]
                     _onboard_step2 = lambda ch, a, s: (setattr(s.persona, 'current_chapter', ch.strip()) if s.persona else None, setattr(s.persona, 'primary_arc', a) if s.persona else None, setattr(s, 'onboard_step', 2), s)[3]
@@ -1591,25 +1859,57 @@ startTypewriter();
                         fn=lambda: gr.Column(visible=False), outputs=[onboard_col])
 
                 with gr.Accordion("☀ Check in", open=False) as checkin_acc:
-                    word = gr.Textbox(label="One word", max_lines=1, placeholder="exhausted, hopeful, restless...")
-                    note = gr.Textbox(label="Note", lines=2, placeholder="What's alive in you?")
-                    checkin_btn = gr.Button("Tune the signal", variant="primary")
+                    gr.HTML('<div class="acc-primer">one word is enough. a note is welcome but optional.</div>')
+                    word = gr.Textbox(
+                        label="One word",
+                        max_lines=1,
+                        placeholder=PLACEHOLDERS["word"],
+                        elem_id="field-word",
+                    )
+                    gr.HTML(_word_chips_html())
+                    note = gr.Textbox(
+                        label="Note (optional)",
+                        lines=2,
+                        placeholder=PLACEHOLDERS["note"],
+                        elem_id="field-note",
+                    )
+                    gr.HTML(chip_html(EXAMPLES["note"], "field-note"))
+                    checkin_btn = gr.Button(BUTTON_TEXT["checkin_submit"], variant="primary")
 
                 with gr.Accordion("📡 Receive transmission", open=False) as receive_acc:
-                    generate_btn = gr.Button("Open the line", variant="primary")
+                    generate_btn = gr.Button(BUTTON_TEXT["generate"], variant="primary")
 
                 with gr.Accordion("🎯 Your move", open=False) as choice_acc:
+                    # Choice rendered as 4 cards, not a radio. Click a card to
+                    # select. The hidden radio holds the state value for events.
+                    gr.HTML(_choice_cards_html("toward"))
                     choice = gr.Radio(
-                        [("🚀 Toward", "toward"), ("🌱 Steady", "steady"), ("🕊️ Release", "release"), ("🪡 Repair", "repair")],
-                        label="Choose your move", type="value")
-                    choice_btn = gr.Button("Record choice", variant="primary")
+                        ["toward", "steady", "release", "repair"],
+                        label="",
+                        value="toward",
+                        elem_classes="hidden-radio",
+                        elem_id="field-choice",
+                    )
+                    choice_btn = gr.Button(BUTTON_TEXT["choice_submit"], variant="primary")
 
                 with gr.Accordion("💬 Reaction", open=False) as reaction_acc:
+                    gr.HTML(_reaction_cards_html("landed"))
                     reaction = gr.Radio(
-                        [("✅ Did it", "did_it"), ("💭 Keep close", "keep_close"), ("🎯 Landed", "landed"), ("🔄 Not quite", "not_quite")],
-                        label="How did it land?", type="value")
-                    reply_note = gr.Textbox(label="Write back", lines=2, placeholder="A reply...")
-                    react_btn = gr.Button("Send", variant="primary")
+                        ["did_it", "keep_close", "landed", "not_quite"],
+                        label="",
+                        value="landed",
+                        elem_classes="hidden-radio",
+                        elem_id="field-reaction",
+                    )
+                    gr.HTML('<div class="acc-primer" style="margin-top:6px;">what landed? what didn\'t? (optional)</div>')
+                    reply_note = gr.Textbox(
+                        label="Write back (optional)",
+                        lines=3,
+                        placeholder=PLACEHOLDERS["reply"],
+                        elem_id="field-reply",
+                    )
+                    gr.HTML(chip_html(EXAMPLES["reply"], "field-reply"))
+                    react_btn = gr.Button(BUTTON_TEXT["reaction_submit"], variant="primary")
 
                 # Wire check-in
                 checkin_btn.click(
@@ -1684,6 +1984,15 @@ startTypewriter();
                 history = gr.HTML("")
                 # Render once on tab open so the panel is populated immediately.
                 demo.load(fn=lambda s: _render_history(s), inputs=[state], outputs=[history])
+                # Also render arc cards in step2 when state carries a persona with primary_arc
+                demo.load(
+                    fn=lambda s: (
+                        _arc_cards_html(s.persona.primary_arc if s.persona else "purpose"),
+                        f"### ✎ Step 2: Your chapter {ARC_EMOJI.get(s.persona.primary_arc, '🧭')}" if s.persona else "### ✎ Step 2: Your chapter 🧭",
+                    ),
+                    inputs=[state],
+                    outputs=[step2_arc_html, step2_heading],
+                )
 
             # ── Architecture tab ───────────────────────────────────────
             with gr.Tab("Architecture"):
