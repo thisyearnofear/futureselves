@@ -1,0 +1,3 @@
+# Trace file grows at runtime — commit the demo seed, ignore the rest
+agent-trace.jsonl
+persona-summaries.json
