@@ -523,6 +523,7 @@ footer, .gradio-container > .footer, .gradio-container > div > .footer {display:
 }
 .voice-orb.lit .orb-state{color:var(--amber)}
 .voice-orb.dim .orb-state{color:var(--violet)}
+.voice-orb.locked{cursor:help}
 
 /* ─── Signal path (timeline progress) ─── */
 .signal-path{
@@ -803,6 +804,30 @@ audio::-webkit-media-controls-panel{background:var(--ink-3);}
   margin-bottom:6px;
 }
 
+/* Unlock toast — appears after voice unlock */
+.unlock-toast{
+  display:block;
+  margin-top:10px;
+  padding:8px 10px;
+  background:linear-gradient(90deg,rgba(233,168,71,.12),rgba(122,108,199,.08));
+  border:1px solid var(--amber);
+  border-radius:2px;
+  font-size:10px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--paper);
+  font-family:'IBM Plex Mono',monospace;
+  animation:fadeIn .5s ease both;
+}
+.unlock-toast .tag{
+  display:inline;
+  color:var(--amber);
+  font-size:9px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  margin-right:6px;
+}
+
 .timeline-shift{
   display:flex;gap:10px;align-items:stretch;margin-top:18px;
 }
@@ -1074,8 +1099,9 @@ def _constellation_rail(state: AppState) -> str:
     for cm, label, st, hint in stars:
         initials = "".join(w[0] for w in label.split()[:2]).upper() or "??"
         state_label = {"lit": "live", "dim": "faint", "locked": "off-air"}[st]
+        tooltip = f' title="{_unlock_criteria(cm)}"' if st == "locked" else ""
         items.append(
-            f'<div class="voice-orb {st}">'
+            f'<div class="voice-orb {st}"{tooltip}>'
             f'<span class="orb-state">{state_label}</span>'
             f'<div class="orb">{initials}</div>'
             f'<div class="orb-label">{label}</div>'
@@ -1431,10 +1457,21 @@ def _render_home(state: AppState) -> str:
     p = state.persona
     eyebrow = _chamber_eyebrow("line idle", f"{p.name or 'you'} · {p.city or 'everywhere'}")
     title = _chamber_title(f"Ready when you are, <em>{p.name}</em>.")
+    continuity_hint = ""
+    if state.recent_choices:
+        last_choice = state.recent_choices[-1]
+        choice_labels = {
+            "toward": "moved toward what matters",
+            "steady": "held your ground",
+            "release": "let something go",
+            "repair": "mended a frayed thread",
+        }
+        continuity_hint = f" The line has been listening since you last chose to {choice_labels.get(last_choice.choice, 'continue')}."
     body_html = _chamber_body(
         f"Check in with one word to open the line. "
         f"You are in <em>{p.current_chapter or 'a chapter still forming'}</em>, "
         f"and avoiding <em>{p.avoiding or 'something you keep circling'}</em>."
+        f"{continuity_hint}"
     )
     callout = ""
     if state.recent_transmissions:
@@ -1518,6 +1555,33 @@ def _render_transmission(state: AppState) -> str:
     return out
 
 
+def _unlock_criteria(cm: str) -> str:
+    """Return unlock criteria tooltip for locked voice orbs."""
+    criteria = {
+        "future_partner": "Unlock: Choose love arc · divergence < 4",
+        "future_mentor": "Unlock: 7-day streak · choose steady/toward 7×",
+        "future_best_friend": "Unlock: 3-day streak · choose repair once",
+        "shadow": "Unlock: divergence ≥ 4 · timeline fracture",
+        "alternate_self": "Unlock: 14-day streak · timeline drift",
+    }
+    return criteria.get(cm, "locked")
+
+
+def _check_unlocks(state: AppState) -> list[str]:
+    """Return list of newly unlocked voices after a choice."""
+    unlocked = []
+    s = state.streak()
+    d = state.divergence()
+    p = state.persona
+    prev_lit = {cm for cm, _, st, _ in _constellation(AppState()) if st in ("lit", "dim")}
+    new_lit = {cm for cm, _, st, _ in _constellation(state) if st in ("lit", "dim")}
+    for cm in new_lit - prev_lit:
+        if cm == "future_self":
+            continue
+        unlocked.append(cm)
+    return unlocked
+
+
 def _render_choice_result(state: AppState) -> str:
     c = state.today_choice or ""
     labels = {
@@ -1526,10 +1590,15 @@ def _render_choice_result(state: AppState) -> str:
         "release": "You let something go.",
         "repair": "You mended a frayed thread.",
     }
+    unlocks = _check_unlocks(state)
+    unlock_msg = ""
+    if unlocks:
+        names = [CAST_MEMBER_NAMES.get(u, ("", ""))[0] for u in unlocks]
+        unlock_msg = f'<div class="unlock-toast"><span class="tag">voice unlocked</span>{" + ".join(names)} has joined the line</div>'
     eyebrow = _chamber_eyebrow("choice recorded", c or "—")
     title = _chamber_title("The <em>timeline</em> shifts.")
-    body_html = _chamber_body("How did the transmission land?")
-    outcome = f'<div class="choice-outcome"><span class="tag">outcome</span>{labels.get(c, "")}</div>'
+    body_html = _chamber_body(f"{labels.get(c, '')} The loop is sealed. Tomorrow's threshold waits.")
+    outcome = f'<div class="choice-outcome"><span class="tag">outcome</span>{labels.get(c, "")}{unlock_msg}</div>'
     out = _identity_strip(state)
     out += _signal_chamber(eyebrow, title, body_html, callout_html=outcome)
     out += _constellation_rail(state)
@@ -1544,8 +1613,10 @@ def _render_history(state: AppState) -> str:
     eyebrow = _chamber_eyebrow("memory log", "transmissions and choices")
     title = _chamber_title("Every <em>signal</em> so far.")
     if not state.recent_choices and not state.recent_transmissions:
-        body = _chamber_body("No transmissions yet. The line is idle. Start with a single word on the Today tab.")
-        out += _signal_chamber(eyebrow, title, body)
+        body = _chamber_body(
+            "The line is idle. One word on the Today tab starts the transmission."
+        )
+        out += _signal_chamber(eyebrow, title, body, actions_html='<div style="margin-top:14px;"><a href="#" onclick="document.querySelector(\'.tab-nav button\').click();return false;" class="gr-button" style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;">open today tab</a></div>')
     else:
         body = _chamber_body("Scroll for the full record of what was said and what you chose.")
         out += _signal_chamber(eyebrow, title, body)
