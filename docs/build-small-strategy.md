@@ -34,13 +34,14 @@ No changes to the existing QVAC mobile app. The two submissions are independent.
 
 ```
 hf-space/
-├── app.py              # Gradio UI with custom CSS theme (Off Brand)
+├── app.py              # Gradio UI (636 lines) — custom CSS theme (Off Brand), BrowserState persistence,
+│                       #   gr.Timer polling, constellation rail, signal chamber, signal path
 ├── transmission.py     # Ported prompt builder + fallbacks (from local-llm.ts + game.transmission.ts)
-├── parse_notes.py      # Nemotron-Parse wrapper for structured note extraction (NVIDIA)
-├── tts.py              # Kokoro 82M TTS wrapper
-├── requirements.txt    # Python deps (gradio, torch, transformers, kokoro)
-├── README.md           # YAML tags + write-up + demo links
-└── demo.mp4            # Screen recording
+├── parse_notes.py      # Nemotron-Parse wrapper + keyword fallback for note extraction (NVIDIA)
+├── tts.py              # Kokoro 82M TTS wrapper (local dev; gracefully skipped on HF Space)
+├── requirements.txt    # Python deps (gradio 5.50.0, torch, transformers, sentencepiece, accelerate)
+├── README.md           # YAML tags + write-up + live Space link
+└── demo.mp4            # Screen recording (TODO)
 ```
 
 ### Model split
@@ -65,28 +66,30 @@ The original TypeScript is unchanged — this is a Python reimplementation for t
 ## Key differences from the QVAC mobile app
 
 | Aspect | QVAC app | Build Small Space |
-|---|---|---|
+|---|---|---|---|
 | Platform | Expo / React Native (iOS/Android) | Gradio (web) |
 | LLM | Llama 3.2 1B via QVAC SDK | MiniCPM 2.5 via 🤗 Transformers |
-| TTS | QVAC `textToSpeech` | Kokoro 82M |
+| TTS | QVAC `textToSpeech` | Kokoro 82M (local); skipped on HF Space (Python 3.13 dep conflict) |
 | STT | QVAC `transcribe` | Text input only |
-| State | Convex database | In-memory session |
+| State | Convex database | In-memory session + gr.BrowserState persistence |
 | Voice unlock | Full constellation system | Simplified: 6 core cast members |
 | Avatar gen | `@qvac/sdk` face gen | Not included |
 
 ## Timeline for Build Small submission
 
-1. **Week 1** (June 1–7): Scaffold `hf-space/`, port transmission.py, get MiniCPM loading in HF Space ✅ (done)
-2. **Week 1–2** (June 7–14): Wire up Gradio UI, test full flow, integrate Nemotron-Parse and Kokoro
-3. **Week 2–3** (June 14–20): Polish UI for Off Brand badge, record demo video, write social post
-4. **June 21** (deadline): Final submission with all tags in README YAML block
+1. **Week 1** (June 1–7): Scaffold `hf-space/`, port transmission.py, get MiniCPM loading in HF Space ✅
+2. **Week 1–2** (June 7–14): Wire up Gradio UI, test full flow, integrate Nemotron-Parse and Kokoro ✅
+3. **Week 2–3** (June 14–20): Polish UI for Off Brand badge, deploy to HF Space on T4 GPU ⬜ (Space live, GPU upgraded, Off Brand CSS shipped)
+4. **June 21** (deadline): Final submission — record demo video, write social post, verify MiniCPM generates on T4
 
 ## Gotchas
 
-- **HF Space GPU:** MiniCPM 2.5 needs a T4 GPU in HF Spaces. Use the Space GPU setting, not Zero GPU tier. This means we're limited to 1 Space under the 10-Zero-GPU limit (fine, we only need one).
-- **Cold start:** Two models (MiniCPM + Nemotron-Parse) load on startup. ~30s cold start. Worth it for the sponsor unlocks.
-- **Nemotron-Parse is optional:** If GPU memory is tight, `parse_notes.py` has `fast_insights()` as a keyword-based fallback that skips the model entirely. We can remove Nemotron-Parse from GPU and still claim the badge if we document it.
+- **HF Space GPU:** MiniCPM 2.5 needs a T4 GPU in HF Spaces. `t4-small` (4 vCPU, 15GB RAM, 16GB VRAM) is the minimum viable tier at $0.40/hr.
+- **Python 3.13:** HF Spaces default to Python 3.13. Gradio 4.x and early 5.0.x depend on `pydub` → `audioop` (removed from stdlib in 3.13). **Gradio 5.50.0** is the minimum version with full Python 3.13 support. Kokoro 82M pulls `misaki[en]` → `spacy-curated-transformers` → `spacy>=4.0.0.dev2` which has no cp313 wheel — TTS is skipped on HF Space.
+- **Cold start:** MiniCPM (~5GB VRAM) + Nemotron-Parse (<1GB) load on first inference. ~30s cold start.
+- **Nemotron-Parse is optional:** If GPU memory is tight, `fast_insights()` is a keyword-based fallback that skips the model. We can still claim the NVIDIA badge with documented fallback.
 - **Demo video:** Must be uploaded to the Space (not YouTube) per the rules.
+- **gr.Timer polling:** Gradio 5 removed `every=` from event listeners. Use `gr.Timer(value=2, active=True).tick(fn=...)` for periodic polling instead. Available in all Gradio 5.x.
 
 ## Related docs
 

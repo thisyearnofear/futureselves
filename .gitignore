@@ -66,6 +66,9 @@ demo/qvac-video/*.wav
 __pycache__/
 *.pyc
 
+# HF Space metadata (uploaded by hf CLI)
+.hf-source-metadata
+
 # Filesystem recovery
 lost+found/
 .blackboxcli/

@@ -23,10 +23,18 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 - `packages/backend/convex/melius.ts` - Melius MCP client for agentic workflows
 - `packages/backend/convex/voicemail.ts` - 'The Last Voicemail' critique-driven pipeline
 - `scripts/trim-node-modules.mjs` - Postinstall script that trims unused @qvac runtimes and non-target platform prebuilds
-- `hf-space/` - Build Small hackathon submission (Gradio Space): MiniCPM 2.5 + Nemotron-Parse + Kokoro TTS
+- `hf-space/` - Build Small hackathon submission (Gradio Space): MiniCPM 2.5 + Nemotron-Parse + Kokoro TTS — **live at https://papajams-futureselves.hf.space** on T4 GPU
 - `docs/edge-ai-qvac.md` - Canonical QVAC edge-AI plan (LLM, TTS, STT, switch points, phases, tracks, public-surface rules)
 - `docs/privacy-posture.md` - Public-facing privacy statement (hosted on the marketing site)
 - `docs/build-small-strategy.md` - Prize strategy for the Build Small hackathon (separate submission via `hf-space/`)
+
+## Build Small (hf-space/) notes
+
+- Space uses Gradio 5.50.0 (Python 3.13 compat)
+- Kokoro TTS skipped on Space (spacy dep chain has no cp313 wheel); falls back gracefully
+- `gr.Timer` polling replaces removed `every=` parameter
+- `gr.BrowserState` persists session across page refreshes via `to_dict()`/`from_dict()`
+- T4-small GPU at $0.40/hr; sleeps after 10min idle
 
 ## Rate Limiting
 

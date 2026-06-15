@@ -60,11 +60,11 @@ Each model is well under 32B params. Total: ~3.1B across all three models — qu
 
 ## Tech
 
-- **UI:** Gradio 5 with a custom transmission-console skin (Fraunces serif for the chamber voice, IBM Plex Mono for instrument labels), atmospheric gradients and scanlines, a horizontal voice-orb constellation rail, and a signal-path progress bar in place of step pills
-- **LLM:** MiniCPM 2.5 via 🤗 Transformers with torch.compile + SDPA attention
+- **UI:** Gradio 5.50.0 with a custom transmission-console skin (Fraunces serif for the chamber voice, IBM Plex Mono for instrument labels), atmospheric gradients and scanlines, a horizontal voice-orb constellation rail, and a signal-path progress bar in place of step pills
+- **LLM:** MiniCPM 2.5 via 🤗 Transformers with SDPA attention, running on a T4 GPU in HF Spaces
 - **Extraction:** Nemotron-Parse (NVIDIA) with keyword fallback when GPU is constrained
-- **TTS:** Kokoro 82M — generates WAV output for each transmission
-- **State:** In-memory session state (per-user via Gradio Sessions)
+- **TTS:** Kokoro 82M — generates WAV output for each transmission (local dev only; TTS skipped on HF Space due to Python 3.13 dep chain)
+- **State:** In-memory session state with gr.BrowserState persistence across page refreshes
 
 ## Running locally
 
@@ -75,6 +75,7 @@ python app.py
 
 ## Links
 
+- **[Live Space](https://papajams-futureselves.hf.space)** — deployed on T4 GPU
+- [Source (monorepo)](https://github.com/thisyearnofear/futureselves/tree/main/hf-space)
 - [Demo video]() <!-- TODO: upload after recording -->
 - [Social post]() <!-- TODO: post and link -->
-- [Source (monorepo)](https://github.com/thisyearnofear/futureselves)
