@@ -1,0 +1,21 @@
+# FutureSelves — Build Small HF Space
+# Core
+gradio>=5.0,<6
+torch>=2.2
+transformers>=4.40
+sentencepiece>=0.2
+accelerate>=0.28
+
+# Models
+# MiniCPM needs: pip install openbmb/MiniCPM-2.5-sft-bf16 (handled by transformers)
+# Nemotron-Parse: nvidia/Nemotron-Parse-H-Base-v1 (handled by transformers)
+
+# TTS (82M params, fully local)
+kokoro>=0.7
+soundfile>=0.12
+numpy>=1.24
+
+# Nemotron Parse extraction (lightweight fallback uses stdlib only)
+
+# HF Space GPU support
+ninja  # faster CUDA compile

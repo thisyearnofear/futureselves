@@ -23,8 +23,10 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 - `packages/backend/convex/melius.ts` - Melius MCP client for agentic workflows
 - `packages/backend/convex/voicemail.ts` - 'The Last Voicemail' critique-driven pipeline
 - `scripts/trim-node-modules.mjs` - Postinstall script that trims unused @qvac runtimes and non-target platform prebuilds
+- `hf-space/` - Build Small hackathon submission (Gradio Space): MiniCPM 2.5 + Nemotron-Parse + Kokoro TTS
 - `docs/edge-ai-qvac.md` - Canonical QVAC edge-AI plan (LLM, TTS, STT, switch points, phases, tracks, public-surface rules)
 - `docs/privacy-posture.md` - Public-facing privacy statement (hosted on the marketing site)
+- `docs/build-small-strategy.md` - Prize strategy for the Build Small hackathon (separate submission via `hf-space/`)
 
 ## Rate Limiting
 

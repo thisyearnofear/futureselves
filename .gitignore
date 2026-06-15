@@ -62,6 +62,10 @@ demo/qvac-video/*.mp4
 demo/qvac-video/*.gif
 demo/qvac-video/*.wav
 
+# Python
+__pycache__/
+*.pyc
+
 # Filesystem recovery
 lost+found/
 .blackboxcli/
