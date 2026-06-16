@@ -1555,31 +1555,15 @@ def _render_home(state: AppState) -> str:
     return out
 
 
-def _render_awaiting(state: AppState) -> str:
-    word_safe = html_escape(state.check_in_word or "—")
-    eyebrow = _chamber_eyebrow("signal locked", f'word · {word_safe}')
-    title = _chamber_title(f'<em>&ldquo;{word_safe}&rdquo;</em> received.')
-    body_html = _chamber_body(
-        "The note is being read. The line is open. "
-        "Open the line below to receive your transmission."
-    )
-    meta = _chamber_meta([
-        ("signal", "locked"),
-        ("next", "receive transmission"),
-    ])
-    out = _identity_strip(state)
-    out += _signal_chamber(eyebrow, title, body_html, meta_html=meta)
-    out += _constellation_rail(state)
-    out += _signal_path("generate")
-    out += _signal_footer()
-    return out
-
-
-def _render_generating(cast: CastMember) -> str:
+def _render_generating(cast: CastMember, word: str = "") -> str:
     label = CAST_MEMBER_NAMES.get(cast, ("", ""))[0] or cast
+    word_safe = html_escape(word.strip()) if word.strip() else ""
     eyebrow = _chamber_eyebrow("tuning the line", label)
     title = _chamber_title(f'<em>{label}</em> is reaching across time.')
-    body_html = _chamber_body("Stand by. The signal is being assembled from your last few days.")
+    if word_safe:
+        body_html = _chamber_body(f'I&rsquo;m turning <em>&ldquo;{word_safe}&rdquo;</em> into something you can use tonight.')
+    else:
+        body_html = _chamber_body("Stand by. The signal is being assembled from your last few days.")
     body_html += _tuning_display(label)
     meta = _chamber_meta([
         ("channel", "α-04"),
@@ -1888,12 +1872,7 @@ setupInteractions();
                         # click sets state directly and skips all three
                         # onboarding steps, then renders the home view.
                         gr.HTML(
-                            '<div style="text-align:center;margin:18px 0 6px;font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--paper-mute);">— or skip the line setup —</div>'
-                        )
-                        demo_btn = gr.Button(
-                            "✦ Try Maya's example",
-                            variant="secondary",
-                            elem_classes="demo-btn",
+                            '<div style="text-align:center;margin:18px 0 6px;font-size:11px;color:var(--paper-mute);">or <a href="?tab=Demo">try Maya\'s example</a></div>'
                         )
 
                     with gr.Column(visible=False) as step2_col:
@@ -2001,8 +1980,8 @@ setupInteractions();
                     step3_btn.click(fn=_onboard_step3, inputs=[oavoid, ofraid, odrain, omira, state], outputs=[content, browser_state, state]).then(
                         fn=lambda: gr.Column(visible=False), outputs=[onboard_col])
 
-                with gr.Accordion("☀ Check in", open=False) as checkin_acc:
-                    gr.HTML('<div class="acc-primer">one word is enough. a note is welcome but optional.</div>')
+                with gr.Accordion("☀ Check in", open=True) as checkin_acc:
+                    gr.HTML('<div class="acc-primer">one word opens the signal. add a note if you want the message to know what happened.</div>')
                     word = gr.Textbox(
                         label="One word",
                         max_lines=1,
@@ -2018,9 +1997,6 @@ setupInteractions();
                     )
                     gr.HTML(chip_html(EXAMPLES["note"], "field-note"))
                     checkin_btn = gr.Button(BUTTON_TEXT["checkin_submit"], variant="primary")
-
-                with gr.Accordion("📡 Receive transmission", open=False) as receive_acc:
-                    generate_btn = gr.Button(BUTTON_TEXT["generate"], variant="primary")
 
                 with gr.Accordion("🎯 Your move", open=False) as choice_acc:
                     # Choice rendered as 4 cards, not a radio. Click a card to
@@ -2054,12 +2030,6 @@ setupInteractions();
                     gr.HTML(chip_html(EXAMPLES["reply"], "field-reply"))
                     react_btn = gr.Button(BUTTON_TEXT["reaction_submit"], variant="primary")
 
-                # Wire check-in
-                checkin_btn.click(
-                    fn=lambda w, n, s: (_render_awaiting(s), s.to_dict(), s) if (setattr(s, 'check_in_word', w.strip()[:40]), setattr(s, 'check_in_note', n.strip() if n.strip() else ''), setattr(s, 'checked_in', True)) else (None, None, None),
-                    inputs=[word, note, state], outputs=[content, browser_state, state],
-                )
-
                 # Wire generate.
                 # In-flight guard: if a generation thread is already running
                 # (state.generating True and not yet done), ignore subsequent
@@ -2067,7 +2037,7 @@ setupInteractions();
                 # would race the first one on state mutations.
                 def _handle_generate(s: AppState):
                     if s.generating and not s.generation_done:
-                        return _render_generating(s.today_cast or "future_self"), s.to_dict(), s
+                        return _render_generating(s.today_cast or "future_self", s.check_in_word), s.to_dict(), s
                     s.generating = True
                     s.generation_done = False
                     s.today_audio = ""
@@ -2078,11 +2048,20 @@ setupInteractions();
                         args=(s, s.to_context(), s.today_cast, date.today().strftime("%Y-%m-%d %H:%M")),
                         daemon=True,
                     ).start()
-                    return _render_generating(s.today_cast or "future_self"), s.to_dict(), s
+                    return _render_generating(s.today_cast or "future_self", s.check_in_word), s.to_dict(), s
 
-                generate_btn.click(
-                    fn=_handle_generate,
-                    inputs=[state], outputs=[content, browser_state, state],
+                def _apply_checkin(w: str, n: str, s: AppState) -> AppState:
+                    s.check_in_word = w.strip()[:40]
+                    s.check_in_note = n.strip() if n.strip() else ""
+                    s.checked_in = True
+                    return s
+
+                def _handle_checkin_submit(w: str, n: str, s: AppState):
+                    return _handle_generate(_apply_checkin(w, n, s))
+
+                checkin_btn.click(
+                    fn=_handle_checkin_submit,
+                    inputs=[word, note, state], outputs=[content, browser_state, state],
                 )
 
                 # Poll for generation.
@@ -2103,7 +2082,7 @@ setupInteractions();
                         s.generating = False
                         return _render_transmission(s), s.to_dict(), s
                     if s.generating:
-                        return _render_generating(s.today_cast or "future_self"), s.to_dict(), s
+                        return _render_generating(s.today_cast or "future_self", s.check_in_word), s.to_dict(), s
                     # Idle: no-op. Returning Nones leaves the components unchanged.
                     return None, None, None
                 poll_timer.tick(fn=_poll, inputs=[state], outputs=[content, browser_state, state])
@@ -2131,12 +2110,7 @@ setupInteractions();
                     inputs=[reaction, reply_note, state], outputs=[content, browser_state, state],
                 ).then(fn=lambda: None, outputs=[])
 
-                # Maya demo button: skip onboarding, go straight to the transmission.
-                demo_btn.click(fn=_load_maya_demo, inputs=[state], outputs=[content, browser_state, state]).then(
-                    fn=lambda: gr.Column(visible=False), outputs=[onboard_col]
-                )
-
-            # ── History tab ────────────────────────────────────────────
+                # ── History tab ────────────────────────────────────────────
             with gr.Tab("History"):
                 # No refresh button — the chamber + memory log auto-flow from
                 # state. The tab simply re-evaluates on each interaction.
@@ -2157,6 +2131,23 @@ setupInteractions();
                     fn=lambda s: f"### ✎ Step 1: Who are you? {VOICE_EMOJI.get(s.persona.selected_voice_name, '🔥')}" if s.persona else "### ✎ Step 1: Who are you? 🔥",
                     inputs=[state],
                     outputs=[step1_heading],
+                )
+
+            # ── Demo tab ─────────────────────────────────────────────
+            with gr.Tab("✦ Demo"):
+                gr.HTML("""
+<div class="arch-pane">
+  <div class="arch-h">try maya's example</div>
+  <p style="margin:12px 0 16px;font-size:15px;line-height:1.5;color:var(--paper);">
+    Skip the setup and see what a day looks like. Maya, a 28-year-old founder,
+    has been using Future Selves for 4 days. Click below to hear her latest
+    transmission and explore her memory log.
+  </p>
+</div>
+""")
+                demo_tab_btn = gr.Button("✦ Load Maya's example", variant="primary", size="lg")
+                demo_tab_btn.click(fn=_load_maya_demo, inputs=[state], outputs=[content, browser_state, state]).then(
+                    fn=lambda: gr.Tabs(selected=0), outputs=[]  # switch to Today tab
                 )
 
             # ── Architecture tab ───────────────────────────────────────

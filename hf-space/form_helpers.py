@@ -159,7 +159,7 @@ BUTTON_TEXT = {
     "step1_next": "Tune in →",
     "step2_next": "Continue →",
     "step3_begin": "✦ Open the line",
-    "checkin_submit": "Tune the signal →",
+    "checkin_submit": "Receive my transmission →",
     "generate": "Open the line",
     "choice_submit": "Record the move",
     "reaction_submit": "Send it back",
