@@ -80,7 +80,7 @@ function LockedState({
             {nextMilestone === 7
               ? "Your first voicemail unlocks at Day 7"
               : nextMilestone === 30
-                ? "Cinematic voicemail unlocks at Day 30"
+                ? "Your first premium voicemail unlocks at Day 30"
                 : "Voicemail archive unlocks at Day 90"}
           </Text>
         </View>
@@ -360,7 +360,7 @@ function VoicemailResult({ result, onReset, isPremium }: { result: LocalVoicemai
         {result.generationTier && (
           <View style={tierBadgeStyles.container}>
             <Text style={tierBadgeStyles.text}>
-              {result.generationTier === "premium" ? "Premium" : "Free Tier"}
+              {result.generationTier === "premium" ? "Premium" : "Free"}
             </Text>
           </View>
         )}
