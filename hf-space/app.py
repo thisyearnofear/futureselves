@@ -47,7 +47,7 @@ from demo.maya import build_maya_demo, MayaDemoBundle
 from modal_eval import log_agent_trace, summarize_persona_modal, write_modal_app, write_demo_trace
 from form_helpers import (
     PLACEHOLDERS, EXAMPLES, PRIMER_HTML, BUTTON_TEXT, ARC_OPTIONS, ARC_EMOJI, VOICE_EMOJI,
-    chip_html, _choice_cards_html, _reaction_cards_html, _word_chips_html, _arc_cards_html,
+    chip_html, _memory_cards_html, _word_chips_html, _arc_cards_html, MEMORY_TO_CHOICE_REACTION,
 )
 
 logger = logging.getLogger(__name__)
@@ -954,7 +954,8 @@ audio::-webkit-media-controls-panel{background:var(--ink-3);}
 .choice-grid{grid-template-columns:repeat(2,1fr)}
 .reaction-grid{grid-template-columns:repeat(2,1fr)}
 .arc-grid{grid-template-columns:repeat(2,1fr)}
-.choice-card, .reaction-card, .arc-card{
+.memory-grid{grid-template-columns:repeat(2,1fr)}
+.choice-card, .reaction-card, .arc-card, .memory-card{
   display:flex;flex-direction:column;align-items:flex-start;gap:3px;
   padding:12px 14px;
   border:1px solid var(--line);
@@ -995,11 +996,11 @@ audio.playing{animation:pulseGlow 1.5s ease-in-out infinite}
 /* Share toast */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--amber);color:#000;padding:8px 16px;border-radius:4px;font-size:12px;opacity:0;transition:opacity .3s;z-index:9999}
 .toast.show{opacity:1}
-.choice-card:hover, .reaction-card:hover, .arc-card:hover{
+.choice-card:hover, .reaction-card:hover, .arc-card:hover, .memory-card:hover{
   border-color:var(--amber);
   background:linear-gradient(135deg,rgba(233,168,71,.08),rgba(20,26,48,.55));
 }
-.choice-card.active, .reaction-card.active, .arc-card.active{
+.choice-card.active, .reaction-card.active, .arc-card.active, .memory-card.active{
   border-color:var(--amber);
   background:linear-gradient(135deg,rgba(233,168,71,.12),rgba(20,26,48,.55));
   box-shadow:0 0 0 1px rgba(233,168,71,.3),0 0 14px -4px var(--amber-glow);
@@ -1170,7 +1171,6 @@ _STEPS = [
     ("check-in", "Check-in"),
     ("generate", "Generate"),
     ("choose", "Choose"),
-    ("react", "React"),
 ]
 
 
@@ -1509,8 +1509,6 @@ def _state_for_path(state: AppState) -> str:
         return "choose" if state.checked_in else "generate"
     if state.checked_in and not state.today_transmission:
         return "generate"
-    if state.today_transmission and state.choice_made:
-        return "react"
     if state.checked_in:
         return "generate"
     return "check-in"
@@ -1638,47 +1636,6 @@ def _unlock_criteria(cm: str) -> str:
     return criteria.get(cm, "locked")
 
 
-def _check_unlocks(state: AppState) -> list[str]:
-    """Return list of newly unlocked voices after a choice."""
-    unlocked = []
-    s = state.streak()
-    d = state.divergence()
-    p = state.persona
-    prev_lit = {cm for cm, _, st, _ in _constellation(AppState()) if st in ("lit", "dim")}
-    new_lit = {cm for cm, _, st, _ in _constellation(state) if st in ("lit", "dim")}
-    for cm in new_lit - prev_lit:
-        if cm == "future_self":
-            continue
-        unlocked.append(cm)
-    return unlocked
-
-
-def _render_choice_result(state: AppState) -> str:
-    c = state.today_choice or ""
-    labels = {
-        "toward": "You moved toward what matters.",
-        "steady": "You held your ground.",
-        "release": "You let something go.",
-        "repair": "You mended a frayed thread.",
-    }
-    unlocks = _check_unlocks(state)
-    unlock_msg = ""
-    if unlocks:
-        names = [CAST_MEMBER_NAMES.get(u, ("", ""))[0] for u in unlocks]
-        unlock_msg = f'<div class="unlock-toast"><span class="tag">voice unlocked</span>{" + ".join(names)} has joined the line</div>'
-    eyebrow = _chamber_eyebrow("choice recorded", c or "—")
-    title = _chamber_title("The <em>timeline</em> shifts.")
-    body_html = _chamber_body(f"{labels.get(c, '')} The loop is sealed. Tomorrow's threshold waits.")
-    outcome = f'<div class="choice-outcome"><span class="tag">outcome</span>{labels.get(c, "")}{unlock_msg}</div>'
-    out = _identity_strip(state)
-    out += _signal_chamber(eyebrow, title, body_html, callout_html=outcome)
-    out += _constellation_rail(state)
-    out += _signal_path("react")
-    out += _memory_log(state, limit=5)
-    out += _signal_footer()
-    return out
-
-
 def _render_history(state: AppState) -> str:
     out = _identity_strip(state)
     eyebrow = _chamber_eyebrow("memory log", "transmissions and choices")
@@ -1693,7 +1650,7 @@ def _render_history(state: AppState) -> str:
         out += _signal_chamber(eyebrow, title, body)
     out += _constellation_rail(state)
     out += _memory_log(state, limit=20)
-    out += _signal_path("react" if state.choice_made else "check-in")
+    out += _signal_path("choose" if state.choice_made else "check-in")
     out += _signal_footer()
     return out
 
@@ -1766,7 +1723,7 @@ function setupExampleChips() {
 
 // ─── Choice/reaction card handler — click to select ───
 function setupCardSelection() {
-  document.querySelectorAll('.choice-card, .reaction-card, .arc-card').forEach(card => {
+  document.querySelectorAll('.choice-card, .reaction-card, .arc-card, .memory-card').forEach(card => {
     if (card.dataset.wired) return;
     card.dataset.wired = '1';
     card.addEventListener('click', function(e) {
@@ -1774,13 +1731,14 @@ function setupCardSelection() {
       const grid = this.closest('.card-grid');
       if (!grid) return;
       // Deselect all cards in this grid
-      grid.querySelectorAll('.choice-card, .reaction-card, .arc-card').forEach(c => c.classList.remove('active'));
+      grid.querySelectorAll('.choice-card, .reaction-card, .arc-card, .memory-card').forEach(c => c.classList.remove('active'));
       // Select this card
       this.classList.add('active');
       // Find the hidden radio widget by elem_id and click the matching option
-      let gridClass = 'field-choice';
+      let gridClass = 'field-memory';
       if (grid.classList.contains('choice-grid')) gridClass = 'field-choice';
       else if (grid.classList.contains('reaction-grid')) gridClass = 'field-reaction';
+      else if (grid.classList.contains('memory-grid')) gridClass = 'field-memory';
       else if (grid.classList.contains('arc-grid')) gridClass = 'field-oarc';
       const radioWidget = document.getElementById(gridClass);
       if (!radioWidget) return;
@@ -2013,37 +1971,27 @@ setupInteractions();
                     gr.HTML(chip_html(EXAMPLES["note"], "field-note"))
                     checkin_btn = gr.Button(BUTTON_TEXT["checkin_submit"], variant="primary")
 
-                with gr.Accordion("🎯 Your move", open=False) as choice_acc:
-                    # Choice rendered as 4 cards, not a radio. Click a card to
-                    # select. The hidden radio holds the state value for events.
-                    gr.HTML(_choice_cards_html("toward"))
-                    choice = gr.Radio(
-                        ["toward", "steady", "release", "repair"],
+                with gr.Accordion("💭 Remember this", open=False) as memory_acc:
+                    # Single memory action collapsing choice + reaction into one tap.
+                    # Maps to existing RecentChoice and RecentResponse via MEMORY_TO_CHOICE_REACTION.
+                    gr.HTML('<div class="acc-primer">what should I remember?</div>')
+                    gr.HTML(_memory_cards_html("do_it"))
+                    memory = gr.Radio(
+                        ["do_it", "keep", "landed", "not_quite"],
                         label="",
-                        value="toward",
+                        value="do_it",
                         elem_classes="hidden-radio",
-                        elem_id="field-choice",
+                        elem_id="field-memory",
                     )
-                    choice_btn = gr.Button(BUTTON_TEXT["choice_submit"], variant="primary")
-
-                with gr.Accordion("💬 Reaction", open=False) as reaction_acc:
-                    gr.HTML(_reaction_cards_html("landed"))
-                    reaction = gr.Radio(
-                        ["did_it", "keep_close", "landed", "not_quite"],
-                        label="",
-                        value="landed",
-                        elem_classes="hidden-radio",
-                        elem_id="field-reaction",
-                    )
-                    gr.HTML('<div class="acc-primer" style="margin-top:6px;">what landed? what didn\'t? (optional)</div>')
-                    reply_note = gr.Textbox(
+                    gr.HTML('<div class="acc-primer" style="margin-top:6px;">add a line back, if you want (optional)</div>')
+                    memory_note = gr.Textbox(
                         label="Write back (optional)",
                         lines=3,
                         placeholder=PLACEHOLDERS["reply"],
                         elem_id="field-reply",
                     )
                     gr.HTML(chip_html(EXAMPLES["reply"], "field-reply"))
-                    react_btn = gr.Button(BUTTON_TEXT["reaction_submit"], variant="primary")
+                    memory_btn = gr.Button(BUTTON_TEXT["memory_submit"], variant="primary")
 
                 # Wire generate.
                 # In-flight guard: if a generation thread is already running
@@ -2104,27 +2052,43 @@ setupInteractions();
                     return None, None, None
                 poll_timer.tick(fn=_poll, inputs=[state], outputs=[content, browser_state, state])
 
-                # Wire choice
-                choice_btn.click(
-                    fn=lambda c, s: (_render_choice_result(s), s.to_dict(), s) if (
-                        setattr(s, 'recent_transmissions', s.recent_transmissions + [RecentTransmission(date_key=date.today().isoformat(), title=(s.today_transmission.title if s.today_transmission else ""), cliffhanger=(s.today_transmission.cliffhanger if s.today_transmission else ""), cast_member=s.today_cast or "future_self")]),
-                        setattr(s, 'recent_choices', s.recent_choices + [RecentChoice(date_key=date.today().isoformat(), choice=c, prompt=(s.today_transmission.action_prompt if s.today_transmission else ""))]),
-                        s.persona and (setattr(s.persona, 'streak', s.persona.streak + 1) or setattr(s.persona, f'{c}_count', getattr(s.persona, f'{c}_count', 0) + 1)),
-                        setattr(s, 'choice_made', True),
-                        setattr(s, 'today_choice', c),
-                    ) else (None, None, None),
-                    inputs=[choice, state], outputs=[content, browser_state, state],
-                ).then(fn=lambda: None, outputs=[])  # Accordion state handled via JS
+                # Wire memory action — collapses choice + reaction into one tap.
+                # Maps the single memory value to existing RecentChoice and RecentResponse
+                # via MEMORY_TO_CHOICE_REACTION, then resets state for the next check-in.
+                def _handle_memory_submit(m: str, mn: str, s: AppState):
+                    choice_val, reaction_val = MEMORY_TO_CHOICE_REACTION.get(m, ("toward", "did_it"))
+                    if s.today_transmission:
+                        s.recent_transmissions = s.recent_transmissions + [RecentTransmission(
+                            date_key=date.today().isoformat(),
+                            title=s.today_transmission.title or "",
+                            cliffhanger=s.today_transmission.cliffhanger or "",
+                            cast_member=s.today_cast or "future_self",
+                        )]
+                    s.recent_choices = s.recent_choices + [RecentChoice(
+                        date_key=date.today().isoformat(),
+                        choice=choice_val,
+                        prompt=s.today_transmission.action_prompt if s.today_transmission else "",
+                    )]
+                    if s.persona:
+                        s.persona.streak += 1
+                        setattr(s.persona, f'{choice_val}_count', getattr(s.persona, f'{choice_val}_count', 0) + 1)
+                    s.recent_responses = s.recent_responses + [RecentResponse(
+                        reaction=reaction_val,
+                        reply_note=mn.strip() if mn.strip() else None,
+                    )]
+                    s.checked_in = False
+                    s.generation_done = False
+                    s.choice_made = False
+                    s.today_transmission = None
+                    s.today_audio = ""
+                    s.today_choice = ""
+                    s.check_in_word = ""
+                    s.check_in_note = ""
+                    return _render_home(s), s.to_dict(), s
 
-                # Wire reaction
-                react_btn.click(
-                    fn=lambda r, rn, s: (_render_home(s), s.to_dict(), s) if (
-                        setattr(s, 'recent_responses', s.recent_responses + [RecentResponse(reaction=r if r else None, reply_note=rn.strip() if rn.strip() else None)]),
-                        setattr(s, 'checked_in', False), setattr(s, 'generation_done', False), setattr(s, 'choice_made', False),
-                        setattr(s, 'today_transmission', None), setattr(s, 'today_audio', ""), setattr(s, 'today_choice', ""),
-                        setattr(s, 'check_in_word', ""), setattr(s, 'check_in_note', ""),
-                    ) else (None, None, None),
-                    inputs=[reaction, reply_note, state], outputs=[content, browser_state, state],
+                memory_btn.click(
+                    fn=_handle_memory_submit,
+                    inputs=[memory, memory_note, state], outputs=[content, browser_state, state],
                 ).then(fn=lambda: None, outputs=[])
 
                 # ── History tab ────────────────────────────────────────────

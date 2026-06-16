@@ -111,6 +111,20 @@ REACTION_OPTIONS = [
     ("↺ Not quite", "not_quite", "didn't quite reach me"),
 ]
 
+MEMORY_OPTIONS = [
+    ("✓ I'll do it", "do_it", "moving toward it tonight"),
+    ("✋ Keep close", "keep", "holding this for later"),
+    ("✦ Landed", "landed", "it landed, haven't acted yet"),
+    ("↺ Not quite", "not_quite", "didn't quite reach me"),
+]
+
+MEMORY_TO_CHOICE_REACTION = {
+    "do_it": ("toward", "did_it"),
+    "keep": ("steady", "keep_close"),
+    "landed": ("repair", "landed"),
+    "not_quite": ("release", "not_quite"),
+}
+
 
 ARC_OPTIONS = [
     ("💰 Money", "money", "building wealth, stability, freedom"),
@@ -163,6 +177,7 @@ BUTTON_TEXT = {
     "generate": "Open the line",
     "choice_submit": "Record the move",
     "reaction_submit": "Send it back",
+    "memory_submit": "Remember this →",
 }
 
 
@@ -240,6 +255,22 @@ def _reaction_cards_html(selected: str = "landed") -> str:
             f'</button>'
         )
     return f'<div class="card-grid reaction-grid">{"".join(items)}</div>'
+
+
+def _memory_cards_html(selected: str = "do_it") -> str:
+    """Render 4 memory-action cards that collapse choice + reaction into one tap."""
+    cards_data = MEMORY_OPTIONS
+    items = []
+    for emoji_label, value, subtitle in cards_data:
+        cls = "memory-card active" if value == selected else "memory-card"
+        items.append(
+            f'<button type="button" class="{cls}" data-value="{value}">'
+            f'<span class="card-emoji">{emoji_label.split()[0]}</span>'
+            f'<span class="card-label">{" ".join(emoji_label.split()[1:])}</span>'
+            f'<span class="card-sub">{subtitle}</span>'
+            f'</button>'
+        )
+    return f'<div class="card-grid memory-grid">{"".join(items)}</div>'
 
 
 def _arc_cards_html(selected: str = "purpose") -> str:
