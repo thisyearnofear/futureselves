@@ -156,6 +156,10 @@ export function FutureselfHome({
   const localMode = useMemo(() => isLocalMode(), []);
   const beginLocalTransmission = useAction(api.game.beginTransmissionGenerationLocal);
   const attachLocalText = useMutation(api.game.attachLocalTransmission);
+  // Cleanup for the local stub row if on-device generation throws between
+  // beginLocalTransmission and attachLocalText. Without this, an empty
+  // "Tuning the signal" row persists and the chamber shows the stub forever.
+  const cancelLocalTransmission = useMutation(api.game.cancelLocalTransmission);
 
   // On-device speech recognition (Parakeet via QVAC). Only active in local mode.
   const speech = useSpeechRecognition({
@@ -600,6 +604,9 @@ export function FutureselfHome({
     setChoiceOutcome(null);
     setCelebrateNextTransmission(true);
     setIsReceiving(true);
+    // Track the local stub so we can clean it up if the on-device LLM
+    // throws between beginLocalTransmission and attachLocalText.
+    let startedLocalStub: Id<"transmissions"> | null = null;
     try {
       await saveCheckIn({
         dateKey,
@@ -608,7 +615,7 @@ export function FutureselfHome({
       });
       if (isLocalMode() && state.persona) {
         // Local path: generate text on-device, attach via internal mutation.
-        const started = await beginLocalTransmission({
+        startedLocalStub = await beginLocalTransmission({
           dateKey,
           castMember: forcedCastMember ?? "future_self",
         });
@@ -621,7 +628,7 @@ export function FutureselfHome({
           localNow: new Date().toLocaleString(),
         });
         await attachLocalText({
-          transmissionId: started as any,
+          transmissionId: startedLocalStub as any,
           title: generated.title,
           text: generated.text,
           actionPrompt: generated.actionPrompt,
@@ -637,6 +644,17 @@ export function FutureselfHome({
       }
       setForcedCastMember(null);
     } catch (caughtError) {
+      // If the local path created a stub row but failed before attach,
+      // delete it so the chamber doesn't show a permanent "Tuning the signal"
+      // placeholder. Best-effort: a failed cleanup doesn't replace the original
+      // error surfacing below.
+      if (startedLocalStub) {
+        try {
+          await cancelLocalTransmission({ transmissionId: startedLocalStub });
+        } catch {
+          // Swallow — the user-facing error from caughtError is the real signal.
+        }
+      }
       setCelebrateNextTransmission(false);
       setError(
         caughtError instanceof Error

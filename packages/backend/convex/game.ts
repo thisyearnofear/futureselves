@@ -789,6 +789,31 @@ export const attachLocalTransmission = internalMutation({
   },
 });
 
+/**
+ * Cancel a stub transmission that the QVAC on-device pipeline created
+ * (status: "generating") but failed to fill in. Used by the client when
+ * the on-device LLM throws between beginTransmissionGenerationLocal and
+ * attachLocalTransmission — without this, an empty row would persist
+ * and the chamber would show the "Tuning the signal" stub forever.
+ *
+ * Safety: only deletes transmissions owned by the caller AND only when
+ * the status is still "generating". If attachLocalText has already
+ * promoted the row to "text_ready", this is a no-op.
+ */
+export const cancelLocalTransmission = authMutation({
+  args: {
+    transmissionId: v.id("transmissions"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const t = await ctx.db.get(args.transmissionId);
+    if (!t || t.userId !== ctx.user._id) return null;
+    if (t.status !== "generating") return null;
+    await ctx.db.delete(args.transmissionId);
+    return null;
+  },
+});
+
 export const generateDailyTransmission = authAction({
   args: {
     dateKey: v.string(),
