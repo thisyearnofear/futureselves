@@ -1518,8 +1518,6 @@ def _stage_static_audio(rel_path: str) -> Optional[str]:
 
 def _state_for_path(state: AppState) -> str:
     """Map app state to a signal-path key."""
-    if not state.onboarded:
-        return "onboard"
     if state.generating and not state.generation_done:
         return "generate"
     if state.today_transmission and not state.choice_made:
@@ -1532,16 +1530,7 @@ def _state_for_path(state: AppState) -> str:
 
 
 def _render_home(state: AppState) -> str:
-    if not state.onboarded:
-        body = _identity_strip(state)
-        body += _signal_chamber(
-            _chamber_eyebrow("transmission console", "onboard · 01 of 05"),
-            _chamber_title("Tune the line."),
-            _chamber_body("Tell us about the chapter you're in. The line opens after that — then your future self is waiting on the other side."),
-        )
-        body += _signal_path("onboard")
-        return body
-    p = state.persona
+    p = state.persona or _default_persona()
     name_safe = html_escape(p.name or "you")
     city_safe = html_escape(p.city or "everywhere")
     chapter_safe = html_escape(p.current_chapter or "a chapter still forming")
@@ -1565,7 +1554,14 @@ def _render_home(state: AppState) -> str:
         f"{continuity_hint}"
     )
     callout = ""
-    if state.recent_transmissions:
+    if not state.onboarded and state.recent_transmissions:
+        callout = _chamber_callout(
+            "make it yours",
+            f'Want tomorrow&rsquo;s signal to know you better? '
+            f'<a href="#" onclick="document.getElementById(\'personalize-btn\')?.click();return false" '
+            f'style="color:var(--amber);text-decoration:underline;">Personalize your line →</a>'
+        )
+    elif state.recent_transmissions:
         last = state.recent_transmissions[-1]
         callout = _chamber_callout(
             "last transmission",
@@ -1833,13 +1829,13 @@ setupInteractions();
                 # _render_home() for the unonboarded state so there's no flash.
                 content = gr.HTML(
                     _signal_chamber(
-                        _chamber_eyebrow("transmission console", "onboard · 01 of 05"),
-                        _chamber_title("Tune the line."),
-                        _chamber_body("Tell us about the chapter you're in. The line opens after that — then your future self is waiting on the other side."),
+                        _chamber_eyebrow("line idle", "you · everywhere"),
+                        _chamber_title("Ready when you are, <em>you</em>."),
+                        _chamber_body("Check in with one word to open the line. You are in <em>this part of your life</em>, and avoiding <em>something you keep circling</em>."),
                     )
                 )
 
-                with gr.Column(visible=True) as onboard_col:
+                with gr.Column(visible=False) as onboard_col:
                     # Primer line — sets emotional tone before the form
                     gr.HTML(PRIMER_HTML)
                     with gr.Column(visible=True) as step1_col:
@@ -1855,15 +1851,6 @@ setupInteractions();
                             elem_id="field-octiy",
                         )
                         step1_btn = gr.Button(BUTTON_TEXT["step1_next"], variant="primary")
-                        # ── Demo escape hatch ─────────────────────────────────────────────────────────────────────────────────
-                        # One click loads Maya's fully-populated state — past
-                        # transmissions, audio, today's transmission — so a
-                        # judge sees the product's depth in 5 seconds. The
-                        # click sets state directly and skips all three
-                        # onboarding steps, then renders the home view.
-                        gr.HTML(
-                            '<div style="text-align:center;margin:18px 0 6px;font-size:11px;color:var(--paper-mute);">or <a href="?tab=Demo">try Maya\'s example</a></div>'
-                        )
 
                     with gr.Column(visible=False) as step2_col:
                         step2_heading = gr.HTML("### ✎ Step 2: Your chapter 🧭")
@@ -1969,6 +1956,20 @@ setupInteractions();
                         fn=lambda: (gr.Column(visible=False), gr.Column(visible=True)), outputs=[step2_col, step3_col])
                     step3_btn.click(fn=_onboard_step3, inputs=[oavoid, ofraid, odrain, omira, state], outputs=[content, browser_state, state]).then(
                         fn=lambda: gr.Column(visible=False), outputs=[onboard_col])
+
+                # ── Progressive personalization: demo + onboarding trigger ──
+                gr.HTML(
+                    '<div style="text-align:center;margin:8px 20px 6px;font-size:11px;color:var(--paper-mute);">'
+                    '<a href="?tab=Demo">try Maya\'s example</a>'
+                    ' <span style="opacity:.4">·</span> '
+                    '<a href="#" onclick="var b=document.getElementById(\'personalize-btn\');if(b)b.click();return false" style="color:var(--amber)">personalize your line</a>'
+                    '</div>'
+                )
+                personalize_btn = gr.Button("Personalize", elem_id="personalize-btn", elem_classes="hidden-radio", visible=True)
+                personalize_btn.click(
+                    fn=lambda: (gr.Column(visible=True), gr.Column(visible=True)),
+                    outputs=[onboard_col, step1_col],
+                )
 
                 with gr.Column(visible=True, elem_classes="section-form") as checkin_col:
                     gr.HTML('<div class="acc-primer">one word opens the signal. add a note if you want the message to know what happened.</div>')
