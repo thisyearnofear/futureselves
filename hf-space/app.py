@@ -195,6 +195,21 @@ class AppState:
         return AppState(**d)
 
 
+def _default_persona(name: str = "you", city: str = "") -> PersonaContext:
+    return PersonaContext(
+        name=name.strip() or "you",
+        city=city.strip(),
+        current_chapter="this part of your life",
+        primary_arc="purpose",
+        miraculous_year="a year that feels more honest and alive",
+        avoiding="something you keep circling",
+        afraid_wont_happen="the future you still want",
+        draining="carrying too much alone",
+        selected_voice_name="Ember",
+        selected_voice_description="warm, intimate, certain",
+    )
+
+
 # ─── Choose cast member ──────────────────────────────────────────────────────
 
 def _choose_cast(state: AppState) -> CastMember:
@@ -2051,6 +2066,8 @@ setupInteractions();
                     return _render_generating(s.today_cast or "future_self", s.check_in_word), s.to_dict(), s
 
                 def _apply_checkin(w: str, n: str, s: AppState) -> AppState:
+                    if not s.persona:
+                        s.persona = _default_persona()
                     s.check_in_word = w.strip()[:40]
                     s.check_in_note = n.strip() if n.strip() else ""
                     s.checked_in = True

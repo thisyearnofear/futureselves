@@ -145,9 +145,9 @@ VOICE_EMOJI = {
 
 PRIMER_HTML = (
     '<div class="onboard-primer">'
-    '<div class="primer-eyebrow">— before the line opens —</div>'
-    '<div class="primer-line">A few questions so the future can find you. '
-    'A sentence is enough. A few words is plenty. You can always come back.</div>'
+    '<div class="primer-eyebrow">— make tomorrow more specific —</div>'
+    '<div class="primer-line">You can receive a first transmission with one word. '
+    'Answer these when you want the line to know you better.</div>'
     '</div>'
 )
 
