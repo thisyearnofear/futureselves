@@ -1547,12 +1547,18 @@ def _render_home(state: AppState) -> str:
             "repair": "mended a frayed thread",
         }
         continuity_hint = f" The line has been listening since you last chose to {choice_labels.get(last_choice.choice, 'continue')}."
-    body_html = _chamber_body(
-        f"Check in with one word to open the line. "
-        f"You are in <em>{chapter_safe}</em>, "
-        f"and avoiding <em>{avoiding_safe}</em>."
-        f"{continuity_hint}"
-    )
+    if not state.onboarded:
+        body_html = _chamber_body(
+            "Give the line one word. I'll turn it into something "
+            "your future self needs you to hear tonight."
+        )
+    else:
+        body_html = _chamber_body(
+            f"Check in with one word to open the line. "
+            f"You are in <em>{chapter_safe}</em>, "
+            f"and avoiding <em>{avoiding_safe}</em>."
+            f"{continuity_hint}"
+        )
     callout = ""
     if not state.onboarded and state.recent_transmissions:
         callout = _chamber_callout(
@@ -1831,7 +1837,7 @@ setupInteractions();
                     _signal_chamber(
                         _chamber_eyebrow("line idle", "you · everywhere"),
                         _chamber_title("Ready when you are, <em>you</em>."),
-                        _chamber_body("Check in with one word to open the line. You are in <em>this part of your life</em>, and avoiding <em>something you keep circling</em>."),
+                        _chamber_body("Give the line one word. I'll turn it into something your future self needs you to hear tonight."),
                     )
                 )
 
@@ -1839,7 +1845,7 @@ setupInteractions();
                     # Primer line — sets emotional tone before the form
                     gr.HTML(PRIMER_HTML)
                     with gr.Column(visible=True) as step1_col:
-                        step1_heading = gr.HTML("### ✎ Step 1: Who are you? 🔥")
+                        step1_heading = gr.HTML("### 👤 Make it yours")
                         oname = gr.Textbox(
                             label="Your name",
                             placeholder=PLACEHOLDERS["name"],
@@ -1853,7 +1859,7 @@ setupInteractions();
                         step1_btn = gr.Button(BUTTON_TEXT["step1_next"], variant="primary")
 
                     with gr.Column(visible=False) as step2_col:
-                        step2_heading = gr.HTML("### ✎ Step 2: Your chapter 🧭")
+                        step2_heading = gr.HTML("### 🧭 Your chapter")
                         ochapter = gr.Textbox(
                             label="Current life chapter",
                             lines=2,
@@ -1874,7 +1880,7 @@ setupInteractions();
                         step2_btn = gr.Button(BUTTON_TEXT["step2_next"], variant="primary")
 
                     with gr.Column(visible=False) as step3_col:
-                        gr.Markdown("### ✎ Step 3: What's alive in you?")
+                        gr.Markdown("### 🌱 What's alive in you?")
                         with gr.Row():
                             with gr.Column(scale=1):
                                 oavoid = gr.Textbox(
@@ -1990,7 +1996,7 @@ setupInteractions();
                     checkin_btn = gr.Button(BUTTON_TEXT["checkin_submit"], variant="primary")
 
                 with gr.Column(visible=False, elem_classes="section-form") as memory_col:
-                    gr.HTML('<div class="acc-primer">what should I remember?</div>')
+                    gr.HTML('<div class="acc-primer">what should I hold for you?</div>')
                     gr.HTML(_memory_cards_html("do_it"))
                     memory = gr.Radio(
                         ["do_it", "keep", "landed", "not_quite"],
@@ -1999,7 +2005,7 @@ setupInteractions();
                         elem_classes="hidden-radio",
                         elem_id="field-memory",
                     )
-                    gr.HTML('<div class="acc-primer" style="margin-top:6px;">add a line back, if you want (optional)</div>')
+                    gr.HTML('<div class="acc-primer" style="margin-top:6px;">a line back, if you want (optional)</div>')
                     memory_note = gr.Textbox(
                         label="Write back (optional)",
                         lines=3,
@@ -2115,14 +2121,14 @@ setupInteractions();
                 demo.load(
                     fn=lambda s: (
                         _arc_cards_html(s.persona.primary_arc if s.persona else "purpose"),
-                        f"### ✎ Step 2: Your chapter {ARC_EMOJI.get(s.persona.primary_arc, '🧭')}" if s.persona else "### ✎ Step 2: Your chapter 🧭",
+                        f"### 🧭 Your chapter {ARC_EMOJI.get(s.persona.primary_arc, '🧭')}" if s.persona else "### 🧭 Your chapter",
                     ),
                     inputs=[state],
                     outputs=[step2_arc_html, step2_heading],
                 )
                 # Step 1 voice emoji based on selected voice
                 demo.load(
-                    fn=lambda s: f"### ✎ Step 1: Who are you? {VOICE_EMOJI.get(s.persona.selected_voice_name, '🔥')}" if s.persona else "### ✎ Step 1: Who are you? 🔥",
+                    fn=lambda s: f"### 👤 Make it yours {VOICE_EMOJI.get(s.persona.selected_voice_name, '🔥')}" if s.persona else "### 👤 Make it yours",
                     inputs=[state],
                     outputs=[step1_heading],
                 )

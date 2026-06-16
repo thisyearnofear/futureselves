@@ -36,7 +36,7 @@ PLACEHOLDERS = {
     "miraculous": "The version of next year that would feel like a miracle. Be specific. 'Everything works out' is not a miracle — it's a wish.",
     "word": "One word. The one that fits. Not the polite one.",
     "note": "What's alive in you right now? A sentence is enough. Three is plenty.",
-    "reply": "What landed. What didn't. The sentence you want your future self to hear next time.",
+    "reply": "What to carry forward. A sentence your future self will recognize.",
 }
 
 
@@ -83,10 +83,10 @@ EXAMPLES = {
         "I almost said the true thing. Almost.",
     ],
     "reply": [
-        "It landed. Especially the part about tonight.",
-        "Not quite. I need it shorter, more concrete.",
-        "I did it. The reply is sent.",
-        "Holding this for tomorrow. Not ready yet.",
+        "This one is for tonight. I'll act on it.",
+        "Save this. I want to read it again tomorrow.",
+        "Not quite there. Make it sharper next time.",
+        "I did the thing. Tell me what's next.",
     ],
 }
 
@@ -170,8 +170,8 @@ PRIMER_HTML = (
 # Replace cold default button text with copy that matches the chamber.
 
 BUTTON_TEXT = {
-    "step1_next": "Tune in →",
-    "step2_next": "Continue →",
+    "step1_next": "Start here →",
+    "step2_next": "Go deeper →",
     "step3_begin": "✦ Open the line",
     "checkin_submit": "Receive my transmission →",
     "generate": "Open the line",
