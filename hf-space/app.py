@@ -1040,13 +1040,12 @@ audio.playing{animation:pulseGlow 1.5s ease-in-out infinite}
 .hidden-radio .gr-form-label,
 .hidden-radio label{display:none !important}
 
-/* ─── Section form — replaces accordions, minimal container ─── */
+/* ─── Section form — seamlessly floats with the chamber ─── */
 .section-form{
-  margin:12px 20px 0;
-  padding:18px 20px 16px;
-  border:1px solid var(--line);
-  border-radius:2px;
-  background:rgba(14,17,36,.55);
+  margin:8px 20px 0;
+  padding:2px 0;
+  border:none;
+  background:transparent;
 }
 .section-form .gr-box,
 .section-form .gr-form,
@@ -1219,9 +1218,8 @@ def _tuning_display(cast_label: str) -> str:
     <path class="wave wave-front" d="M0 45 Q 35 80, 70 45 T 140 45 T 210 45 T 280 45" />
   </svg>
   <div class="tuning-readout">
-    <span><span>channel</span> · <span class="v">α-04</span></span>
-    <span><span>depth</span> · <span class="v">340ms</span></span>
-    <span><span>handshake</span> · <span class="v live">locking</span></span>
+    <span><span>status</span> · <span class="v live">building your message</span></span>
+    <span><span>channel</span> · <span class="v">your future self is listening</span></span>
   </div>
 </div>"""
 
@@ -2144,6 +2142,13 @@ setupInteractions();
                     inputs=[memory, memory_note, state], outputs=[content, browser_state, state, checkin_col, memory_col],
                 ).then(fn=lambda: None, outputs=[])
 
+                # Auto-show Maya demo on first visit.
+                def _auto_maya(s: AppState):
+                    if s.persona or s.recent_transmissions:
+                        return None, None, None, None, None
+                    return _load_maya_demo(s) + (gr.update(visible=False), gr.update(visible=True))
+                demo.load(fn=_auto_maya, inputs=[state], outputs=[content, browser_state, state, checkin_col, memory_col])
+
                 # ── History tab ────────────────────────────────────────────
             with gr.Tab("History"):
                 # No refresh button — the chamber + memory log auto-flow from
@@ -2221,6 +2226,8 @@ persona summaries are pre-computed on modal's serverless GPU (modal_app.py). the
 <a href="https://github.com/udingethe/futureselves/tree/main/hf-space" target="_blank" rel="noopener">github.com/udingethe/futureselves/hf-space</a>
 </div>
 """)
+    # Pre-warm the LLM in a background thread so first-generation latency drops.
+    threading.Thread(target=_load_llm, daemon=True).start()
     return demo
 
 
