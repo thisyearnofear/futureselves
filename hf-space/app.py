@@ -14,7 +14,6 @@ Tiny Titan, Best Agent, Off Brand, Best Demo, Bonus Quest Champion.
 from __future__ import annotations
 
 import json
-import json
 import logging
 import os
 import shutil
@@ -23,6 +22,7 @@ import threading
 import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import date
+from html import escape as html_escape
 from pathlib import Path
 from typing import Any, Optional
 
@@ -90,7 +90,15 @@ def _load_llm():
         return _LLM
 
 
-def _generate_with_llm(context: GenerationContext, cast_member: CastMember, local_now: str) -> GeneratedTransmission:
+def _generate_with_llm(context: GenerationContext, cast_member: CastMember, local_now: str) -> tuple[GeneratedTransmission, str]:
+    """Generate a transmission and report which path produced it.
+
+    Returns (transmission, source) where source is one of:
+      - "live"     : MiniCPM produced valid JSON we could parse
+      - "parse-fail": MiniCPM ran but its output couldn't be parsed
+      - "llm-error": LLM call raised (OOM, network, missing model)
+    The agent trace records this so judges can audit live vs. fallback.
+    """
     try:
         model, tokenizer = _load_llm()
         prompt = build_prompt(context, cast_member)
@@ -111,10 +119,11 @@ def _generate_with_llm(context: GenerationContext, cast_member: CastMember, loca
         decoded = tokenizer.decode(outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip()
         parsed = parse_transmission(decoded)
         if parsed:
-            return parsed
+            return parsed, "live"
+        return fallback_transmission(context, cast_member), "parse-fail"
     except Exception as exc:
         logger.warning("LLM failed: %s", exc)
-    return fallback_transmission(context, cast_member)
+        return fallback_transmission(context, cast_member), "llm-error"
 
 
 # ─── State ───────────────────────────────────────────────────────────────────
@@ -1209,6 +1218,25 @@ def _audio_module(label: str, audio_path: str) -> str:
 </div>"""
 
 
+def _audio_dropped_module(label: str) -> str:
+    """Visible callout when both Kokoro and the pre-rendered fallback audio failed.
+
+    Without this, the chamber silently renders text-only and the user assumes
+    the demo is broken. Make the failure mode part of the product voice.
+    """
+    label_safe = html_escape(label)
+    return f"""<div style="margin-top:20px;padding:14px 16px;border:1px solid var(--line);border-left:2px solid var(--violet);border-radius:2px;background:rgba(122,108,199,.06);">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+    <span style="width:6px;height:6px;border-radius:50%;background:var(--violet);box-shadow:0 0 8px rgba(122,108,199,.6);"></span>
+    <span style="font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--violet)">voice line dropped</span>
+    <span style="font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--paper-mute)">· {label_safe} could not be tuned</span>
+  </div>
+  <div style="font-family:Fraunces,serif;font-style:italic;font-size:13px;line-height:1.5;color:var(--paper-mute);">
+    The text arrived but the voice did not. The transmission is still legible above.
+  </div>
+</div>"""
+
+
 def _share_module(title: str, body: str, action: str, cliff: str) -> str:
     """A copy-to-clipboard button for the transmission, styled as an instrument.
 
@@ -1257,19 +1285,22 @@ def _memory_log(state: AppState, *, limit: int = 8) -> str:
                     f'<a class="audio-chip" href="/file={staged}" target="_blank" rel="noopener" '
                     f'title="play voice">▶</a>'
                 )
+        cast_label = CAST_MEMBER_NAMES.get(t.cast_member, ("", ""))[0] or t.cast_member
         rows.append(
             f'<div class="memory-row memory-entry">'
-            f'<span class="ts">{t.date_key}</span>'
-            f'<span class="body"><em>&ldquo;{t.title}&rdquo;</em></span>'
-            f'<span class="tag">{CAST_MEMBER_NAMES.get(t.cast_member, ("", ""))[0] or t.cast_member}{audio_chip}</span>'
+            f'<span class="ts">{html_escape(t.date_key)}</span>'
+            f'<span class="body"><em>&ldquo;{html_escape(t.title)}&rdquo;</em></span>'
+            f'<span class="tag">{html_escape(cast_label)}{audio_chip}</span>'
             f'</div>'
         )
     for c in reversed(state.recent_choices[-limit:]):
+        # c.choice is enum-like (toward/steady/release/repair) but escape for safety.
+        choice_safe = html_escape(c.choice)
         rows.append(
             f'<div class="memory-row memory-entry">'
-            f'<span class="ts">{c.date_key}</span>'
-            f'<span class="body">{c.prompt}</span>'
-            f'<span class="tag choice-{c.choice}">{c.choice}</span>'
+            f'<span class="ts">{html_escape(c.date_key)}</span>'
+            f'<span class="body">{html_escape(c.prompt)}</span>'
+            f'<span class="tag choice-{choice_safe}">{choice_safe}</span>'
             f'</div>'
         )
     return f"""<div class="memory-log">
@@ -1317,12 +1348,14 @@ def _render_persona_card() -> str:
     if not summaries:
         return '<span class="k">no persona summary yet — generate one via the demo button</span>'
     last = summaries[-1]
-    src = last.get("source", "?")
+    src = html_escape(last.get("source", "?"))
+    summary = html_escape(last.get("summary", ""))
+    name = html_escape(last.get("persona_name", "?"))
     return (
         f'<em style="color:var(--paper);font-family:Fraunces,serif;font-size:14px;line-height:1.6;">'
-        f'&ldquo;{last.get("summary", "")}&rdquo;</em>'
+        f'&ldquo;{summary}&rdquo;</em>'
         f'<div style="margin-top:8px;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--paper-mute);">'
-        f'— {last.get("persona_name", "?")} · via {src}</div>'
+        f'— {name} · via {src}</div>'
     )
 
 
@@ -1342,10 +1375,9 @@ def _context_note(html: str) -> str:
 # ─── App logic (async gen helper) ─────────────────────────────────────────────
 
 def _gen_async(state: AppState, context: GenerationContext, cm: CastMember, now_str: str):
-    start = time.time() if 'time' in dir() else 0
     import time as _time
     start = _time.time()
-    result = _generate_with_llm(context, cm, now_str)
+    result, source = _generate_with_llm(context, cm, now_str)
     state.today_transmission = result
     # Try local Kokoro first. If it fails (Space, missing deps, etc.) and we
     # have a matching pre-rendered voice sample for the cast member, fall
@@ -1364,9 +1396,8 @@ def _gen_async(state: AppState, context: GenerationContext, cm: CastMember, now_
         from transmission import build_prompt, get_system_prompt
         sys_p = get_system_prompt(context.persona.timeline_divergence_score)
         usr_p = build_prompt(context, cm)
-        # Build a coarse parsed_output mirror
         parsed = {
-            "title": result.title, "text": result.text[:200],
+            "title": result.title, "text": result.text,
             "actionPrompt": result.action_prompt, "cliffhanger": result.cliffhanger,
         } if result else None
         # Run note extraction (Nemotron-Parse or keyword fallback) for the trace
@@ -1390,6 +1421,7 @@ def _gen_async(state: AppState, context: GenerationContext, cm: CastMember, now_
             parsed_output=parsed,
             insights=insights,
             duration_ms=duration_ms,
+            source=source,
         )
     except Exception as exc:
         logger.warning("Failed to log agent trace: %s", exc)
@@ -1480,8 +1512,12 @@ def _render_home(state: AppState) -> str:
         body += _signal_path("onboard")
         return body
     p = state.persona
-    eyebrow = _chamber_eyebrow("line idle", f"{p.name or 'you'} · {p.city or 'everywhere'}")
-    title = _chamber_title(f"Ready when you are, <em>{p.name}</em>.")
+    name_safe = html_escape(p.name or "you")
+    city_safe = html_escape(p.city or "everywhere")
+    chapter_safe = html_escape(p.current_chapter or "a chapter still forming")
+    avoiding_safe = html_escape(p.avoiding or "something you keep circling")
+    eyebrow = _chamber_eyebrow("line idle", f"{name_safe} · {city_safe}")
+    title = _chamber_title(f"Ready when you are, <em>{name_safe}</em>.")
     continuity_hint = ""
     if state.recent_choices:
         last_choice = state.recent_choices[-1]
@@ -1494,8 +1530,8 @@ def _render_home(state: AppState) -> str:
         continuity_hint = f" The line has been listening since you last chose to {choice_labels.get(last_choice.choice, 'continue')}."
     body_html = _chamber_body(
         f"Check in with one word to open the line. "
-        f"You are in <em>{p.current_chapter or 'a chapter still forming'}</em>, "
-        f"and avoiding <em>{p.avoiding or 'something you keep circling'}</em>."
+        f"You are in <em>{chapter_safe}</em>, "
+        f"and avoiding <em>{avoiding_safe}</em>."
         f"{continuity_hint}"
     )
     callout = ""
@@ -1503,11 +1539,12 @@ def _render_home(state: AppState) -> str:
         last = state.recent_transmissions[-1]
         callout = _chamber_callout(
             "last transmission",
-            f'<em>&ldquo;{last.title}&rdquo;</em> · {last.date_key}'
+            f'<em>&ldquo;{html_escape(last.title)}&rdquo;</em> · {html_escape(last.date_key)}'
         )
+    chapter_truncated = p.current_chapter[:40] + "…" if p.current_chapter and len(p.current_chapter) > 40 else (p.current_chapter or "—")
     meta = _chamber_meta([
-        ("arc", p.primary_arc or "—"),
-        ("chapter", p.current_chapter[:40] + "…" if p.current_chapter and len(p.current_chapter) > 40 else (p.current_chapter or "—")),
+        ("arc", html_escape(p.primary_arc or "—")),
+        ("chapter", html_escape(chapter_truncated)),
     ])
     out = _identity_strip(state)
     out += _signal_chamber(eyebrow, title, body_html, meta_html=meta, callout_html=callout)
@@ -1519,8 +1556,9 @@ def _render_home(state: AppState) -> str:
 
 
 def _render_awaiting(state: AppState) -> str:
-    eyebrow = _chamber_eyebrow("signal locked", f'word · {state.check_in_word or "—"}')
-    title = _chamber_title(f'<em>&ldquo;{state.check_in_word}&rdquo;</em> received.')
+    word_safe = html_escape(state.check_in_word or "—")
+    eyebrow = _chamber_eyebrow("signal locked", f'word · {word_safe}')
+    title = _chamber_title(f'<em>&ldquo;{word_safe}&rdquo;</em> received.')
     body_html = _chamber_body(
         "The note is being read. The line is open. "
         "Open the line below to receive your transmission."
@@ -1560,16 +1598,25 @@ def _render_transmission(state: AppState) -> str:
     if not t:
         return _render_home(state)
     label = CAST_MEMBER_NAMES.get(state.today_cast or "future_self", ("", ""))[0] or "Future Self"
+    title_safe = html_escape(t.title or "")
+    text_safe = html_escape(t.text or "")
+    action_safe = html_escape(t.action_prompt or "")
+    cliff_safe = html_escape(t.cliffhanger or "")
     eyebrow = _chamber_eyebrow("transmission received", label)
-    title = _chamber_title(f'<em>{t.title}</em>')
-    body_html = _chamber_body(t.text)
-    actions = _audio_module(label, state.today_audio) if state.today_audio else ""
+    title = _chamber_title(f'<em>{title_safe}</em>')
+    body_html = _chamber_body(text_safe)
+    actions = ""
+    if state.today_audio:
+        actions = _audio_module(label, state.today_audio)
+    elif state.generation_done:
+        actions = _audio_dropped_module(label)
+    # Share module gets raw text — it's payload-encoded for clipboard, not HTML-interpolated.
     actions += _share_module(t.title, t.text, t.action_prompt, t.cliffhanger)
     # The chamber holds the audio module + tonight's move. Tomorrow's cliffhanger
     # is shown as a second anchor line below the chamber so the page has a clear
     # rhythm: text → audio + tonight → tomorrow → constellation → memory log.
-    tonight = _chamber_callout("tonight's move", t.action_prompt)
-    tomorrow = _chamber_callout("tomorrow", t.cliffhanger)
+    tonight = _chamber_callout("tonight's move", action_safe)
+    tomorrow = _chamber_callout("tomorrow", cliff_safe)
     out = _identity_strip(state)
     out += _signal_chamber(eyebrow, title, body_html, actions_html=actions, callout_html=tonight)
     out += tomorrow
@@ -2013,9 +2060,28 @@ setupInteractions();
                     inputs=[word, note, state], outputs=[content, browser_state, state],
                 )
 
-                # Wire generate
+                # Wire generate.
+                # In-flight guard: if a generation thread is already running
+                # (state.generating True and not yet done), ignore subsequent
+                # clicks instead of spawning a second _gen_async thread that
+                # would race the first one on state mutations.
+                def _handle_generate(s: AppState):
+                    if s.generating and not s.generation_done:
+                        return _render_generating(s.today_cast or "future_self"), s.to_dict(), s
+                    s.generating = True
+                    s.generation_done = False
+                    s.today_audio = ""
+                    s.today_transmission = None
+                    s.today_cast = _choose_cast(s)
+                    threading.Thread(
+                        target=_gen_async,
+                        args=(s, s.to_context(), s.today_cast, date.today().strftime("%Y-%m-%d %H:%M")),
+                        daemon=True,
+                    ).start()
+                    return _render_generating(s.today_cast or "future_self"), s.to_dict(), s
+
                 generate_btn.click(
-                    fn=lambda s: (_render_generating(s.today_cast or "future_self"), s.to_dict(), s) if (setattr(s, 'generating', True), setattr(s, 'generation_done', False), setattr(s, 'today_audio', ''), setattr(s, 'today_cast', _choose_cast(s)), threading.Thread(target=_gen_async, args=(s, s.to_context(), s.today_cast, date.today().strftime("%Y-%m-%d %H:%M")), daemon=True).start()) else (None, None, None),
+                    fn=_handle_generate,
                     inputs=[state], outputs=[content, browser_state, state],
                 )
 
