@@ -1040,6 +1040,23 @@ audio.playing{animation:pulseGlow 1.5s ease-in-out infinite}
 .hidden-radio .gr-form-label,
 .hidden-radio label{display:none !important}
 
+/* ─── Section form — replaces accordions, minimal container ─── */
+.section-form{
+  margin:12px 20px 0;
+  padding:18px 20px 16px;
+  border:1px solid var(--line);
+  border-radius:2px;
+  background:rgba(14,17,36,.55);
+}
+.section-form .gr-box,
+.section-form .gr-form,
+.section-form .gr-panel{
+  background:transparent !important;
+  border:none !important;
+  padding:0 !important;
+  margin:0 !important;
+}
+
 /* ─── Accordion primer — permission/guidance text ─── */
 .acc-primer{
   font-size:10px;
@@ -1953,7 +1970,7 @@ setupInteractions();
                     step3_btn.click(fn=_onboard_step3, inputs=[oavoid, ofraid, odrain, omira, state], outputs=[content, browser_state, state]).then(
                         fn=lambda: gr.Column(visible=False), outputs=[onboard_col])
 
-                with gr.Accordion("☀ Check in", open=True) as checkin_acc:
+                with gr.Column(visible=True, elem_classes="section-form") as checkin_col:
                     gr.HTML('<div class="acc-primer">one word opens the signal. add a note if you want the message to know what happened.</div>')
                     word = gr.Textbox(
                         label="One word",
@@ -1971,9 +1988,7 @@ setupInteractions();
                     gr.HTML(chip_html(EXAMPLES["note"], "field-note"))
                     checkin_btn = gr.Button(BUTTON_TEXT["checkin_submit"], variant="primary")
 
-                with gr.Accordion("💭 Remember this", open=False) as memory_acc:
-                    # Single memory action collapsing choice + reaction into one tap.
-                    # Maps to existing RecentChoice and RecentResponse via MEMORY_TO_CHOICE_REACTION.
+                with gr.Column(visible=False, elem_classes="section-form") as memory_col:
                     gr.HTML('<div class="acc-primer">what should I remember?</div>')
                     gr.HTML(_memory_cards_html("do_it"))
                     memory = gr.Radio(
@@ -2022,11 +2037,11 @@ setupInteractions();
                     return s
 
                 def _handle_checkin_submit(w: str, n: str, s: AppState):
-                    return _handle_generate(_apply_checkin(w, n, s))
+                    return _handle_generate(_apply_checkin(w, n, s)) + (gr.update(visible=False), gr.update(visible=False))
 
                 checkin_btn.click(
                     fn=_handle_checkin_submit,
-                    inputs=[word, note, state], outputs=[content, browser_state, state],
+                    inputs=[word, note, state], outputs=[content, browser_state, state, checkin_col, memory_col],
                 )
 
                 # Poll for generation.
@@ -2040,17 +2055,14 @@ setupInteractions();
                 poll_timer = gr.Timer(value=2, active=True)
                 def _poll(s: AppState):
                     if s is None:
-                        return None, None, None
+                        return None, None, None, None, None
                     if s.generation_done and s.today_transmission:
-                        # Clear the generating flag so we don't keep rendering
-                        # the tuning display on subsequent ticks.
                         s.generating = False
-                        return _render_transmission(s), s.to_dict(), s
+                        return _render_transmission(s), s.to_dict(), s, gr.update(visible=False), gr.update(visible=True)
                     if s.generating:
-                        return _render_generating(s.today_cast or "future_self", s.check_in_word), s.to_dict(), s
-                    # Idle: no-op. Returning Nones leaves the components unchanged.
-                    return None, None, None
-                poll_timer.tick(fn=_poll, inputs=[state], outputs=[content, browser_state, state])
+                        return _render_generating(s.today_cast or "future_self", s.check_in_word), s.to_dict(), s, gr.update(visible=False), gr.update(visible=False)
+                    return None, None, None, None, None
+                poll_timer.tick(fn=_poll, inputs=[state], outputs=[content, browser_state, state, checkin_col, memory_col])
 
                 # Wire memory action — collapses choice + reaction into one tap.
                 # Maps the single memory value to existing RecentChoice and RecentResponse
@@ -2084,11 +2096,11 @@ setupInteractions();
                     s.today_choice = ""
                     s.check_in_word = ""
                     s.check_in_note = ""
-                    return _render_home(s), s.to_dict(), s
+                    return _render_home(s), s.to_dict(), s, gr.update(visible=True), gr.update(visible=False)
 
                 memory_btn.click(
                     fn=_handle_memory_submit,
-                    inputs=[memory, memory_note, state], outputs=[content, browser_state, state],
+                    inputs=[memory, memory_note, state], outputs=[content, browser_state, state, checkin_col, memory_col],
                 ).then(fn=lambda: None, outputs=[])
 
                 # ── History tab ────────────────────────────────────────────
