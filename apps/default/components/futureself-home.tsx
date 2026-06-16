@@ -19,7 +19,7 @@ import {
 } from "react-native-reanimated";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "expo-router";
-import { api } from "@/convex/_generated/api";
+import { api, internal } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type {
   CastMember,
@@ -154,8 +154,15 @@ export function FutureselfHome({
 
   // QVAC local-mode hooks (no-op on web, called in handleReceive when local)
   const localMode = useMemo(() => isLocalMode(), []);
-  const beginLocalTransmission = useAction(api.game.beginTransmissionGenerationLocal);
-  const attachLocalText = useMutation(api.game.attachLocalTransmission);
+  // beginTransmissionGenerationLocal is an authMutation, so useMutation (not
+  // useAction) is the correct hook. useAction is for authAction; calling a
+  // mutation through it would invoke action-timeout/retry semantics on a
+  // synchronous DB write.
+  const beginLocalTransmission = useMutation(api.game.beginTransmissionGenerationLocal);
+  // attachLocalTransmission is an internalMutation; the client should call it
+  // via internal.*, not api.*. The type system permits the api.* form but the
+  // runtime expects internal.* for internal mutations.
+  const attachLocalText = useMutation(internal.game.attachLocalTransmission);
   // Cleanup for the local stub row if on-device generation throws between
   // beginLocalTransmission and attachLocalText. Without this, an empty
   // "Tuning the signal" row persists and the chamber shows the stub forever.
