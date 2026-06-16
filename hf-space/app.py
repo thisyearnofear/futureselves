@@ -1529,7 +1529,7 @@ def _state_for_path(state: AppState) -> str:
     return "check-in"
 
 
-def _render_home(state: AppState) -> str:
+def _render_home(state: AppState, ack: str = "") -> str:
     p = state.persona or _default_persona()
     name_safe = html_escape(p.name or "you")
     city_safe = html_escape(p.city or "everywhere")
@@ -1560,7 +1560,12 @@ def _render_home(state: AppState) -> str:
             f"{continuity_hint}"
         )
     callout = ""
-    if not state.onboarded and state.recent_transmissions:
+    if ack == "memory":
+        callout = _chamber_callout(
+            "remembered",
+            "I&rsquo;ll remember that for tomorrow. The line is ready when you are."
+        )
+    elif not state.onboarded and state.recent_transmissions:
         callout = _chamber_callout(
             "make it yours",
             f'Want tomorrow&rsquo;s signal to know you better? '
@@ -1999,6 +2004,13 @@ setupInteractions();
                     outputs=[onboard_col, step1_col],
                 )
 
+                # ── Privacy trust signal ──
+                gr.HTML(
+                    '<div style="text-align:center;margin:4px 20px 10px;font-size:9px;letter-spacing:.14em;color:var(--paper-mute);opacity:.5;">'
+                    'built for private reflection · local inference · 0 bytes uploaded'
+                    '</div>'
+                )
+
                 with gr.Column(visible=True, elem_classes="section-form") as checkin_col:
                     gr.HTML('<div class="acc-primer">one word opens the signal. add a note if you want the message to know what happened.</div>')
                     word = gr.Textbox(
@@ -2125,7 +2137,7 @@ setupInteractions();
                     s.today_choice = ""
                     s.check_in_word = ""
                     s.check_in_note = ""
-                    return _render_home(s), s.to_dict(), s, gr.update(visible=True), gr.update(visible=False)
+                    return _render_home(s, ack="memory"), s.to_dict(), s, gr.update(visible=True), gr.update(visible=False)
 
                 memory_btn.click(
                     fn=_handle_memory_submit,
