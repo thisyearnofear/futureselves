@@ -1920,9 +1920,31 @@ setupInteractions();
                         )
                         step3_btn = gr.Button(BUTTON_TEXT["step3_begin"], variant="primary")
 
-                    _onboard_step1 = lambda n, c, s: (setattr(s, 'persona', PersonaContext(name=n.strip(), city=c.strip(), selected_voice_name="Ember", selected_voice_description="warm, intimate, certain")), setattr(s, 'onboard_step', 1), s)[2]
-                    _onboard_step2 = lambda ch, a, s: (setattr(s.persona, 'current_chapter', ch.strip()) if s.persona else None, setattr(s.persona, 'primary_arc', a) if s.persona else None, setattr(s, 'onboard_step', 2), s)[3]
-                    _onboard_step3 = lambda av, af, dr, mi, s: (setattr(s.persona, 'avoiding', av.strip()) if s.persona else None, setattr(s.persona, 'afraid_wont_happen', af.strip()) if s.persona else None, setattr(s.persona, 'draining', dr.strip()) if s.persona else None, setattr(s.persona, 'miraculous_year', mi.strip()) if s.persona else None, setattr(s, 'onboarded', True), setattr(s, 'onboard_step', 3), _render_home(s), s.to_dict(), s)
+                    def _onboard_step1(n: str, c: str, s: AppState) -> AppState:
+                        s.persona = PersonaContext(
+                            name=n.strip(), city=c.strip(),
+                            selected_voice_name="Ember",
+                            selected_voice_description="warm, intimate, certain",
+                        )
+                        s.onboard_step = 1
+                        return s
+
+                    def _onboard_step2(ch: str, a: str, s: AppState) -> AppState:
+                        if s.persona:
+                            s.persona.current_chapter = ch.strip()
+                            s.persona.primary_arc = a
+                        s.onboard_step = 2
+                        return s
+
+                    def _onboard_step3(av: str, af: str, dr: str, mi: str, s: AppState):
+                        if s.persona:
+                            s.persona.avoiding = av.strip()
+                            s.persona.afraid_wont_happen = af.strip()
+                            s.persona.draining = dr.strip()
+                            s.persona.miraculous_year = mi.strip()
+                        s.onboarded = True
+                        s.onboard_step = 3
+                        return _render_home(s), s.to_dict(), s
 
                     def _load_maya_demo(s: AppState):
                         """Populate state with Maya's 4-day history + today's transmission."""
