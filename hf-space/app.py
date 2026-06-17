@@ -148,6 +148,50 @@ class AppState:
     recent_responses: list[RecentResponse] = field(default_factory=list)
     open_threads: list = field(default_factory=list)
 
+    def apply_checkin(self, word: str, note: str):
+        if not self.persona:
+            self.persona = _default_persona()
+        self.check_in_word = word.strip()[:40]
+        self.check_in_note = note.strip() if note.strip() else ""
+        self.checked_in = True
+
+    def start_generation(self):
+        self.generating = True
+        self.generation_done = False
+        self.today_audio = ""
+        self.today_transmission = None
+        self.today_cast = _choose_cast(self)
+
+    def record_memory(self, memory_value: str, note: str):
+        choice_val, reaction_val = MEMORY_TO_CHOICE_REACTION.get(memory_value, ("toward", "did_it"))
+        if self.today_transmission:
+            self.recent_transmissions.append(RecentTransmission(
+                date_key=date.today().isoformat(),
+                title=self.today_transmission.title or "",
+                cliffhanger=self.today_transmission.cliffhanger or "",
+                cast_member=self.today_cast or "future_self",
+            ))
+        self.recent_choices.append(RecentChoice(
+            date_key=date.today().isoformat(),
+            choice=choice_val,
+            prompt=self.today_transmission.action_prompt if self.today_transmission else "",
+        ))
+        if self.persona:
+            self.persona.streak += 1
+            setattr(self.persona, f'{choice_val}_count', getattr(self.persona, f'{choice_val}_count', 0) + 1)
+        self.recent_responses.append(RecentResponse(
+            reaction=reaction_val,
+            reply_note=note.strip() if note.strip() else None,
+        ))
+        self.checked_in = False
+        self.generation_done = False
+        self.choice_made = False
+        self.today_transmission = None
+        self.today_audio = ""
+        self.today_choice = ""
+        self.check_in_word = ""
+        self.check_in_note = ""
+
     def to_context(self) -> GenerationContext:
         assert self.persona
         ci = type("C", (), {"word": self.check_in_word, "note": self.check_in_note or None})() if self.checked_in else None
@@ -2048,18 +2092,10 @@ setupInteractions();
                     memory_btn = gr.Button(BUTTON_TEXT["memory_submit"], variant="primary")
 
                 # Wire generate.
-                # In-flight guard: if a generation thread is already running
-                # (state.generating True and not yet done), ignore subsequent
-                # clicks instead of spawning a second _gen_async thread that
-                # would race the first one on state mutations.
                 def _handle_generate(s: AppState):
                     if s.generating and not s.generation_done:
                         return _render_generating(s.today_cast or "future_self", s.check_in_word), s.to_dict(), s
-                    s.generating = True
-                    s.generation_done = False
-                    s.today_audio = ""
-                    s.today_transmission = None
-                    s.today_cast = _choose_cast(s)
+                    s.start_generation()
                     threading.Thread(
                         target=_gen_async,
                         args=(s, s.to_context(), s.today_cast, date.today().strftime("%Y-%m-%d %H:%M")),
@@ -2067,16 +2103,9 @@ setupInteractions();
                     ).start()
                     return _render_generating(s.today_cast or "future_self", s.check_in_word), s.to_dict(), s
 
-                def _apply_checkin(w: str, n: str, s: AppState) -> AppState:
-                    if not s.persona:
-                        s.persona = _default_persona()
-                    s.check_in_word = w.strip()[:40]
-                    s.check_in_note = n.strip() if n.strip() else ""
-                    s.checked_in = True
-                    return s
-
                 def _handle_checkin_submit(w: str, n: str, s: AppState):
-                    return _handle_generate(_apply_checkin(w, n, s)) + (gr.update(visible=False), gr.update(visible=False))
+                    s.apply_checkin(w, n)
+                    return _handle_generate(s) + (gr.update(visible=False), gr.update(visible=False))
 
                 checkin_btn.click(
                     fn=_handle_checkin_submit,
@@ -2107,34 +2136,7 @@ setupInteractions();
                 # Maps the single memory value to existing RecentChoice and RecentResponse
                 # via MEMORY_TO_CHOICE_REACTION, then resets state for the next check-in.
                 def _handle_memory_submit(m: str, mn: str, s: AppState):
-                    choice_val, reaction_val = MEMORY_TO_CHOICE_REACTION.get(m, ("toward", "did_it"))
-                    if s.today_transmission:
-                        s.recent_transmissions = s.recent_transmissions + [RecentTransmission(
-                            date_key=date.today().isoformat(),
-                            title=s.today_transmission.title or "",
-                            cliffhanger=s.today_transmission.cliffhanger or "",
-                            cast_member=s.today_cast or "future_self",
-                        )]
-                    s.recent_choices = s.recent_choices + [RecentChoice(
-                        date_key=date.today().isoformat(),
-                        choice=choice_val,
-                        prompt=s.today_transmission.action_prompt if s.today_transmission else "",
-                    )]
-                    if s.persona:
-                        s.persona.streak += 1
-                        setattr(s.persona, f'{choice_val}_count', getattr(s.persona, f'{choice_val}_count', 0) + 1)
-                    s.recent_responses = s.recent_responses + [RecentResponse(
-                        reaction=reaction_val,
-                        reply_note=mn.strip() if mn.strip() else None,
-                    )]
-                    s.checked_in = False
-                    s.generation_done = False
-                    s.choice_made = False
-                    s.today_transmission = None
-                    s.today_audio = ""
-                    s.today_choice = ""
-                    s.check_in_word = ""
-                    s.check_in_note = ""
+                    s.record_memory(m, mn)
                     return _render_home(s, ack="memory"), s.to_dict(), s, gr.update(visible=True), gr.update(visible=False)
 
                 memory_btn.click(
