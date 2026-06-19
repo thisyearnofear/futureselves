@@ -1,7 +1,8 @@
 # Future Selves Visual Experience Upgrade
 
-**Status:** Implementation Complete (Tier 1) | **Date:** May 2026
-**Focus:** AI-generated avatars for each cast member, with opt-in personalized face swap as a premium tier
+**Status:** Tier 1 superseded by June 2026 UX overhaul. See `docs/edge-ai-qvac.md` Phase 6.5 for the current visual state. Tier 2 (selfie face swap) is still deferred — `apps/default/components/avatar-reveal.tsx` uses bundled fallback avatars with optional Convex-generated personalization.
+**Original focus:** AI-generated avatars for each cast member, with opt-in personalized face swap as a premium tier
+**Original date:** May 2026
 
 ---
 

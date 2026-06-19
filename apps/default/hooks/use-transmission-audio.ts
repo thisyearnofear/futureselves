@@ -17,6 +17,7 @@ import { Platform } from "react-native";
 import { isLocalMode } from "@/lib/ai";
 import { useLocalTTS } from "@/lib/qvac";
 import { getCachedAudio, setCachedAudio } from "@/lib/audio-cache";
+import { shouldRetry } from "@/lib/audio-retry-policy";
 import type { TransmissionState } from "@/lib/futureself";
 
 export type AudioState =
@@ -35,8 +36,6 @@ export interface TransmissionAudioController {
   generate: () => Promise<void>;
   retry: () => Promise<void>;
 }
-
-const MAX_RETRIES = 3;
 
 export function useTransmissionAudio(
   transmission: TransmissionState,
@@ -106,7 +105,7 @@ export function useTransmissionAudio(
   }, [transmission.id, transmission.text, state, isReady, ttsModelId, speak]);
 
   const retry = useCallback(async () => {
-    if (retryCount >= MAX_RETRIES) return;
+    if (!shouldRetry(retryCount)) return;
     setRetryCount((c) => c + 1);
     setState("idle");
     // Small delay before retry

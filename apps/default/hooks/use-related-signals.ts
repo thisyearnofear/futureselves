@@ -16,14 +16,13 @@ import { Platform } from "react-native";
 import type { TransmissionState } from "@/lib/futureself";
 import { useLocalEmbeddings, cosineSimilarity } from "@/lib/qvac";
 import { isLocalMode } from "@/lib/ai";
+import { findRelatedByKeywords } from "@/lib/related-signals-logic";
 
 // In-memory embedding cache: text → Float32Array | null
 const embeddingCache = new Map<string, Float32Array | null>();
 
-export interface RelatedSignal {
-  transmission: TransmissionState;
-  similarity: number;
-}
+export type { RelatedSignal } from "@/lib/related-signals-logic";
+import type { RelatedSignal } from "@/lib/related-signals-logic";
 
 export function useRelatedSignals(
   sourceTransmission: TransmissionState | null,
@@ -57,21 +56,8 @@ export function useRelatedSignals(
       return;
     }
     if (Platform.OS === "web" || !isLocalMode()) {
-      // Fallback: simple keyword matching for web demo
-      const sourceWords = new Set(
-        sourceTransmission.text.toLowerCase().split(/\s+/).filter((w) => w.length > 4),
-      );
-      const results = allTransmissions
-        .filter((t) => t.id !== sourceTransmission.id)
-        .map((t) => {
-          const words = t.text.toLowerCase().split(/\s+/).filter((w) => w.length > 4);
-          const shared = words.filter((w) => sourceWords.has(w)).length;
-          return { transmission: t, similarity: shared / Math.max(words.length, 1) };
-        })
-        .filter((r) => r.similarity > 0)
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, topN);
-      setRelated(results);
+      // Web fallback: keyword-based similarity
+      setRelated(findRelatedByKeywords(sourceTransmission, allTransmissions, topN));
       return;
     }
 

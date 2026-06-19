@@ -17,11 +17,8 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 - `apps/default/lib/ai.ts` - AI provider runtime split (`getAIProvider()`, `isLocalMode()`, `isLocalLLMMode()`); web=cloud, native=local when `EXPO_PUBLIC_AI_PROVIDER=local`
 - `apps/default/lib/local-llm.ts` - Client-side LLM orchestrator: builds the transmission prompt locally, calls QVAC `chatCompletion`, parses JSON, falls back to built-in script
 - `apps/default/lib/audio-cache.ts` - Persona-scoped TTS audio cache (WAV files on disk, metadata in `expo-secure-store`); evict, getCacheSizeBytes for the readout chip
-- `apps/default/hooks/use-network-kill.ts` - Network status hook (`isOffline`, `toggleKillSwitch`) for the demo's network-off proof
-- `apps/default/hooks/use-transmission-audio.ts` - Pre-generates TTS on text arrival, file-based playback, auto-retry on failure
-- `apps/default/hooks/use-related-signals.ts` - Computes semantically related transmissions via QVAC embeddings
-- `apps/default/hooks/use-speech-recognition.ts` - Press-to-record → STT (Parakeet) transcription flow
-- `apps/default/components/memory-readout.tsx` - Privacy readout chip (bytes uploaded, inference location, last model, cache hit)
+- `apps/default/hooks/` - Native hooks: `use-network-kill`, `use-transmission-audio` (TTS pre-generation + retry), `use-related-signals` (embedding-based similarity), `use-speech-recognition` (press-to-record STT), `use-qvac-prewarm`
+- `apps/default/components/` - Client UI (see `apps/default/components/` for the full list; key ones below)
 - `apps/default/components/constellation-map.tsx` - Visual star map of voice constellation with animated glows and divergence warping
 - `apps/default/components/divergence-gauge.tsx` - Visual arc gauge for the timeline divergence score
 - `apps/default/components/ritual-state.tsx` - Game-state visualization: streak risk, choice patterns, consequence chains
@@ -31,7 +28,8 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 - `packages/backend/convex/voicemail.ts` - 'The Last Voicemail' critique-driven pipeline
 - `scripts/trim-node-modules.mjs` - Postinstall script that trims unused @qvac runtimes and non-target platform prebuilds
 - `hf-space/` - Build Small hackathon submission (Gradio Space): MiniCPM 2.5 + Nemotron-Parse + Kokoro TTS — **live at https://papajams-futureselves.hf.space** on T4 GPU
-- `docs/edge-ai-qvac.md` - Canonical QVAC edge-AI plan (LLM, TTS, STT, embeddings, switch points, phases, tracks, public-surface rules)
+- `docs/edge-ai-qvac.md` - Canonical QVAC edge-AI plan (LLM, TTS, STT, embeddings, switch points, phases, tracks, public-surface rules, UX overhaul)
+- `docs/visual-upgrade.md` - Avatar system design (Tier 1 superseded by Phase 6.5; Tier 2 still deferred)
 - `docs/privacy-posture.md` - Public-facing privacy statement (hosted on the marketing site)
 - `docs/build-small-strategy.md` - Prize strategy for the Build Small hackathon (separate submission via `hf-space/`)
 
