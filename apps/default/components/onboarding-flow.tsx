@@ -219,7 +219,7 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
 
         <View style={styles.panelHint}>
           <Text style={styles.panelHintText}>
-            About 60 seconds. Three short steps. You can refine the rest later.
+            About 60 seconds. Three short steps.
           </Text>
         </View>
 
@@ -522,18 +522,18 @@ function ChipGrid<T extends string>({
 
 function getChapterTitle(chapter: number): string {
   const titles = [
-    "Someone has been trying to reach you.",
-    "Tell future-you what you want and what you're avoiding.",
-    "Choose the voice of your first reply.",
+    "Someone is trying to reach you.",
+    "Tell future-you what matters.",
+    "Choose your first voice.",
   ];
   return titles[chapter];
 }
 
 function getChapterSubtitle(chapter: number): string {
   const subtitles = [
-    "A transmission cannot find a stranger. Give it just enough texture to recognize you.",
-    "Keep it brief and honest. Future-you only needs the emotional direction, not your full autobiography.",
-    "We’ll start simple. The deeper settings can wait until after you feel the ritual work.",
+    "Give it just enough to recognize you.",
+    "Brief and honest. The emotional direction is enough.",
+    "Start simple. Refine after your first transmission.",
   ];
   return subtitles[chapter];
 }

@@ -48,6 +48,7 @@ import {
   TransmissionSection,
   YesterdayMoment,
 } from "@/components/futureself-home-sections";
+import { RitualState } from "@/components/ritual-state";
 import {
   MemoryArchiveSection,
   sortMemoryTransmissions,
@@ -57,6 +58,7 @@ import { FutureselfProfileSheet } from "@/components/futureself-profile-sheet";
 import { FutureselfSettingsSheet } from "@/components/futureself-settings-sheet";
 import { TransmissionShareCard } from "@/components/transmission-share-card";
 import { MemoryReadout } from "@/components/memory-readout";
+import { BottomNav } from "@/components/bottom-nav";
 import { styles } from "@/components/futureself-home.styles";
 import { isLocalMode } from "@/lib/ai";
 import { generateLocalTransmission } from "@/lib/local-llm";
@@ -989,8 +991,20 @@ export function FutureselfHome({
           />
         ) : null}
 
+        {shouldShowSystemDepth && persona ? (
+          <RitualState
+            persona={persona}
+            recentChoices={(
+              (state as unknown as {
+                recentChoices?: Array<{ choice: Choice; dateKey: string }>;
+              }).recentChoices ?? []
+            ).slice(0, 7)}
+          />
+        ) : null}
+
         <ProgressionSection
           constellation={state.constellation}
+          divergenceScore={persona?.timelineDivergenceScore ?? 0}
           nextUnlock={nextUnlock}
           shouldShowStoryDepth={shouldShowStoryDepth}
           shouldShowSystemDepth={shouldShowSystemDepth}
@@ -999,7 +1013,7 @@ export function FutureselfHome({
 
         {shouldShowStoryDepth ? (
           <StorySection
-            description="These are the lines your next transmissions can tug on."
+            description="Lines your next transmissions can tug on."
             items={state.openThreads.map((thread) => ({
               id: thread.id,
               castMember: thread.castMember,
@@ -1013,7 +1027,7 @@ export function FutureselfHome({
         {shouldShowStoryDepth ? (
           <View style={styles.memoryArchiveEntryRow}>
             <Text style={styles.memoryArchiveEntryCopy}>
-              Build a fuller memory practice with pinned transmissions and recent lines in one place.
+              Pin transmissions and revisit recent lines in one place.
             </Text>
             <Pressable
               onPress={() => router.push("./archive")}
@@ -1090,6 +1104,8 @@ export function FutureselfHome({
           />
         </View>
       ) : null}
+
+      <BottomNav />
     </View>
   );
 }

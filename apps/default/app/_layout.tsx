@@ -54,10 +54,17 @@ export default function RootLayout() {
                     <Stack.Screen name="index" options={{ headerShown: false }} />
                     <Stack.Screen name="landing" options={{ headerShown: false }} />
                     <Stack.Screen
+                        name="constellation"
+                        options={{
+                            title: "Constellation",
+                            headerShown: false,
+                        }}
+                    />
+                    <Stack.Screen
                         name="archive"
                         options={{
                             title: "Archive",
-                            headerShown: true,
+                            headerShown: false,
                             headerTransparent: true,
                             headerShadowVisible: false,
                             headerTintColor: "#F8F0DE",

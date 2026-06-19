@@ -136,12 +136,15 @@ These phases assume Tracks A + B as the core submission. Track C is a stretch la
 
 ### Phase 2 — On-device TTS
 - ✅ `@qvac/sdk` installed in `apps/default`
-- ✅ `lib/qvac.ts` written (all four hooks: useQVACModel, useLocalTTS, useLocalSTT, useQVACChat)
+- ✅ `lib/qvac.ts` written (all four hooks: useQVACModel, useLocalTTS, useLocalSTT, useQVACChat, useLocalEmbeddings)
 - ✅ Wire loadModel/unloadModel in useQVACModel (real SDK calls via dynamic import)
 - ✅ Wire textToSpeech in useLocalTTS (PCM→WAV conversion, 24kHz mono)
 - ✅ Pre-warm hook (`useQVACPrewarm`) loads LLM + TTS + STT on app start
 - ✅ Cold-start progress UI (`ColdStartProgress` component, wired into `index.tsx` splash)
-- ⏳ Replace ElevenLabs call in `game.transmission.ts` and `voicemail.native.ts` with a client-side TTS call (parallel local path exists, cloud pipeline still active)
+- ✅ Pre-generation: TTS runs when transmission text arrives (not on play tap) via `hooks/use-transmission-audio.ts`
+- ✅ File-based playback: WAV read from `audio-cache.ts` disk path, no base64-in-memory
+- ✅ Auto-retry: max 3 attempts when TTS model becomes ready after cold start
+- ✅ Shorter transmissions: prompt trimmed from 170-240 to 80-120 words
 - **Deliverable:** End-to-end on-device transmission on iOS and Android, with a "voice pre-loading" UX
 
 ### Phase 3 — On-device LLM (full offline)
@@ -153,6 +156,19 @@ These phases assume Tracks A + B as the core submission. Track C is a stretch la
 - ✅ Cloud pipeline remains as parallel path (switched via `EXPO_PUBLIC_AI_PROVIDER` environment variable)
 - ⏳ Convex as thin optional sync layer (cross-device)
 - **Deliverable:** Network-kill demo: app still works with Wi-Fi and cellular disabled
+
+### Phase 3.5 — On-device Embeddings (Model Usage criterion)
+
+- ✅ `useLocalEmbeddings` hook in `lib/qvac.ts` (parallels `useQVACChat`)
+- ✅ `cosineSimilarity` utility for vector comparison
+- ✅ `hooks/use-related-signals.ts` — computes semantically related transmissions
+- ✅ In-memory embedding cache (Map) to avoid recomputation
+- ✅ Graceful keyword-based fallback on web (where embeddings aren't available)
+- ✅ UI integration: "Related signals" section in memory archive expanded view
+  - Similarity bar visualization with percentage match
+  - Cast member + title for each related signal
+  - Only renders after layout measurement (no flash)
+- **Deliverable:** Memory archive surfaces semantically related past transmissions, demonstrating creative use of a 4th QVAC model capability. No cloud embeddings API.
 
 ### Phase 4 — STT (Track B)
 - ✅ `useLocalSTT` hook wired with both `transcribe()` and `transcribeFromUri()` (real `@qvac/sdk` calls)
@@ -200,8 +216,20 @@ QVAC_HTTP_URL=http://localhost:11434/v1
 
 - Not shipping a crypto wallet. QVAC's "Machine Economy" is a future stretch, not a day-one requirement.
 - Not deprecating Convex entirely. It stays as an optional cross-device sync layer.
-- Not changing the visual layer (avatars, constellation, transmission player) beyond what is required for the network-kill and offline-state UI.
 - Not rewriting the AI provider chain. We add a local path, not a replacement.
+- **Note on visual layer:** The visual layer *was* significantly upgraded (see Phase 6.5 below) to make the voice-first experience land, but the AI provider chain and core transmission logic were not rewritten — only the rendering and interaction model around them.
+
+### Phase 6.5 — UX overhaul (voice-first, visual game state)
+
+The post-on-device work surfaced a gap: the original UI was text-first, which undercuts the "voice-driven" pitch. The following additions landed in parallel with the QVAC integration:
+
+- ✅ Constellation star map (`components/constellation-map.tsx`) — animated visual nodes with connection lines, glow effects, and divergence-based warping. Layout-robust via `onLayout`.
+- ✅ Divergence gauge (`components/divergence-gauge.tsx`) — visual arc with animated needle, color-shifting segments, tap-to-reveal tooltip explaining how each choice affects divergence.
+- ✅ Visual choice cards with icons, color gradients, and on-hover divergence impact previews.
+- ✅ Tab navigation (`components/bottom-nav.tsx`) — Today / Voices / Archive, replaces endless scroll.
+- ✅ Multi-agent voicemail pipeline visible — per-step icons for Reader / Finder / Writer / Critic / Voice / Assembler, plus "Director's notes" from the critique agent.
+- ✅ Bottom-nav and unified design language across Today / Constellation / Archive / Voicemail screens.
+- ✅ Skill-based progression: consequence chains (3+ same-direction choices = compound reward), choice-pattern bars, streak risk indicator with safe/warning/critical states.
 
 ---
 

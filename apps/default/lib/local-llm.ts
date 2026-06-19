@@ -182,7 +182,8 @@ ${patternBlock}
 CRITICAL:
 - actionPrompt MUST be a specific, time-bound, observable behavior.
 - Use the player's ACTUAL context.
-- 170-240 words. Feel like a specific person who knows you.
+- 80-120 words. Feel like a voicemail from a specific person who knows you, not an essay.
+- Speak as if leaving a voice message. Conversational, direct, intimate.
 
 Return exactly:
 {"title":"...","text":"...","actionPrompt":"one specific, observable behavior","cliffhanger":"accountability hook tied to tonight's action"}`;
@@ -203,21 +204,20 @@ function parseLocalTransmission(value: unknown): LocalTransmissionResult | null 
 function localFallbackTransmission(context: LocalLLMOptions["context"], castMember: CastMember): LocalTransmissionResult {
   const word = context.checkIn?.word ?? "between things";
   const avoiding = context.persona.avoiding || "the thing you keep sidestepping";
-  const chapter = context.persona.currentChapter || "this part of your life";
   const name = context.persona.name;
   if (castMember === "future_partner") {
     return {
       title: "I kept thinking about today",
-      text: `${name}, you called today ${word}. I noticed. You are avoiding: ${avoiding}. I know because I did the same thing. ${chapter} is not going to resolve itself while you wait. Tonight, say the true sentence out loud. Not the version that makes you look brave. The version that makes you feel seen.`,
-      actionPrompt: "Say the one true sentence you've been editing before it leaves your mouth. Out loud. Tonight.",
-      cliffhanger: "If you do it, tomorrow I can tell you what shifts when you stop performing and start speaking.",
+      text: `${name}, you called today ${word}. I noticed. You're avoiding ${avoiding}. I know because I did the same thing. Tonight, say the true sentence out loud. Not the version that makes you look brave. The version that makes you feel seen.`,
+      actionPrompt: "Say the one true sentence you've been editing. Out loud. Tonight.",
+      cliffhanger: "Do it, and tomorrow I'll tell you what shifts when you stop performing.",
     };
   }
   return {
     title: "The echo from here",
-    text: `${name}, today was ${word}. You are in ${chapter}. You are avoiding ${avoiding}. These are not judgments — they are coordinates. The future you want is not built by people who felt ready. It is built by people who did the uncomfortable thing before they felt like it. Tonight, one concrete move.`,
-    actionPrompt: `Make one concrete move related to what you are avoiding: ${avoiding}. Something you can photograph, text, submit, send, or say.`,
-    cliffhanger: "Do it tonight, and tomorrow I can tell you what changed the first time you moved before you felt ready.",
+    text: `${name}, today was ${word}. You're avoiding ${avoiding}. These aren't judgments — they're coordinates. The future you want isn't built by people who felt ready. It's built by people who moved before they felt like it. Tonight, one concrete move.`,
+    actionPrompt: `Make one move related to what you're avoiding: ${avoiding}. Something you can photograph, text, or say.`,
+    cliffhanger: "Do it tonight, and tomorrow I'll tell you what changed.",
   };
 }
 

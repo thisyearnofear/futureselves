@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeIn, FadeInUp, FadeOut, ZoomIn, useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInUp, FadeOut, ZoomIn, SlideInDown, useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing, withRepeat, withSequence } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import type { Id } from "@/convex/_generated/dataModel";
 import type {
@@ -25,6 +25,8 @@ import type {
 } from "@/lib/futureself";
 import { formatCastMember } from "@/lib/futureself";
 import { AvatarReveal } from "@/components/avatar-reveal";
+import { ConstellationMap } from "@/components/constellation-map";
+import { DivergenceGauge } from "@/components/divergence-gauge";
 import { TransmissionPlayer } from "@/components/transmission-player";
 import { styles } from "@/components/futureself-home.styles";
 
@@ -183,8 +185,8 @@ export function HeroSection({
       </Text>
       <Text style={styles.heroCopy}>
         {hasTransmissionToday
-          ? "Make one small choice. Tomorrow responds."
-          : "One word. Your future self will do the rest."}
+          ? "Make one small choice."
+          : "Your future self does the rest."}
       </Text>
 
       {isDebugMode && forcedCastMember ? (
@@ -472,12 +474,12 @@ export function ReceiveSignalSection({
     >
       <View style={styles.receiveHeader}>
         <View style={styles.receiveIcon}>
-          <Ionicons name="key-outline" size={22} color="#F7D38B" />
+          <Ionicons name="key" size={22} color="#F7D38B" />
         </View>
         <View style={styles.receiveHeaderCopy}>
-          <Text style={styles.sectionTitle}>Give today one word.</Text>
+          <Text style={styles.sectionTitle}>One word.</Text>
           <Text style={styles.sectionCopy}>
-            One word is enough. Future-you will find the rest.
+            Future-you does the rest.
           </Text>
         </View>
       </View>
@@ -600,13 +602,23 @@ export function ChoiceSection({
   onSelectThread,
   onChoice,
 }: ChoiceSectionProps) {
+  const [hoveredChoice, setHoveredChoice] = useState<Choice | null>(null);
+
   return (
-    <Animated.View entering={FadeInUp.delay(300)} style={styles.choiceCard}>
-      <Text style={styles.sectionTitle}>Choose the timeline lean.</Text>
-      <Text style={styles.sectionCopy}>{transmission.actionPrompt}</Text>
-      {openThreads.length > 0 ? (
+    <Animated.View entering={SlideInDown.delay(300).duration(400)} style={styles.choiceCard}>
+      <View style={styles.choiceHeaderRow}>
+        <View style={styles.choiceHeaderIcon}>
+          <Ionicons name="git-branch-outline" size={20} color="#F7D38B" />
+        </View>
+        <View style={styles.choiceHeaderCopy}>
+          <Text style={styles.sectionTitle}>What moves tomorrow?</Text>
+          <Text style={styles.sectionCopy}>{transmission.actionPrompt}</Text>
+        </View>
+      </View>
+
+      {openThreads.length > 0 && (hoveredChoice === "repair" || hoveredChoice === "release") ? (
         <View style={styles.threadTargetSection}>
-          <Text style={styles.nudgeLabel}>Aim the move at a thread</Text>
+          <Text style={styles.nudgeLabel}>Choose which thread to aim this at</Text>
           <View style={styles.threadTargetGrid}>
             {openThreads.map((thread) => (
               <Pressable
@@ -640,52 +652,70 @@ export function ChoiceSection({
           </View>
         </View>
       ) : null}
+
+      {/* Visual choice grid */}
       <View style={styles.choiceGrid}>
-        <Pressable
-          onPress={() => onChoice("toward")}
-          style={[
-            styles.choiceButtonHero,
-            selectedChoice === "toward" && styles.choiceButtonHeroActive,
-          ]}
-        >
-          <Text
-            style={[
-              styles.choiceTextHero,
-              selectedChoice === "toward" && { color: "#101320" },
-            ]}
-          >
-            {choiceCopy.toward}
-          </Text>
-          <Text style={[styles.choiceHintHero, selectedChoice === "toward" && { color: "#101320", opacity: 0.7 }]}>
-            {choiceHints.toward}
-          </Text>
-        </Pressable>
+        {/* Hero choice: Toward */}
+        <VisualChoiceCard
+          choice="toward"
+          label={choiceCopy.toward}
+          hint={choiceHints.toward}
+          icon="arrow-forward-circle"
+          color="#F7D38B"
+          divergenceImpact="settles the line"
+          isSelected={selectedChoice === "toward"}
+          isHovered={hoveredChoice === "toward"}
+          onHover={setHoveredChoice}
+          onChoice={onChoice}
+          isHero
+        />
+
+        {/* Secondary choices */}
         <View style={styles.choiceSecondaryRow}>
-          {(["steady", "release", "repair"] as Array<Choice>).map((choice) => (
-            <Pressable
-              key={choice}
-              onPress={() => onChoice(choice)}
-              style={[
-                styles.choiceButtonSecondary,
-                selectedChoice === choice && styles.choiceButtonSecondaryActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.choiceTextSecondary,
-                  selectedChoice === choice && styles.choiceTextActive,
-                ]}
-              >
-                {choiceCopy[choice]}
-              </Text>
-            </Pressable>
-          ))}
+          <VisualChoiceCard
+            choice="steady"
+            label={choiceCopy.steady}
+            hint={choiceHints.steady}
+            icon="pause-circle"
+            color="#AEB6D4"
+            divergenceImpact="holds steady"
+            isSelected={selectedChoice === "steady"}
+            isHovered={hoveredChoice === "steady"}
+            onHover={setHoveredChoice}
+            onChoice={onChoice}
+          />
+          <VisualChoiceCard
+            choice="release"
+            label={choiceCopy.release}
+            hint={choiceHints.release}
+            icon="close-circle"
+            color="#FF9A9A"
+            divergenceImpact="softens, invites strangeness"
+            isSelected={selectedChoice === "release"}
+            isHovered={hoveredChoice === "release"}
+            onHover={setHoveredChoice}
+            onChoice={onChoice}
+          />
+          <VisualChoiceCard
+            choice="repair"
+            label={choiceCopy.repair}
+            hint={choiceHints.repair}
+            icon="build-circle"
+            color="#A9F7B5"
+            divergenceImpact="settles slightly"
+            isSelected={selectedChoice === "repair"}
+            isHovered={hoveredChoice === "repair"}
+            onHover={setHoveredChoice}
+            onChoice={onChoice}
+          />
         </View>
       </View>
+
+      {/* Choice outcome */}
       {choiceOutcome ? (
-        <View style={styles.choiceOutcomeCard}>
+        <Animated.View entering={ZoomIn.duration(300).springify().damping(14)} style={styles.choiceOutcomeCard}>
           <View style={styles.choiceOutcomeHeader}>
-            <Ionicons name="sparkles-outline" size={16} color="#F7D38B" />
+            <Ionicons name="sparkles" size={16} color="#F7D38B" />
             <Text style={styles.choiceOutcomeTitle}>{choiceOutcome.summary}</Text>
           </View>
           <Text style={styles.choiceOutcomeBody}>{choiceOutcome.detail}</Text>
@@ -694,35 +724,124 @@ export function ChoiceSection({
           ) : null}
           <Text style={styles.choiceOutcomeMeta}>{choiceOutcome.stabilityImpact}</Text>
           <Text style={styles.choiceOutcomeMeta}>{choiceOutcome.voiceShift}</Text>
-        </View>
+        </Animated.View>
       ) : null}
+
+      {/* Action nudges */}
       {shouldShowStoryDepth ? (
-        <Text style={styles.nudgeLabel}>If you&apos;re blank, borrow a tiny move:</Text>
-      ) : null}
-      {shouldShowStoryDepth ? (
-        <View style={styles.actionNudgeGrid}>
-          {actionNudges.map((nudge) => (
-            <Pressable
-              key={nudge.label}
-              onPress={() => onChoice(nudge.choice)}
-              style={({ pressed }) => [styles.actionNudge, pressed && styles.pressed]}
-            >
-              <Ionicons name={nudge.icon} size={16} color="#F7D38B" />
-              <Text style={styles.actionNudgeText}>{nudge.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-      {shouldShowSystemDepth ? (
-        <View style={styles.contextNote}>
-          <Ionicons name="git-compare-outline" size={16} color="#AEB6D4" />
-          <Text style={styles.contextNoteText}>
-            Toward, repair, and release help the timeline settle. Skipping the lean
-            leaves more room for the shadow later.
-          </Text>
-        </View>
+        <>
+          <Text style={styles.nudgeLabel}>Borrow a tiny move</Text>
+          <View style={styles.actionNudgeGrid}>
+            {actionNudges.map((nudge) => (
+              <Pressable
+                key={nudge.label}
+                onPress={() => onChoice(nudge.choice)}
+                style={({ pressed }) => [styles.actionNudge, pressed && styles.pressed]}
+              >
+                <Ionicons name={nudge.icon} size={16} color="#F7D38B" />
+                <Text style={styles.actionNudgeText}>{nudge.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
       ) : null}
     </Animated.View>
+  );
+}
+
+interface VisualChoiceCardProps {
+  choice: Choice;
+  label: string;
+  hint: string;
+  icon: string;
+  color: string;
+  divergenceImpact: string;
+  isSelected: boolean;
+  isHovered: boolean;
+  onHover: (choice: Choice | null) => void;
+  onChoice: (choice: Choice) => void;
+  isHero?: boolean;
+}
+
+function VisualChoiceCard({
+  choice,
+  label,
+  hint,
+  icon,
+  color,
+  divergenceImpact,
+  isSelected,
+  isHovered,
+  onHover,
+  onChoice,
+  isHero,
+}: VisualChoiceCardProps) {
+  // Subtle hover glow animation
+  const glowValue = useSharedValue(0);
+  useEffect(() => {
+    glowValue.value = withTiming(isHovered ? 0.3 : 0, { duration: 200 });
+  }, [isHovered, glowValue]);
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glowValue.value }));
+
+  if (isHero) {
+    return (
+      <Pressable
+        onPressIn={() => onHover(choice)}
+        onPressOut={() => onHover(null)}
+        onPress={() => {
+          if (Platform.OS !== "web") void Haptics.selectionAsync();
+          onChoice(choice);
+        }}
+        style={[
+          styles.choiceButtonHero,
+          isSelected && styles.choiceButtonHeroActive,
+          { borderColor: isSelected ? color : "rgba(247,211,139,0.35)" },
+        ]}
+      >
+        <Animated.View style={[StyleSheet.absoluteFill, glowStyle, { backgroundColor: color, borderRadius: 20 }]} pointerEvents="none" />
+        <View style={styles.choiceIconWrap}>
+          <Ionicons name={icon as any} size={28} color={isSelected ? "#101320" : color} />
+        </View>
+        <Text style={[styles.choiceTextHero, isSelected && { color: "#101320" }]}>
+          {label}
+        </Text>
+        <Text style={[styles.choiceHintHero, isSelected && { color: "#101320", opacity: 0.7 }]}>
+          {hint}
+        </Text>
+        {isHovered ? (
+          <View style={styles.divergencePreview}>
+            <Ionicons name="trending-down" size={10} color={isSelected ? "#101320" : color} />
+            <Text style={[styles.divergencePreviewText, isSelected && { color: "#101320" }]}>
+              {divergenceImpact}
+            </Text>
+          </View>
+        ) : null}
+      </Pressable>
+    );
+  }
+
+  return (
+    <Pressable
+      onPressIn={() => onHover(choice)}
+      onPressOut={() => onHover(null)}
+      onPress={() => {
+        if (Platform.OS !== "web") void Haptics.selectionAsync();
+        onChoice(choice);
+      }}
+      style={[
+        styles.choiceButtonSecondary,
+        isSelected && { backgroundColor: `${color}22`, borderColor: `${color}66` },
+      ]}
+    >
+      <Animated.View style={[StyleSheet.absoluteFill, glowStyle, { backgroundColor: color, borderRadius: 16 }]} pointerEvents="none" />
+      <Ionicons name={icon as any} size={18} color={isSelected ? color : "#8F96B4"} />
+      <Text style={[styles.choiceTextSecondary, isSelected && { color }]}>
+        {label}
+      </Text>
+      {isHovered ? (
+        <Text style={styles.choiceHintSmall}>{divergenceImpact}</Text>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -827,23 +946,44 @@ export function ProgressionSection({
   nextUnlock,
   systemSignals,
   constellation,
-}: ProgressionSectionProps) {
+  divergenceScore,
+}: ProgressionSectionProps & { divergenceScore?: number }) {
   if (!shouldShowStoryDepth) return null;
 
   return (
     <View style={styles.unlockCard}>
       <View style={styles.unlockHeader}>
-        <Text style={styles.sectionTitle}>A voice is moving closer.</Text>
+        <Text style={styles.sectionTitle}>The constellation</Text>
         <Text style={styles.sectionCopy}>
-          You do not need the whole map yet. One nearby voice is enough.
+          Each voice is a node. Your choices shape which ones draw close.
         </Text>
       </View>
 
+      {/* Constellation star map */}
+      {shouldShowSystemDepth ? (
+        <Animated.View entering={ZoomIn.duration(600).springify().damping(14)} style={styles.constellationWrap}>
+          <ConstellationMap
+            stars={constellation}
+            divergenceScore={divergenceScore ?? 0}
+            size={280}
+            nextUnlockLabel={nextUnlock?.label}
+          />
+        </Animated.View>
+      ) : null}
+
+      {/* Divergence gauge */}
+      {shouldShowSystemDepth ? (
+        <Animated.View entering={FadeIn.delay(200).duration(400)} style={styles.gaugeWrap}>
+          <DivergenceGauge score={divergenceScore ?? 0} label="timeline" />
+        </Animated.View>
+      ) : null}
+
+      {/* Next unlock */}
       {nextUnlock ? (
-        <View style={styles.nextUnlockCard}>
+        <Animated.View entering={FadeInUp.delay(200).duration(300)} style={styles.nextUnlockCard}>
           <View style={styles.nextUnlockHeader}>
             <View style={styles.nextUnlockBadge}>
-              <Ionicons name="sparkles-outline" size={15} color="#101320" />
+              <Ionicons name="sparkles" size={15} color="#101320" />
             </View>
             <View style={styles.nextUnlockCopy}>
               <Text style={styles.nextUnlockTitle}>Nearing: {nextUnlock.label}</Text>
@@ -851,56 +991,7 @@ export function ProgressionSection({
             </View>
           </View>
           <Text style={styles.nextUnlockMood}>{nextUnlock.emotionalRegister}</Text>
-        </View>
-      ) : null}
-
-      {shouldShowSystemDepth ? (
-        <View
-          style={[
-            styles.systemSignalsCard,
-            systemSignals.approachingEventTone === "warning"
-              ? styles.systemSignalsCardWarning
-              : systemSignals.approachingEventTone === "rare"
-                ? styles.systemSignalsCardRare
-                : null,
-          ]}
-        >
-          <Text style={styles.systemSignalsTitle}>What the system sees</Text>
-          <View style={styles.systemSignalsEventCard}>
-            <Text style={styles.systemSignalEyebrow}>Approaching event</Text>
-            <Text style={styles.systemSignalsEventTitle}>
-              {systemSignals.approachingEventTitle}
-            </Text>
-            <Text style={styles.systemSignalsEventBody}>
-              {systemSignals.approachingEventNote}
-            </Text>
-          </View>
-          <View style={styles.systemSignalsList}>
-            <SignalItem
-              eyebrow="Stability"
-              title={systemSignals.stabilityTitle}
-              body={systemSignals.stabilityNote}
-            />
-            <SignalItem
-              eyebrow="Voice pressure"
-              title={systemSignals.voicePressureTitle}
-              body={systemSignals.voicePressureNote}
-            />
-            <SignalItem
-              eyebrow="Threads"
-              title={systemSignals.threadPressureTitle}
-              body={systemSignals.threadPressureNote}
-            />
-          </View>
-        </View>
-      ) : null}
-
-      {shouldShowSystemDepth ? (
-        <View style={styles.voiceGrid}>
-          {constellation.map((star) => (
-            <VoiceOrb key={star.castMember} star={star} />
-          ))}
-        </View>
+        </Animated.View>
       ) : null}
     </View>
   );
@@ -946,8 +1037,8 @@ interface RitualRefinementPromptProps {
 
 export function RitualRefinementPrompt({
   title = "Your first transmission is in motion.",
-  body = "Refine the ritual when you’re ready: voice tone, timeline depth, and rare-voice consent now live in settings.",
-  buttonLabel = "Refine your ritual",
+  body = "Refine voice tone, timeline depth, and rare-voice consent in settings.",
+  buttonLabel = "Refine ritual",
   onOpenSettings,
 }: RitualRefinementPromptProps) {
   return (

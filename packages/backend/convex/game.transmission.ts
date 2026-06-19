@@ -182,7 +182,7 @@ CRITICAL BEHAVIORAL REQUIREMENTS:
 - Use the player's ACTUAL context to generate the action. Reference their specific avoiding, draining, currentChapter, or afraidWontHappen. Do not give generic advice that could apply to anyone.
 - The check-in word is an emotional data point. If they said "exhausted," the transmission should register that weight. If they said "hopeful," notice the shift. Don't just repeat the word — respond to what it reveals.
 - The cliffhanger MUST reference what happens tomorrow based on whether they follow through. Create accountability: "If you do X tonight, tomorrow I can tell you Y" or "If you don't, tomorrow's signal will feel the gap."
-- 170-240 words.
+- 80-120 words. Speak as if leaving a voice message. Conversational, direct, intimate.
 - Must feel like a specific person who knows you, not a fortune cookie.
 - Avoid therapy clichés, vague uplift, or generic self-help cadence.
 

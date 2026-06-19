@@ -421,6 +421,94 @@ function pcmToWav(samples: number[], sampleRate: number): Uint8Array {
   return new Uint8Array(buffer);
 }
 
+// ─── Embeddings (local semantic similarity) ─────────────────────────────────
+
+/**
+ * Hook return value for `useLocalEmbeddings`.
+ *
+ * `embed` generates an embedding vector for a given text using the
+ * on-device QVAC model. Returns a Float32Array of the embedding vector.
+ * On web or when no modelId is provided, it returns `null`.
+ */
+export interface UseLocalEmbeddingsResult {
+  embed: (text: string) => Promise<Float32Array | null>;
+  isReady: boolean;
+}
+
+/**
+ * On-device embeddings hook. Uses QVAC's built-in embedding model
+ * to compute semantic similarity between texts.
+ *
+ * Used by the memory archive to find "related signals" — transmissions
+ * that are semantically similar to the one being viewed.
+ *
+ * Consumer code:
+ *
+ * ```ts
+ * const { embed, isReady } = useLocalEmbeddings(modelId);
+ * const vec = await embed("I'm afraid of being seen");
+ * if (vec) {
+ *   const sim = cosineSimilarity(vec, otherVec);
+ * }
+ * ```
+ */
+export function useLocalEmbeddings(modelId?: string): UseLocalEmbeddingsResult {
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      setIsReady(false);
+      return;
+    }
+    setIsReady(!!modelId);
+  }, [modelId]);
+
+  const embed = useCallback(
+    async (text: string): Promise<Float32Array | null> => {
+      if (Platform.OS === "web") return null;
+      if (!modelId) return null;
+
+      try {
+        const { embed: qvacEmbed } = await import("@qvac/sdk");
+        const result = await qvacEmbed({
+          modelId,
+          text,
+        });
+        // QVAC returns { embedding: number[], stats?: ... }
+        const embedding = (result as { embedding?: number[] })?.embedding;
+        if (embedding) {
+          return new Float32Array(embedding);
+        }
+        return null;
+      } catch (error) {
+        console.warn("[LocalEmbeddings] Embedding failed:", error);
+        return null;
+      }
+    },
+    [modelId],
+  );
+
+  return { embed, isReady };
+}
+
+/**
+ * Compute cosine similarity between two embedding vectors.
+ * Returns a value between -1 and 1 (1 = identical, 0 = unrelated).
+ */
+export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
+  if (a.length !== b.length) return 0;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i]! * b[i]!;
+    normA += a[i]! * a[i]!;
+    normB += b[i]! * b[i]!;
+  }
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  return denom === 0 ? 0 : dot / denom;
+}
+
 // ─── LoRA Adapter (Track C) ───────────────────────────────────────────────────
 
 /**

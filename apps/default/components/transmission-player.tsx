@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import React from "react";
 import {
   ActivityIndicator,
@@ -24,14 +24,15 @@ import AnimatedReanimated, {
   Easing,
   FadeInUp,
   FadeIn,
+  ZoomIn,
+  SlideInDown,
 } from "react-native-reanimated";
 import type { CastMember, TransmissionState } from "@/lib/futureself";
 import { formatCastMember } from "@/lib/futureself";
 import { AvatarReveal } from "@/components/avatar-reveal";
 import { isLocalMode } from "@/lib/ai";
-import { loadQvacSdk } from "@/lib/qvac-sdk-loader";
 import { useLocalTTS } from "@/lib/qvac";
-import { getCachedAudio, setCachedAudio } from "@/lib/audio-cache";
+import { useTransmissionAudio } from "@/hooks/use-transmission-audio";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -117,12 +118,20 @@ export function TransmissionPlayer({
 }: TransmissionPlayerProps) {
   const [isReplyOpen, setIsReplyOpen] = useState(Boolean(transmission.response?.replyNote));
   const [replyNote, setReplyNote] = useState(transmission.response?.replyNote ?? "");
+  const [hasListened, setHasListened] = useState(false);
+  const [showFullText, setShowFullText] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     setReplyNote(transmission.response?.replyNote ?? "");
     setIsReplyOpen(Boolean(transmission.response?.replyNote));
   }, [transmission.response?.replyNote]);
+
+  // Reset listen state when transmission changes
+  useEffect(() => {
+    setHasListened(false);
+    setShowFullText(false);
+  }, [transmission.id]);
 
   const isInArrival = transmission.status === "generating" || transmission.status === "text_ready";
 
@@ -132,6 +141,20 @@ export function TransmissionPlayer({
     if (transmission.status === "generating") return "composing";
     return "text only";
   }, [transmission.audioUrl, transmission.status]);
+
+  const handleAudioComplete = useCallback(() => {
+    setHasListened(true);
+    setShowFullText(true);
+    if (Platform.OS !== "web") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }, []);
+
+  // Teaser: first 2 lines of the transmission
+  const teaserText = useMemo(() => {
+    const lines = transmission.text.split("\n");
+    return lines.slice(0, 2).join("\n").slice(0, 160);
+  }, [transmission.text]);
 
   const driftY = useSharedValue(0);
   useEffect(() => {
@@ -201,32 +224,54 @@ export function TransmissionPlayer({
           text={transmission.text}
           cliffhanger={transmission.cliffhanger}
           audioUrl={transmission.audioUrl}
+          onRevealComplete={() => setShowFullText(true)}
         />
       ) : (
         <>
-          {transmission.audioUrl ? (
-            <AnimatedReanimated.View entering={FadeIn.duration(500)}>
+          {transmission.audioUrl || isLocalMode() ? (
+            <AnimatedReanimated.View entering={ZoomIn.duration(500).springify().damping(14)}>
               <AudioPlayer
-                audioUrl={transmission.audioUrl}
+                audioUrl={transmission.audioUrl ?? ""}
                 title={transmission.title}
                 castMember={transmission.castMember}
                 transmission={transmission}
+                onComplete={handleAudioComplete}
+                hasListened={hasListened}
               />
             </AnimatedReanimated.View>
           ) : (
-            <TextOnlyNotice />
+            <TextOnlyNotice onRetry={undefined} />
           )}
 
-          <AnimatedReanimated.Text entering={FadeIn.delay(800).duration(2400)} style={styles.body}>
-            {transmission.text}
-          </AnimatedReanimated.Text>
-          <AnimatedReanimated.View
-            entering={FadeInUp.delay(1800).duration(1200)}
-            style={[styles.cliffhangerCard, cliffhangerDrift]}
-          >
-            <Ionicons name="moon" size={17} color="#F7D38B" />
-            <Text style={styles.cliffhanger}>{transmission.cliffhanger}</Text>
-          </AnimatedReanimated.View>
+          {/* Text reveal: teaser before listening, full text after */}
+          {!showFullText && !isInArrival ? (
+            <AnimatedReanimated.View entering={FadeIn.delay(400).duration(600)} style={styles.teaserWrap}>
+              <Text style={styles.teaserText} numberOfLines={3}>
+                {teaserText}
+                {teaserText.length < transmission.text.length ? "..." : ""}
+              </Text>
+              <Pressable
+                onPress={() => setShowFullText(true)}
+                style={({ pressed }) => [styles.readFullToggle, pressed && styles.pressed]}
+              >
+                <Ionicons name="reader-outline" size={14} color="#F7D38B" />
+                <Text style={styles.readFullText}>Read full text</Text>
+              </Pressable>
+            </AnimatedReanimated.View>
+          ) : !isInArrival ? (
+            <>
+              <AnimatedReanimated.Text entering={FadeIn.delay(200).duration(1600)} style={styles.body}>
+                {transmission.text}
+              </AnimatedReanimated.Text>
+              <AnimatedReanimated.View
+                entering={FadeInUp.delay(800).duration(1000)}
+                style={[styles.cliffhangerCard, cliffhangerDrift]}
+              >
+                <Ionicons name="moon" size={17} color="#F7D38B" />
+                <Text style={styles.cliffhanger}>{transmission.cliffhanger}</Text>
+              </AnimatedReanimated.View>
+            </>
+          ) : null}
         </>
       )}
 
@@ -255,10 +300,11 @@ export function TransmissionPlayer({
         </Pressable>
       ) : null}
 
-      <AnimatedReanimated.View entering={FadeInUp.delay(240).duration(280)} style={styles.responseCard}>
-        <Text style={styles.responseTitle}>Write back to yourself.</Text>
+      {showFullText && !isInArrival ? (
+        <AnimatedReanimated.View entering={SlideInDown.delay(200).duration(400)} style={styles.responseCard}>
+        <Text style={styles.responseTitle}>Write back.</Text>
         <Text style={styles.responseCopy}>
-          Let the line become a correspondence, not just a message.
+          Make it a conversation.
         </Text>
         {transmission.continuity?.callbackLine ? (
           <Text style={styles.continuityHint}>{transmission.continuity.callbackLine}</Text>
@@ -343,6 +389,7 @@ export function TransmissionPlayer({
           </View>
         ) : null}
       </AnimatedReanimated.View>
+      ) : null}
 
       <View style={styles.brandFooter}>
         <Text style={styles.brandText}>futureself</Text>
@@ -360,6 +407,7 @@ interface ArrivalSequenceProps {
   text: string;
   cliffhanger: string;
   audioUrl: string | null;
+  onRevealComplete?: () => void;
 }
 
 function ArrivalSequence({
@@ -368,6 +416,7 @@ function ArrivalSequence({
   title,
   text,
   cliffhanger,
+  onRevealComplete,
 }: ArrivalSequenceProps) {
   const [phase, setPhase] = useState<ArrivalPhase>("liminal");
   const [whisperText, setWhisperText] = useState("");
@@ -505,10 +554,13 @@ function ArrivalSequence({
   // Transition to complete when text fully revealed
   useEffect(() => {
     if (phase === "reveal" && typewriterPos >= text.length && text.length > 0) {
-      const timeout = setTimeout(() => setPhase("complete"), 600);
+      const timeout = setTimeout(() => {
+        setPhase("complete");
+        onRevealComplete?.();
+      }, 600);
       return () => clearTimeout(timeout);
     }
-  }, [phase, typewriterPos, text]);
+  }, [phase, typewriterPos, text, onRevealComplete]);
 
   return (
     <View style={styles.arrivalShell}>
@@ -571,25 +623,51 @@ function ArrivalSequence({
 
       {/* Subtle hint during early phases */}
       {(phase === "liminal" || phase === "gathering") ? (
-        <Text style={styles.arrivalHint}>Read first. The voice can catch up.</Text>
+        <Text style={styles.arrivalHint}>Listen first. The words will be here after.</Text>
       ) : null}
     </View>
   );
 }
 
-// ─── Text-only notice ────────────────────────────────────────────────────────
+// ─── Text-only notice (with retry) ───────────────────────────────────────────
 
-function TextOnlyNotice() {
+function TextOnlyNotice({ onRetry }: { onRetry?: () => void }) {
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  async function handleRetry() {
+    if (!onRetry) return;
+    setIsRetrying(true);
+    await onRetry();
+    setIsRetrying(false);
+  }
+
   return (
     <View style={styles.playerShellCentered}>
       <View style={[styles.playButton, styles.playButtonMuted]}>
-        <Ionicons name="document-text-outline" size={22} color="#F7D38B" />
+        {isRetrying ? (
+          <ActivityIndicator color="#F7D38B" />
+        ) : (
+          <Ionicons name="document-text-outline" size={22} color="#F7D38B" />
+        )}
       </View>
       <View style={styles.progressColumn}>
-        <Text style={styles.pendingTitle}>Text only.</Text>
-        <Text style={styles.pendingText}>
-          The written transmission landed. Audio was unavailable for this one.
+        <Text style={styles.pendingTitle}>
+          {isRetrying ? "Trying the voice again..." : "Text only for now."}
         </Text>
+        <Text style={styles.pendingText}>
+          {isRetrying
+            ? "Generating audio on-device. This takes a few seconds."
+            : "Audio was unavailable for this transmission."}
+        </Text>
+        {onRetry && !isRetrying ? (
+          <Pressable
+            onPress={handleRetry}
+            style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="refresh-outline" size={14} color="#101320" />
+            <Text style={styles.retryButtonText}>Try voice again</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -602,20 +680,21 @@ interface AudioPlayerProps {
   title: string;
   castMember?: string;
   transmission?: TransmissionState;
+  onComplete?: () => void;
+  hasListened?: boolean;
 }
 
-function AudioPlayer({ audioUrl, title, castMember, transmission }: AudioPlayerProps) {
+function AudioPlayer({ audioUrl, title, castMember, transmission, onComplete, hasListened }: AudioPlayerProps) {
   if (Platform.OS === "web")
-    return <WebAudioPlayer audioUrl={audioUrl} title={title} castMember={castMember} />;
-  // In local mode, generate the WAV on-device via QVAC. The remote
-  // `audioUrl` is not used; we synthesise fresh audio on demand.
+    return <WebAudioPlayer audioUrl={audioUrl} title={title} castMember={castMember} onComplete={onComplete} />;
+  // In local mode, generate the WAV on-device via QVAC with pre-generation.
   if (isLocalMode() && transmission) {
-    return <LocalTTSAudioPlayer transmission={transmission} />;
+    return <LocalAudioController transmission={transmission} onComplete={onComplete} hasListened={hasListened} />;
   }
-  return <NativeAudioPlayer audioUrl={audioUrl} castMember={castMember ?? ""} transmission={transmission!} />;
+  return <NativeAudioPlayer audioUrl={audioUrl} castMember={castMember ?? ""} transmission={transmission!} onComplete={onComplete} />;
 }
 
-function WebAudioPlayer({ audioUrl }: AudioPlayerProps) {
+function WebAudioPlayer({ audioUrl, onComplete }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -638,6 +717,7 @@ function WebAudioPlayer({ audioUrl }: AudioPlayerProps) {
       setIsPlaying(false);
       setProgress(0);
       setCurrentTime(0);
+      onComplete?.();
     };
     audioRef.addEventListener("loadedmetadata", onMeta);
     audioRef.addEventListener("timeupdate", onTime);
@@ -648,7 +728,7 @@ function WebAudioPlayer({ audioUrl }: AudioPlayerProps) {
       audioRef.removeEventListener("ended", onEnded);
       audioRef.pause();
     };
-  }, [audioRef]);
+  }, [audioRef, onComplete]);
 
   function togglePlayback() {
     if (!audioRef) return;
@@ -686,16 +766,38 @@ function WebAudioPlayer({ audioUrl }: AudioPlayerProps) {
   );
 }
 
-function NativeAudioPlayer({ audioUrl, castMember, transmission }: { audioUrl: string; castMember: string; transmission?: TransmissionState }) {
+function NativeAudioPlayer({ audioUrl, castMember, transmission, onComplete }: { audioUrl: string; castMember: string; transmission?: TransmissionState; onComplete?: () => void }) {
   const player = useAudioPlayer(audioUrl);
   const status = useAudioPlayerStatus(player);
   const [hasStarted, setHasStarted] = useState(false);
   const [audioArrived, setAudioArrived] = useState(false);
   const [showArrivalNote, setShowArrivalNote] = useState(false);
+  const [hasEnded, setHasEnded] = useState(false);
   const arrivalOpacity = useRef(new Animated.Value(0)).current;
 
   const ambientSource = getAmbientSource(castMember);
   const ambientPlayer = useAudioPlayer(ambientSource);
+
+  // Waveform animation
+  const waveScale = useSharedValue(0.3);
+  useEffect(() => {
+    if (status.playbackState === "playing") {
+      waveScale.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 400, easing: Easing.inOut(Easing.quad) }),
+          withTiming(0.5, { duration: 400, easing: Easing.inOut(Easing.quad) }),
+        ),
+        -1,
+        false,
+      );
+    } else {
+      waveScale.value = withTiming(0.3, { duration: 300 });
+    }
+  }, [status.playbackState, waveScale]);
+
+  const waveStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: waveScale.value }],
+  }));
 
   useEffect(() => {
     if (ambientPlayer) {
@@ -731,10 +833,13 @@ function NativeAudioPlayer({ audioUrl, castMember, transmission }: { audioUrl: s
           });
         }
       }
+    } else if (status.playbackState === "stopped" && hasStarted && !hasEnded) {
+      setHasEnded(true);
+      onComplete?.();
     } else {
       ambientPlayer?.pause();
     }
-  }, [status.playbackState, ambientPlayer, audioArrived, transmission?.status, arrivalOpacity]);
+  }, [status.playbackState, ambientPlayer, audioArrived, transmission?.status, arrivalOpacity, hasStarted, hasEnded, onComplete]);
 
   async function togglePlayback() {
     if (status.playbackState === "playing") {
@@ -763,12 +868,25 @@ function NativeAudioPlayer({ audioUrl, castMember, transmission }: { audioUrl: s
 
         <View style={styles.playerControls}>
           <View style={styles.playerStatusRowCentered}>
+            {/* Animated waveform bars */}
+            <View style={styles.waveformRow}>
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                <AnimatedReanimated.View
+                  key={i}
+                  style={[
+                    styles.waveformBar,
+                    { height: 6 + (i % 3) * 8 },
+                    i % 2 === 0 ? waveStyle : null,
+                  ]}
+                />
+              ))}
+            </View>
             <Text style={styles.playerStatusText}>
               {status.playbackState === "playing"
                 ? "Listening to the future..."
                 : hasStarted
                   ? "Paused"
-                  : "Ready"}
+                  : "Tap to hear the voice"}
             </Text>
             <Text style={styles.timeText}>
               {formatTime(status.currentTime)} / {formatTime(status.duration)}
@@ -776,7 +894,14 @@ function NativeAudioPlayer({ audioUrl, castMember, transmission }: { audioUrl: s
           </View>
 
           <View style={styles.progressBarBg}>
-            <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+            <AnimatedReanimated.View
+              style={[
+                styles.progressBarFill,
+                {
+                  width: `${progress * 100}%`,
+                },
+              ]}
+            />
           </View>
         </View>
       </View>
@@ -784,7 +909,7 @@ function NativeAudioPlayer({ audioUrl, castMember, transmission }: { audioUrl: s
       {showArrivalNote ? (
         <Animated.View style={[styles.arrivalToast, { opacity: arrivalOpacity }]}>
           <Ionicons name="volume-high-outline" size={13} color="#C8D4E8" />
-          <Text style={styles.arrivalToastText}>The voice caught up.</Text>
+          <Text style={styles.arrivalToastText}>The voice has arrived.</Text>
         </Animated.View>
       ) : null}
     </>
@@ -806,150 +931,91 @@ function formatTime(seconds: number): string {
 // ─── Local TTS Player ────────────────────────────────────────────────────────
 
 /**
- * On-device TTS player. Used when `EXPO_PUBLIC_AI_PROVIDER === "local"`.
- * Loads (or generates) the WAV bytes for the transmission text via
- * QVAC's `useLocalTTS` hook, caches them in the persona-scoped store,
- * and plays the audio through `expo-audio` via a data: URI.
+ * LocalAudioController — uses pre-generation via useTransmissionAudio hook.
+ *
+ * When the transmission text arrives, TTS generation kicks off automatically
+ * in the background. The user sees a "preparing voice" state, and when
+ * audio is ready, the NativeAudioPlayer takes over with file-based playback.
+ *
+ * Falls back to TextOnlyNotice with retry if generation fails.
  */
-function LocalTTSAudioPlayer({ transmission }: { transmission: TransmissionState }) {
-  const [modelId, setModelId] = useState<string | null>(null);
-  const [wavUri, setWavUri] = useState<string | null>(null);
-  const [isPreparing, setIsPreparing] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [hasStarted, setHasStarted] = useState(false);
-  const personaId = transmission.id; // Used as cache key scope; refine if a real persona id is available
-  const { speak, isReady } = useLocalTTS(modelId ?? undefined);
+function LocalAudioController({
+  transmission,
+  onComplete,
+  hasListened,
+}: {
+  transmission: TransmissionState;
+  onComplete?: () => void;
+  hasListened?: boolean;
+}) {
+  // The TTS model ID comes from the prewarm context. We pass null here
+  // and the hook will use the useLocalTTS hook internally. The model
+  // should already be loaded by the prewarm system.
+  const ttsModelId = "chatterbox"; // descriptor constant
+  const ttsModelReady = true; // prewarm ensures this; the hook handles re-checks
+  const audio = useTransmissionAudio(transmission, ttsModelId, ttsModelReady);
 
-  // Load the model on mount (native only).
+  // Animated breathing orb for the "generating" state
+  const orbPulse = useSharedValue(1);
   useEffect(() => {
-    if (Platform.OS === "web") return;
-    let mounted = true;
-    (async () => {
-      try {
-        const { loadModel } = await loadQvacSdk();
-        // `chatterbox` is the model descriptor constant from the registry.
-        const id = await loadModel({
-          // @ts-expect-error - registry descriptor constant typing varies by version
-          modelSrc: "chatterbox",
-        });
-        if (mounted) setModelId(id);
-      } catch (e) {
-        if (mounted) setErrorMsg(e instanceof Error ? e.message : String(e));
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // Generate (or fetch from cache) the WAV bytes on demand.
-  async function ensureWav() {
-    if (wavUri) return wavUri;
-    if (!isReady || !modelId) return null;
-    setIsPreparing(true);
-    try {
-      const cacheKeyText = transmission.text;
-      const cached = await getCachedAudio(personaId, cacheKeyText);
-      let bytes: Uint8Array | null = null;
-      if (cached) {
-        // Read the WAV file from disk.
-        const FileSystem = await import("expo-file-system/legacy");
-        const b64 = await FileSystem.readAsStringAsync(cached.filePath, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        const binStr = atob(b64);
-        bytes = new Uint8Array(binStr.length);
-        for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
-      } else {
-        bytes = await speak(transmission.text);
-        if (bytes) {
-          await setCachedAudio(personaId, cacheKeyText, bytes);
-        }
-      }
-      if (!bytes) return null;
-      // Build a data URI so expo-audio can play it.
-      let bin = "";
-      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
-      const base64 = globalThis.btoa?.(bin) ?? uint8ToBase64(bytes);
-      const uri = `data:audio/wav;base64,${base64}`;
-      setWavUri(uri);
-      return uri;
-    } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : String(e));
-      return null;
-    } finally {
-      setIsPreparing(false);
+    if (audio.state === "generating") {
+      orbPulse.value = withRepeat(
+        withSequence(
+          withTiming(0.7, { duration: 800, easing: Easing.inOut(Easing.quad) }),
+          withTiming(1, { duration: 800, easing: Easing.inOut(Easing.quad) }),
+        ),
+        -1,
+        false,
+      );
     }
-  }
+  }, [audio.state, orbPulse]);
+  const orbStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: orbPulse.value }],
+  }));
 
-  if (errorMsg) {
+  if (audio.state === "error") {
     return (
-      <View style={styles.playerShellCentered}>
-        <View style={[styles.playButton, styles.playButtonMuted]}>
-          <Ionicons name="alert-circle-outline" size={22} color="#FF9A9A" />
-        </View>
-        <View style={styles.progressColumn}>
-          <Text style={styles.pendingTitle}>Local voice unavailable.</Text>
-          <Text style={styles.pendingText}>{errorMsg}</Text>
-        </View>
-      </View>
+      <TextOnlyNotice onRetry={audio.retryCount < 3 ? audio.retry : undefined} />
     );
   }
 
-  if (wavUri) {
+  if (audio.state === "ready" && audio.fileUri) {
     return (
       <NativeAudioPlayer
-        audioUrl={wavUri}
+        audioUrl={audio.fileUri}
         castMember={transmission.castMember}
         transmission={transmission}
+        onComplete={onComplete}
       />
     );
   }
 
+  // Generating or idle state — show a visual "preparing" state
   return (
-    <View style={styles.nativePlayerShell}>
-      <Pressable
-        onPress={async () => {
-          if (Platform.OS !== "web") await Haptics.selectionAsync();
-          setHasStarted(true);
-          await ensureWav();
-        }}
-        style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
-      >
-        {isPreparing ? (
-          <ActivityIndicator color="#101320" />
-        ) : (
-          <Ionicons name="play" size={28} color="#101320" />
-        )}
-      </Pressable>
-      <View style={styles.playerControls}>
-        <View style={styles.playerStatusRowCentered}>
-          <Text style={styles.playerStatusText}>
-            {isPreparing
-              ? "Synthesizing voice locally…"
-              : hasStarted
-                ? "Loading voice…"
-                : "Tap to hear the voice on this device"}
-          </Text>
+    <View style={styles.preparingShell}>
+      <AnimatedReanimated.View style={[styles.preparingOrb, orbStyle]} />
+      <View style={styles.preparingCopy}>
+        <Text style={styles.preparingTitle}>
+          {audio.state === "generating" ? "Synthesizing voice on-device..." : "Preparing voice..."}
+        </Text>
+        <Text style={styles.preparingHint}>
+          {hasListened
+            ? "Audio will be ready shortly."
+            : "The voice is being composed locally. No bytes leave your device."}
+        </Text>
+        {/* Progress dots */}
+        <View style={styles.preparingDots}>
+          {[0, 1, 2].map((i) => (
+            <AnimatedReanimated.View
+              key={i}
+              entering={FadeIn.delay(i * 200).duration(300)}
+              style={styles.preparingDot}
+            />
+          ))}
         </View>
       </View>
     </View>
   );
-}
-
-function uint8ToBase64(bytes: Uint8Array): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  let result = "";
-  for (let i = 0; i < bytes.length; i += 3) {
-    const b0 = bytes[i]!;
-    const b1 = i + 1 < bytes.length ? bytes[i + 1]! : 0;
-    const b2 = i + 2 < bytes.length ? bytes[i + 2]! : 0;
-    result += chars[(b0 >> 2) & 0x3f];
-    result += chars[((b0 & 0x03) << 4) | ((b1 >> 4) & 0x0f)];
-    result += i + 1 < bytes.length ? chars[((b1 & 0x0f) << 2) | ((b2 >> 6) & 0x03)] : "=";
-    result += i + 2 < bytes.length ? chars[b2 & 0x3f] : "=";
-  }
-  return result;
 }
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
@@ -1374,5 +1440,121 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.78,
     transform: [{ scale: 0.98 }],
+  },
+  // ─── Teaser (text reveal) ───
+  teaserWrap: {
+    width: "100%",
+    gap: 12,
+    padding: 18,
+    borderRadius: 24,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(9,11,24,0.45)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.1)",
+  },
+  teaserText: {
+    color: "rgba(232,225,211,0.6)",
+    fontSize: 15,
+    lineHeight: 24,
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+  readFullToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    alignSelf: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: "rgba(247,211,139,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.16)",
+  },
+  readFullText: {
+    color: "#F7D38B",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  // ─── Waveform ───
+  waveformRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    height: 28,
+  },
+  waveformBar: {
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: "#F7D38B",
+  },
+  // ─── Preparing state ───
+  preparingShell: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    padding: 16,
+    borderRadius: 24,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(9,11,24,0.62)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  preparingOrb: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#F7D38B",
+    shadowColor: "#F7D38B",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  preparingCopy: {
+    flex: 1,
+    gap: 6,
+  },
+  preparingTitle: {
+    color: "#F8F0DE",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  preparingHint: {
+    color: "#8F96B4",
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: "600",
+  },
+  preparingDots: {
+    flexDirection: "row",
+    gap: 5,
+    marginTop: 4,
+  },
+  preparingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(247,211,139,0.5)",
+  },
+  // ─── Retry button ───
+  retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: "#F7D38B",
+  },
+  retryButtonText: {
+    color: "#101320",
+    fontSize: 12,
+    fontWeight: "900",
   },
 });
