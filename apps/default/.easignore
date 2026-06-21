@@ -1,0 +1,6 @@
+# Exclude root-level files that don't apply to EAS build
+# (EAS builds from apps/default/, not monorepo root)
+../scripts
+../packages
+../.githooks
+../.claude

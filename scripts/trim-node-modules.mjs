@@ -18,6 +18,12 @@ import { join } from "path";
 const ROOT = process.cwd();
 const NM = join(ROOT, "node_modules");
 
+// Skip if no local node_modules (hoisted to monorepo root via workspaces)
+if (!existsSync(NM)) {
+  console.log("trim-node-modules: no local node_modules, skipping");
+  process.exit(0);
+}
+
 // Runtimes we actually use (per docs/edge-ai-qvac.md §3.5)
 const KEEP_RUNTIMES = new Set([
   "@qvac/sdk",
