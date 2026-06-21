@@ -6,6 +6,7 @@
   "build": {
     "preview": {
       "distribution": "internal",
+      "node": "20.x",
       "env": {
         "EXPO_PUBLIC_AI_PROVIDER": "local",
         "EXPO_PUBLIC_QVAC_DEFAULT_LLM": "LLAMA_3_2_1B_INST_Q4_0",
