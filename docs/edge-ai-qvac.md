@@ -263,6 +263,7 @@ The post-on-device work surfaced a gap: the original UI was text-first, which un
 - Top-level overview: `README.md` (strategic direction callout, tech stack update)
 - AI tooling context: `AGENTS.md` (QVAC SDK notes, local-fallback ordering)
 - Public-facing privacy statement: `docs/privacy-posture.md`
+- Remote-API audit (every external host the project can call + submission-build status per API): `docs/remote-apis.md`
 - Client work tracking: `apps/default/README.md`
 - Backend work tracking: `packages/backend/README.md`
 

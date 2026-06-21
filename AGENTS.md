@@ -32,6 +32,7 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 - `docs/edge-ai-qvac.md` - Canonical QVAC edge-AI plan (LLM, TTS, STT, embeddings, switch points, phases, tracks, public-surface rules, UX overhaul)
 - `docs/visual-upgrade.md` - Avatar system design (Tier 1 superseded by Phase 6.5; Tier 2 still deferred)
 - `docs/privacy-posture.md` - Public-facing privacy statement (hosted on the marketing site)
+- `docs/remote-apis.md` - Canonical inventory of every remote API the project can touch (Anthropic, ElevenLabs, Replicate, Melius, Convex, OAuth providers, QVAC registry) with per-API call sites, env vars, and submission-build status
 - `docs/build-small-strategy.md` - Prize strategy for the Build Small hackathon (separate submission via `hf-space/`)
 
 ## Build Small (hf-space/) notes

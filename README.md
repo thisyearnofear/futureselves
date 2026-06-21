@@ -184,6 +184,7 @@ graph TB
 
 > **Privacy thesis:** The product is "your future self knows your deepest choices, and only you have access." On-device inference makes this literally true. The public web demo (`futureselves.vercel.app`) is an honest preview — it uses a hard-coded sample persona and never asks for real personal data. See `docs/privacy-posture.md`.
 > Complete QVAC integration plan: `docs/edge-ai-qvac.md`.
+> Full audit of every remote API the project can touch (and which ones are unreachable in the submission build): `docs/remote-apis.md`.
 
 ## Submission build
 
