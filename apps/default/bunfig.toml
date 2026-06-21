@@ -1,3 +1,0 @@
-[install]
-# Force bun for EAS builds
-auto = "force"
