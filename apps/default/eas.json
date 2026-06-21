@@ -6,7 +6,13 @@
   "build": {
     "preview": {
       "distribution": "internal",
-      "node": "20.x",
+      "env": {
+        "EXPO_PUBLIC_AI_PROVIDER": "local",
+        "EXPO_PUBLIC_QVAC_DEFAULT_LLM": "LLAMA_3_2_1B_INST_Q4_0",
+        "EXPO_PUBLIC_QVAC_DEFAULT_TTS": "chatterbox",
+        "EXPO_PUBLIC_QVAC_DEFAULT_STT": "WHISPER_EN_BASE_Q8_0",
+        "EXPO_PUBLIC_AUDIT_LOG": "1"
+      },
       "android": {
         "buildType": "apk"
       }
@@ -15,7 +21,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_AI_PROVIDER": "local"
+        "EXPO_PUBLIC_AI_PROVIDER": "local",
+        "EXPO_PUBLIC_AUDIT_LOG": "1"
       },
       "ios": {
         "simulator": true
@@ -27,7 +34,8 @@
         "EXPO_PUBLIC_AI_PROVIDER": "local",
         "EXPO_PUBLIC_QVAC_DEFAULT_LLM": "LLAMA_3_2_1B_INST_Q4_0",
         "EXPO_PUBLIC_QVAC_DEFAULT_TTS": "chatterbox",
-        "EXPO_PUBLIC_QVAC_DEFAULT_STT": "WHISPER_EN_BASE_Q8_0"
+        "EXPO_PUBLIC_QVAC_DEFAULT_STT": "WHISPER_EN_BASE_Q8_0",
+        "EXPO_PUBLIC_AUDIT_LOG": "1"
       },
       "android": {
         "buildType": "apk"
