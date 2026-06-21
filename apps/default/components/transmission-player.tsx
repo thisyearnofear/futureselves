@@ -76,10 +76,13 @@ const defaultAmbient: number = require("@/assets/audio/room-tone.mp3");
 
 type ArrivalPhase = "liminal" | "gathering" | "whisper" | "reveal" | "complete";
 
+// Phase durations were 2800/4200/5000 (12s) — that read as "slow loader" not
+// "ceremonial moment". Cut ~60% so the arrival sequence stays under 5s while
+// the orb/aura animation carries the ritual weight.
 const PHASE_DURATIONS: Record<Exclude<ArrivalPhase, "complete">, number> = {
-  liminal: 2800,
-  gathering: 4200,
-  whisper: 5000,
+  liminal: 1200,
+  gathering: 1800,
+  whisper: 1800,
   reveal: 0,
 };
 
@@ -741,18 +744,42 @@ function WebAudioPlayer({ audioUrl, onComplete }: AudioPlayerProps) {
     }
   }
 
+  const haloPulse = useSharedValue(1);
+  const haloShown = !isPlaying && progress === 0;
+  useEffect(() => {
+    if (haloShown) {
+      haloPulse.value = withRepeat(
+        withSequence(
+          withTiming(1.18, { duration: 1400, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        true,
+      );
+    } else {
+      haloPulse.value = withTiming(1, { duration: 240 });
+    }
+  }, [haloShown, haloPulse]);
+  const haloStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: haloPulse.value }],
+    opacity: haloShown ? 1 : 0,
+  }));
+
   return (
     <View style={styles.nativePlayerShell}>
-      <Pressable
-        onPress={togglePlayback}
-        style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
-      >
-        <Ionicons name={isPlaying ? "pause" : "play"} size={28} color="#101320" />
-      </Pressable>
+      <View style={styles.playButtonWrap}>
+        <AnimatedReanimated.View pointerEvents="none" style={[styles.playButtonHalo, haloStyle]} />
+        <Pressable
+          onPress={togglePlayback}
+          style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
+        >
+          <Ionicons name={isPlaying ? "pause" : "play"} size={28} color="#101320" />
+        </Pressable>
+      </View>
       <View style={styles.playerControls}>
         <View style={styles.playerStatusRowCentered}>
           <Text style={styles.playerStatusText}>
-            {isPlaying ? "Listening to the future..." : progress > 0 ? "Paused" : "Ready"}
+            {isPlaying ? "Listening to the future..." : progress > 0 ? "Paused" : "Tap to hear the voice"}
           </Text>
           <Text style={styles.timeText}>
             {formatTime(currentTime)} / {formatTime(duration)}
@@ -852,19 +879,43 @@ function NativeAudioPlayer({ audioUrl, castMember, transmission, onComplete }: {
 
   const progress = status.duration > 0 ? status.currentTime / status.duration : 0;
 
+  const haloPulse = useSharedValue(1);
+  const haloShown = !hasStarted;
+  useEffect(() => {
+    if (haloShown) {
+      haloPulse.value = withRepeat(
+        withSequence(
+          withTiming(1.18, { duration: 1400, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        true,
+      );
+    } else {
+      haloPulse.value = withTiming(1, { duration: 240 });
+    }
+  }, [haloShown, haloPulse]);
+  const haloStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: haloPulse.value }],
+    opacity: haloShown ? 1 : 0,
+  }));
+
   return (
     <>
       <View style={styles.nativePlayerShell}>
-        <Pressable
-          onPress={togglePlayback}
-          style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
-        >
-          <Ionicons
-            name={status.playbackState === "playing" ? "pause" : "play"}
-            size={28}
-            color="#101320"
-          />
-        </Pressable>
+        <View style={styles.playButtonWrap}>
+          <AnimatedReanimated.View pointerEvents="none" style={[styles.playButtonHalo, haloStyle]} />
+          <Pressable
+            onPress={togglePlayback}
+            style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
+          >
+            <Ionicons
+              name={status.playbackState === "playing" ? "pause" : "play"}
+              size={28}
+              color="#101320"
+            />
+          </Pressable>
+        </View>
 
         <View style={styles.playerControls}>
           <View style={styles.playerStatusRowCentered}>
@@ -1226,6 +1277,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F7D38B",
+  },
+  playButtonWrap: {
+    width: 88,
+    height: 88,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  playButtonHalo: {
+    position: "absolute",
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "rgba(247,211,139,0.22)",
   },
   playButtonMuted: {
     backgroundColor: "rgba(247,211,139,0.12)",

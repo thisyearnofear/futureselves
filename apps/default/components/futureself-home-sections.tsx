@@ -467,6 +467,31 @@ export function ReceiveSignalSection({
   onToggleDetail,
   onReceive,
 }: ReceiveSignalSectionProps) {
+  const hasSpeechInput = Boolean(onSpeakWord && onStartSpeak && onStopSpeak);
+
+  // Pulsing halo around the mic when idle so the user's eye lands on it instead
+  // of the text input. Slows when actively listening.
+  const micPulse = useSharedValue(1);
+  useEffect(() => {
+    micPulse.value = withRepeat(
+      withSequence(
+        withTiming(isSpeaking ? 1.04 : 1.12, {
+          duration: isSpeaking ? 1100 : 1600,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        withTiming(1, {
+          duration: isSpeaking ? 1100 : 1600,
+          easing: Easing.inOut(Easing.sin),
+        }),
+      ),
+      -1,
+      true,
+    );
+  }, [isSpeaking, micPulse]);
+  const micHaloStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: micPulse.value }],
+  }));
+
   return (
     <Animated.View
       entering={Platform.OS === "web" ? undefined : FadeInUp.delay(80).duration(260)}
@@ -474,10 +499,12 @@ export function ReceiveSignalSection({
     >
       <View style={styles.receiveHeader}>
         <View style={styles.receiveIcon}>
-          <Ionicons name="key" size={22} color="#F7D38B" />
+          <Ionicons name={hasSpeechInput ? "mic" : "key"} size={22} color="#F7D38B" />
         </View>
         <View style={styles.receiveHeaderCopy}>
-          <Text style={styles.sectionTitle}>One word.</Text>
+          <Text style={styles.sectionTitle}>
+            {hasSpeechInput ? "Say one word." : "One word."}
+          </Text>
           <Text style={styles.sectionCopy}>
             Future-you does the rest.
           </Text>
@@ -493,34 +520,64 @@ export function ReceiveSignalSection({
         </View>
       ) : null}
 
-      <View style={styles.wordInputRow}>
-        <TextInput
-          onChangeText={onWordChange}
-          placeholder="threshold"
-          placeholderTextColor="#6F7591"
-          style={styles.wordInput}
-          value={word}
-        />
-        {onSpeakWord && onStartSpeak && onStopSpeak ? (
-          <Pressable
-            onPress={isSpeaking ? onStopSpeak : onStartSpeak}
-            style={({ pressed }) => [
-              styles.micButton,
-              isSpeaking && styles.micButtonActive,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Ionicons
-              name={isSpeaking ? "stop-circle" : "mic"}
-              size={22}
-              color={isSpeaking ? "#FF6B6B" : "#F7D38B"}
+      {hasSpeechInput ? (
+        <View style={styles.speechFirstWrap}>
+          <View style={styles.micStage}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.micHalo,
+                isSpeaking && styles.micHaloActive,
+                micHaloStyle,
+              ]}
             />
-            {isSpeaking ? (
-              <Text style={styles.micDuration}>{Math.round(speakDuration)}s</Text>
-            ) : null}
-          </Pressable>
-        ) : null}
-      </View>
+            <Pressable
+              accessibilityLabel={isSpeaking ? "Stop listening" : "Tap to speak one word"}
+              onPress={isSpeaking ? onStopSpeak : onStartSpeak}
+              style={({ pressed }) => [
+                styles.micButtonPrimary,
+                isSpeaking && styles.micButtonPrimaryActive,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Ionicons
+                name={isSpeaking ? "stop" : "mic"}
+                size={44}
+                color={isSpeaking ? "#FF6B6B" : "#101320"}
+              />
+            </Pressable>
+          </View>
+          <Text style={styles.speechHint}>
+            {isSpeaking
+              ? `Listening… ${Math.round(speakDuration)}s`
+              : word
+                ? `Heard: "${word}"`
+                : "Tap and say one word."}
+          </Text>
+          <View style={styles.speechFallbackRow}>
+            <View style={styles.speechFallbackDivider} />
+            <Text style={styles.speechFallbackLabel}>or type</Text>
+            <View style={styles.speechFallbackDivider} />
+          </View>
+          <TextInput
+            onChangeText={onWordChange}
+            placeholder="threshold"
+            placeholderTextColor="#6F7591"
+            style={styles.speechFallbackInput}
+            value={word}
+          />
+        </View>
+      ) : (
+        <View style={styles.wordInputRow}>
+          <TextInput
+            onChangeText={onWordChange}
+            placeholder="threshold"
+            placeholderTextColor="#6F7591"
+            style={styles.wordInput}
+            value={word}
+          />
+        </View>
+      )}
       <NudgeRow
         label="Suggested words"
         options={wordNudges}

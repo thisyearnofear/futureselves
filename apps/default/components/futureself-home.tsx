@@ -267,7 +267,10 @@ export function FutureselfHome({
   // If today's transmission hasn't arrived, hide most of the UI to focus on the check-in ritual.
   const isFocusMode = !hasTransmissionToday;
   const shouldShowProgression = hasTransmissionToday;
-  const shouldShowSystemDepth = !isFocusMode && transmissionCount >= 5;
+  // Lowered from >= 5 to >= 1 so Day-1 users see their streak/divergence/constellation
+  // immediately after their first transmission. The early constellation is sparse on purpose
+  // — it visualises future capacity rather than current emptiness.
+  const shouldShowSystemDepth = !isFocusMode && transmissionCount >= 1;
   const shouldShowStoryDepth = !isFocusMode && transmissionCount >= 3;
   const shouldShowWeeklyReflection = !isFocusMode && transmissionCount >= 7;
 
