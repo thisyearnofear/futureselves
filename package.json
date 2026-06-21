@@ -13,7 +13,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "postinstall": "bash scripts/install-hooks.sh && node scripts/trim-node-modules.mjs"
+    "postinstall": "bash scripts/install-hooks.sh"
   },
   "devDependencies": {
     "turbo": "^2.0.12"
