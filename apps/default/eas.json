@@ -12,7 +12,9 @@
         "EXPO_PUBLIC_QVAC_DEFAULT_LLM": "LLAMA_3_2_1B_INST_Q4_0",
         "EXPO_PUBLIC_QVAC_DEFAULT_TTS": "chatterbox",
         "EXPO_PUBLIC_QVAC_DEFAULT_STT": "WHISPER_EN_BASE_Q8_0",
-        "EXPO_PUBLIC_AUDIT_LOG": "1"
+        "EXPO_PUBLIC_AUDIT_LOG": "1",
+        "EXPO_PUBLIC_CONVEX_URL": "https://useful-fly-881.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://useful-fly-881.convex.site"
       },
       "android": {
         "buildType": "apk"
@@ -23,7 +25,9 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_AI_PROVIDER": "local",
-        "EXPO_PUBLIC_AUDIT_LOG": "1"
+        "EXPO_PUBLIC_AUDIT_LOG": "1",
+        "EXPO_PUBLIC_CONVEX_URL": "https://useful-fly-881.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://useful-fly-881.convex.site"
       },
       "ios": {
         "simulator": true
@@ -36,7 +40,9 @@
         "EXPO_PUBLIC_QVAC_DEFAULT_LLM": "LLAMA_3_2_1B_INST_Q4_0",
         "EXPO_PUBLIC_QVAC_DEFAULT_TTS": "chatterbox",
         "EXPO_PUBLIC_QVAC_DEFAULT_STT": "WHISPER_EN_BASE_Q8_0",
-        "EXPO_PUBLIC_AUDIT_LOG": "1"
+        "EXPO_PUBLIC_AUDIT_LOG": "1",
+        "EXPO_PUBLIC_CONVEX_URL": "https://useful-fly-881.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://useful-fly-881.convex.site"
       },
       "android": {
         "buildType": "apk"
