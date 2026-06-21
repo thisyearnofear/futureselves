@@ -19,10 +19,17 @@
       }
     },
     "android": {
+      "package": "com.futureselves.app",
       "adaptiveIcon": {
         "foregroundImage": "../../assets/images/futureself-icon.png",
         "backgroundColor": "#080A17"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -53,6 +60,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5ad43c81-ef6f-4b65-8ccb-3073448bebfb"
+      }
+    },
+    "owner": "papajams.eth"
   }
 }
