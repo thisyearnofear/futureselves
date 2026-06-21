@@ -31,6 +31,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
+import {
+  isAuditEnabled,
+  logEmbedding,
+  logLLMCompletion,
+  logModelLoad,
+  logModelUnload,
+  logSTTTranscribe,
+  logTTSSynthesize,
+} from "@/lib/audit-log";
 
 // Type-only import. The `verbatimModuleSyntax` + `isolatedModules`
 // settings in tsconfig.base mean `import type` is erased at compile
@@ -121,6 +130,7 @@ export function useQVACModel(): UseQVACModelResult {
 
     setState({ status: "loading" });
 
+    const t0 = Date.now();
     try {
       const { loadModel } = await import("@qvac/sdk");
       const id: string = await loadModel({
@@ -130,9 +140,11 @@ export function useQVACModel(): UseQVACModelResult {
       });
       modelIdRef.current = id;
       setState((s) => ({ ...s, status: "ready", modelId: id }));
+      void logModelLoad(id, Date.now() - t0, (options as any).modelId ?? (options as any).registryPath);
     } catch (e) {
       const error = e instanceof Error ? e.message : String(e);
       setState({ status: "error", error });
+      void logModelLoad("<unknown>", Date.now() - t0, undefined, undefined, error);
     }
   }, []);
 
@@ -140,9 +152,14 @@ export function useQVACModel(): UseQVACModelResult {
     if (Platform.OS === "web") return;
     if (!modelIdRef.current) return;
 
+    const id = modelIdRef.current;
+    const t0 = Date.now();
     try {
       const { unloadModel } = await import("@qvac/sdk");
-      await unloadModel({ modelId: modelIdRef.current });
+      await unloadModel({ modelId: id });
+      void logModelUnload(id, Date.now() - t0);
+    } catch (e) {
+      void logModelUnload(id, Date.now() - t0, e instanceof Error ? e.message : String(e));
     } finally {
       modelIdRef.current = null;
       setState({ status: "idle" });
@@ -195,16 +212,35 @@ export function useLocalTTS(modelId?: string): UseLocalTTSResult {
       if (Platform.OS === "web") return null;
       if (!modelId) return null;
 
-      const { textToSpeech } = await import("@qvac/sdk");
-      const result = textToSpeech({
-        modelId,
-        inputType: "text",
-        text,
-        stream: false,
-      });
-      const samples = await result.buffer;
-      await result.done;
-      return pcmToWav(samples, CHATTERBOX_SAMPLE_RATE);
+      const t0 = Date.now();
+      try {
+        const { textToSpeech } = await import("@qvac/sdk");
+        const result = textToSpeech({
+          modelId,
+          inputType: "text",
+          text,
+          stream: false,
+        });
+        const samples = await result.buffer;
+        await result.done;
+        const wav = pcmToWav(samples, CHATTERBOX_SAMPLE_RATE);
+        void logTTSSynthesize({
+          modelId,
+          textChars: text.length,
+          durationMs: Date.now() - t0,
+          audioSamples: samples.length,
+          audioBytes: wav.byteLength,
+        });
+        return wav;
+      } catch (e) {
+        void logTTSSynthesize({
+          modelId,
+          textChars: text.length,
+          durationMs: Date.now() - t0,
+          error: e instanceof Error ? e.message : String(e),
+        });
+        throw e;
+      }
     },
     [modelId],
   );
@@ -257,14 +293,24 @@ export function useLocalSTT(modelId?: string): UseLocalSTTResult {
       if (Platform.OS === "web") return null;
       if (!modelId) return null;
 
+      const t0 = Date.now();
       try {
         const { transcribe } = await import("@qvac/sdk");
         const result = await transcribe({
           modelId,
           audioChunk: { type: "filePath", value: fileUri },
         });
+        const text = typeof result === "string" ? result : String(result ?? "");
+        void logSTTTranscribe({
+          modelId,
+          audioUri: fileUri,
+          textChars: text.length,
+          durationMs: Date.now() - t0,
+        });
         return result;
       } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        void logSTTTranscribe({ modelId, audioUri: fileUri, durationMs: Date.now() - t0, error: msg });
         console.warn("[LocalSTT] Transcription failed:", error);
         return null;
       }
@@ -277,6 +323,7 @@ export function useLocalSTT(modelId?: string): UseLocalSTTResult {
       if (Platform.OS === "web") return null;
       if (!modelId) return null;
 
+      const t0 = Date.now();
       try {
         const { transcribe: qvacTranscribe } = await import("@qvac/sdk");
         // Encode raw bytes as base64 for the SDK.
@@ -285,8 +332,17 @@ export function useLocalSTT(modelId?: string): UseLocalSTTResult {
           modelId,
           audioChunk: { type: "base64", value: b64 },
         });
+        const text = typeof result === "string" ? result : String(result ?? "");
+        void logSTTTranscribe({
+          modelId,
+          audioBytes: audioBytes.byteLength,
+          textChars: text.length,
+          durationMs: Date.now() - t0,
+        });
         return result;
       } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        void logSTTTranscribe({ modelId, audioBytes: audioBytes.byteLength, durationMs: Date.now() - t0, error: msg });
         console.warn("[LocalSTT] Transcription failed:", error);
         return null;
       }
@@ -364,21 +420,76 @@ export function useQVACChat(modelId?: string): UseQVACChatResult {
       if (Platform.OS === "web") return null;
       if (!modelId) return null;
 
-      const { completion } = await import("@qvac/sdk");
-      const run = completion({
-        modelId,
-        history: params.messages.map((m) => ({
-          role: m.role as "user" | "assistant" | "system",
-          content: m.content,
-        })),
-        stream: false,
-        generationParams: {
-          predict: params.maxTokens ?? 700,
-          temp: params.temperature ?? 0.8,
-        },
-      });
-      const final = await run.final;
-      return final.contentText ?? null;
+      const promptChars = params.messages.reduce((n, m) => n + m.content.length, 0);
+      // Enable streaming when the audit log is on so we can capture a real
+      // time-to-first-token. Production path stays on stream:false to keep
+      // existing latency characteristics.
+      const streamed = isAuditEnabled();
+      const t0 = Date.now();
+      let ttftMs: number | null = null;
+
+      try {
+        const { completion } = await import("@qvac/sdk");
+        const run = completion({
+          modelId,
+          history: params.messages.map((m) => ({
+            role: m.role as "user" | "assistant" | "system",
+            content: m.content,
+          })),
+          stream: streamed,
+          generationParams: {
+            predict: params.maxTokens ?? 700,
+            temp: params.temperature ?? 0.8,
+          },
+        });
+
+        if (streamed && (run as any).chunks) {
+          // Race-style: peek the first chunk to time the TTFT, then wait
+          // for the full response.
+          try {
+            const iter = (run as any).chunks[Symbol.asyncIterator]?.();
+            if (iter) {
+              await iter.next();
+              ttftMs = Date.now() - t0;
+              // Drain remaining chunks; final is still resolved by the SDK.
+              while (!(await iter.next()).done) {
+                /* drain */
+              }
+            }
+          } catch {
+            // If streaming peek fails, fall back to total-duration only.
+            ttftMs = null;
+          }
+        }
+
+        const final = await run.final;
+        const text = final.contentText ?? null;
+        const completionChars = (text ?? "").length;
+
+        void logLLMCompletion({
+          modelId,
+          promptChars,
+          completionChars,
+          durationMs: Date.now() - t0,
+          ttftMs,
+          streamed,
+          promptTokens: (final as any)?.usage?.promptTokens,
+          completionTokens: (final as any)?.usage?.completionTokens,
+        });
+
+        return text;
+      } catch (e) {
+        void logLLMCompletion({
+          modelId,
+          promptChars,
+          completionChars: 0,
+          durationMs: Date.now() - t0,
+          ttftMs,
+          streamed,
+          error: e instanceof Error ? e.message : String(e),
+        });
+        throw e;
+      }
     },
     [modelId],
   );
@@ -468,6 +579,7 @@ export function useLocalEmbeddings(modelId?: string): UseLocalEmbeddingsResult {
       if (Platform.OS === "web") return null;
       if (!modelId) return null;
 
+      const t0 = Date.now();
       try {
         const { embed: qvacEmbed } = await import("@qvac/sdk");
         const result = await qvacEmbed({
@@ -476,11 +588,19 @@ export function useLocalEmbeddings(modelId?: string): UseLocalEmbeddingsResult {
         });
         // QVAC returns { embedding: number[], stats?: ... }
         const embedding = (result as { embedding?: number[] })?.embedding;
+        void logEmbedding({
+          modelId,
+          textChars: text.length,
+          embeddingDims: embedding?.length,
+          durationMs: Date.now() - t0,
+        });
         if (embedding) {
           return new Float32Array(embedding);
         }
         return null;
       } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        void logEmbedding({ modelId, textChars: text.length, durationMs: Date.now() - t0, error: msg });
         console.warn("[LocalEmbeddings] Embedding failed:", error);
         return null;
       }

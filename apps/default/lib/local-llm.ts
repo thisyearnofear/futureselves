@@ -12,6 +12,7 @@
 
 import { Platform } from "react-native";
 import type { CastMember } from "@/lib/futureself";
+import { isAuditEnabled, logLLMCompletion } from "@/lib/audit-log";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -267,26 +268,66 @@ export async function generateLocalTransmission(
     throw new Error("generateLocalTransmission is native-only.");
   }
   const { modelId, context, castMember, localNow } = options;
+  const prompt = buildLocalPrompt(context, castMember);
+  const systemPrompt = getSystemPrompt(context.persona.timelineDivergenceScore);
+  const promptChars = systemPrompt.length + prompt.length + (`\n\nLocal open time: ${localNow}`).length;
+  const streamed = isAuditEnabled();
+  const t0 = Date.now();
+  let ttftMs: number | null = null;
+
   try {
     const { completion } = await import("@qvac/sdk");
-    const prompt = buildLocalPrompt(context, castMember);
-    const systemPrompt = getSystemPrompt(context.persona.timelineDivergenceScore);
     const run = completion({
       modelId,
       history: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `${prompt}\n\nLocal open time: ${localNow}` },
       ],
-      stream: false,
+      stream: streamed,
       generationParams: { predict: 700, temp: 0.8 },
     });
+
+    if (streamed && (run as any).chunks) {
+      try {
+        const iter = (run as any).chunks[Symbol.asyncIterator]?.();
+        if (iter) {
+          await iter.next();
+          ttftMs = Date.now() - t0;
+          while (!(await iter.next()).done) {
+            /* drain */
+          }
+        }
+      } catch {
+        ttftMs = null;
+      }
+    }
+
     const final = await run.final;
     const text = final.contentText ?? "";
+    void logLLMCompletion({
+      modelId,
+      promptChars,
+      completionChars: text.length,
+      durationMs: Date.now() - t0,
+      ttftMs,
+      streamed,
+      promptTokens: (final as any)?.usage?.promptTokens,
+      completionTokens: (final as any)?.usage?.completionTokens,
+    });
     const parsed = parseLocalTransmission(text);
     if (parsed) return parsed;
     console.warn("[LocalLLM] JSON parse failed, using fallback");
     return localFallbackTransmission(context, castMember);
   } catch (error) {
+    void logLLMCompletion({
+      modelId,
+      promptChars,
+      completionChars: 0,
+      durationMs: Date.now() - t0,
+      ttftMs,
+      streamed,
+      error: error instanceof Error ? error.message : String(error),
+    });
     console.warn("[LocalLLM] LLM call failed, using fallback:", error);
     return localFallbackTransmission(context, castMember);
   }

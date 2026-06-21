@@ -1,0 +1,17 @@
+{"type":"session.begin","timestamp":"2026-06-21T19:42:11.018Z","platform":"android-34","ai_provider":"local","audit_log_path":"file:///data/user/0/com.futureselves.app/cache/futureselves-audit/run-2026-06-21T19-42-11-018Z.jsonl"}
+{"type":"model.load","timestamp":"2026-06-21T19:42:13.482Z","model_id":"LLAMA_3_2_1B_INST_Q4_0","registry_id":"LLAMA_3_2_1B_INST_Q4_0","duration_ms":2464,"cache_hit":false,"size_bytes":712458240}
+{"type":"model.load","timestamp":"2026-06-21T19:42:15.117Z","model_id":"chatterbox","registry_id":"chatterbox","duration_ms":1635,"cache_hit":false,"size_bytes":204816384}
+{"type":"model.load","timestamp":"2026-06-21T19:42:16.844Z","model_id":"WHISPER_EN_BASE_Q8_0","registry_id":"WHISPER_EN_BASE_Q8_0","duration_ms":1727,"cache_hit":false,"size_bytes":152043008}
+{"type":"stt.transcribe","timestamp":"2026-06-21T19:42:48.521Z","model_id":"WHISPER_EN_BASE_Q8_0","audio_uri":"file:///data/user/0/com.futureselves.app/cache/Audio/recording-1750539768023.wav","text_chars":9,"duration_ms":1284}
+{"type":"llm.completion","timestamp":"2026-06-21T19:43:01.910Z","model_id":"LLAMA_3_2_1B_INST_Q4_0","prompt_chars":1842,"prompt_tokens_est":461,"completion_chars":387,"completion_tokens_est":97,"ttft_ms":1840,"duration_ms":7521,"tokens_per_sec":17.07,"streamed":true}
+{"type":"tts.synthesize","timestamp":"2026-06-21T19:43:09.512Z","model_id":"chatterbox","text_chars":387,"audio_samples":268800,"audio_bytes":537644,"duration_ms":4612}
+{"type":"embedding.embed","timestamp":"2026-06-21T19:43:14.221Z","model_id":"LLAMA_3_2_1B_INST_Q4_0","text_chars":387,"embedding_dims":768,"duration_ms":92}
+{"type":"embedding.embed","timestamp":"2026-06-21T19:43:14.330Z","model_id":"LLAMA_3_2_1B_INST_Q4_0","text_chars":412,"embedding_dims":768,"duration_ms":108}
+{"type":"embedding.embed","timestamp":"2026-06-21T19:43:14.421Z","model_id":"LLAMA_3_2_1B_INST_Q4_0","text_chars":356,"embedding_dims":768,"duration_ms":91}
+{"type":"embedding.embed","timestamp":"2026-06-21T19:43:14.499Z","model_id":"LLAMA_3_2_1B_INST_Q4_0","text_chars":401,"embedding_dims":768,"duration_ms":78}
+{"type":"llm.completion","timestamp":"2026-06-21T19:48:32.117Z","model_id":"LLAMA_3_2_1B_INST_Q4_0","prompt_chars":1947,"prompt_tokens_est":487,"completion_chars":412,"completion_tokens_est":103,"ttft_ms":1612,"duration_ms":7104,"tokens_per_sec":18.74,"streamed":true}
+{"type":"tts.synthesize","timestamp":"2026-06-21T19:48:39.882Z","model_id":"chatterbox","text_chars":412,"audio_samples":283200,"audio_bytes":566444,"duration_ms":4521}
+{"type":"model.unload","timestamp":"2026-06-21T19:55:02.184Z","model_id":"LLAMA_3_2_1B_INST_Q4_0","duration_ms":41}
+{"type":"model.unload","timestamp":"2026-06-21T19:55:02.221Z","model_id":"chatterbox","duration_ms":37}
+{"type":"model.unload","timestamp":"2026-06-21T19:55:02.254Z","model_id":"WHISPER_EN_BASE_Q8_0","duration_ms":33}
+{"type":"session.end","timestamp":"2026-06-21T19:55:02.262Z","reason":"app_background"}

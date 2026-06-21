@@ -33,6 +33,7 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 - `docs/visual-upgrade.md` - Avatar system design (Tier 1 superseded by Phase 6.5; Tier 2 still deferred)
 - `docs/privacy-posture.md` - Public-facing privacy statement (hosted on the marketing site)
 - `docs/remote-apis.md` - Canonical inventory of every remote API the project can touch (Anthropic, ElevenLabs, Replicate, Melius, Convex, OAuth providers, QVAC registry) with per-API call sites, env vars, and submission-build status
+- `docs/audit-log.md` + `docs/sample-audit-log.jsonl` - Structured JSONL audit log of QVAC SDK calls (model loads/unloads, LLM/TTS/STT/embedding metrics inc. TTFT and tokens/sec). Logger at `apps/default/lib/audit-log.ts`. Gated by `EXPO_PUBLIC_AUDIT_LOG=1`. Required artifact for the hackathon evidence bundle.
 - `docs/build-small-strategy.md` - Prize strategy for the Build Small hackathon (separate submission via `hf-space/`)
 
 ## Build Small (hf-space/) notes
