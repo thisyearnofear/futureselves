@@ -342,10 +342,15 @@ export function FutureselfHome({
     }
   }, [isMilestone, hasTransmissionToday]);
 
-  // Day 1 Welcome Voicemail: auto-trigger a free voicemail after the very first transmission
+  // Day 1 Welcome Voicemail: auto-trigger a free voicemail after the very first transmission.
+  // Guarded by !localMode because the underlying Convex action (voicemail.native.generateNativeVoicemail)
+  // calls Anthropic + ElevenLabs server-side and would break the submission's "zero bytes leave the
+  // device" thesis. On-device voicemail synthesis is tracked separately; for now, local mode is
+  // strictly cloud-free.
   useEffect(() => {
     if (
       !welcomeVoicemailTriggered.current &&
+      !localMode &&
       hasTransmissionToday &&
       persona &&
       persona.streak === 1 &&
@@ -357,9 +362,13 @@ export function FutureselfHome({
         console.warn("[Day1Voicemail] Could not generate welcome voicemail:", err);
       });
     }
-  }, [hasTransmissionToday, persona, state.recentTransmissions.length, generateWelcomeVoicemail]);
+  }, [hasTransmissionToday, persona, state.recentTransmissions.length, generateWelcomeVoicemail, localMode]);
 
-  // Voice unlock detection + avatar generation
+  // Voice unlock detection + avatar generation.
+  // Avatar generation is gated by !localMode because api.face.generateAvatar calls
+  // Replicate server-side. In local mode we still surface the unlock UI; we just don't
+  // ship the cast member identifier off the device for image synthesis. (When QVAC ships
+  // a local image-gen capability we can swap the call.)
   useEffect(() => {
     if (!state.constellation.length) return;
     const currentUnlocked = new Set(
@@ -369,10 +378,12 @@ export function FutureselfHome({
     );
     const prevUnlocked = unlockedRef.current;
     if (prevUnlocked.size === 0) {
-      // First mount: generate avatars for any already-unlocked cast members
-      // (e.g., future_self is always lit). The action is idempotent — skips if exists.
-      for (const castMember of currentUnlocked) {
-        void generateAvatar({ castMember: castMember as CastMember }).catch(() => {});
+      if (!localMode) {
+        // First mount: generate avatars for any already-unlocked cast members
+        // (e.g., future_self is always lit). The action is idempotent — skips if exists.
+        for (const castMember of currentUnlocked) {
+          void generateAvatar({ castMember: castMember as CastMember }).catch(() => {});
+        }
       }
     } else {
       const newlyUnlocked = [...currentUnlocked].filter((v) => !prevUnlocked.has(v));
@@ -385,14 +396,16 @@ export function FutureselfHome({
             castMember: voice.castMember,
           });
         }
-        // Fire-and-forget avatar generation for newly unlocked cast members
-        for (const castMember of newlyUnlocked) {
-          void generateAvatar({ castMember: castMember as CastMember }).catch(() => {});
+        if (!localMode) {
+          // Fire-and-forget avatar generation for newly unlocked cast members
+          for (const castMember of newlyUnlocked) {
+            void generateAvatar({ castMember: castMember as CastMember }).catch(() => {});
+          }
         }
       }
     }
     unlockedRef.current = currentUnlocked;
-  }, [state.constellation, hasTransmissionToday, generateAvatar]);
+  }, [state.constellation, hasTransmissionToday, generateAvatar, localMode]);
 
   const handleShare = useCallback(async () => {
     if (!state.todayTransmission || !persona) return;
@@ -736,9 +749,19 @@ export function FutureselfHome({
   }
 
   async function handleGenerateSynthesis() {
+    // Synthesis ships the 7-day transmission log + user notes to a cloud LLM via
+    // convex/synthesis.ts → generateWithAI. Refuse in local mode so the submission's
+    // on-device thesis holds. (A local-LLM synthesis path can land later.)
+    if (localMode) {
+      Alert.alert(
+        "Synthesis runs in cloud mode",
+        "Weekly synthesis isn't available on the local-only build yet — it would send your 7-day log to a cloud LLM.",
+      );
+      return;
+    }
     try {
       setIsGeneratingSynthesis(true);
-      
+
       const last7 = state.recentTransmissions.slice(0, 7);
       const textLog = last7.map(t => 
         `Date: ${t.dateKey}\nVoice: ${t.castMember}\nMessage: ${t.text}\nUser's Reaction: ${t.response?.reaction || 'none'}\nUser's Note: ${t.response?.replyNote || 'none'}`

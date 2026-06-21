@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ConvexReactClient, Authenticated, useQuery } from "convex/react";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { Stack } from "expo-router";
@@ -36,7 +36,18 @@ function AvatarPreloader() {
 function QVACPrewarmUpdater({ onState }: { onState: (state: QVACPrewarmState) => void }) {
     const persona = useQuery(api.game.getState, { dateKey: new Date().toISOString().split("T")[0]! });
     const prewarm = useQVACPrewarm({ personaId: persona?.persona?.id ?? null });
-    onState({ llm: prewarm.llm, tts: prewarm.tts, stt: prewarm.stt, isReady: prewarm.isReady });
+    // Bug fix: calling onState (a parent setState) during render caused an
+    // infinite render loop because each render constructed a new object
+    // reference. Push the publish into an effect, keyed on primitive status
+    // values so a fresh object reference from useQVACPrewarm doesn't refire.
+    useEffect(() => {
+        onState({
+            llm: prewarm.llm,
+            tts: prewarm.tts,
+            stt: prewarm.stt,
+            isReady: prewarm.isReady,
+        });
+    }, [prewarm.llm.status, prewarm.tts.status, prewarm.stt.status, prewarm.isReady, onState]);
     return null;
 }
 
