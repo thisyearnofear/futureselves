@@ -6,6 +6,7 @@
   "build": {
     "preview": {
       "distribution": "internal",
+      "node": "20.x",
       "android": {
         "buildType": "apk"
       }
