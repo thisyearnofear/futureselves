@@ -4,12 +4,18 @@
 
 The audit logger lives in `apps/default/lib/audit-log.ts`. It is wired into every QVAC SDK call site in `apps/default/lib/qvac.ts` and `apps/default/lib/local-llm.ts`, so a single end-to-end demo run automatically produces a complete artifact.
 
+**The canonical submission APK has `EXPO_PUBLIC_AUDIT_LOG=1` baked in at build time** (see the EAS `preview` profile in `apps/default/eas.json`), so no manual configuration is needed — install the APK from `README.md` § "Submission build", run one ritual cycle, then pull the log per the "Pulling the log off the device" section below.
+
 ---
 
 ## How to enable
 
+**The submission APK already has this enabled** — `EXPO_PUBLIC_AUDIT_LOG=1` is pinned in the `preview` build profile in `apps/default/eas.json`, so judges who install the APK from `README.md` get the audit log for free.
+
+For other contexts (local dev builds, custom builds from source):
+
 ```bash
-# In your .env (or .env.production for the submission build):
+# In .env, .env.local, or .env.production for the relevant build:
 EXPO_PUBLIC_AUDIT_LOG=1
 ```
 

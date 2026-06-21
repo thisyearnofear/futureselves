@@ -111,6 +111,8 @@ The only telemetry that exists is local-only: optional crash and error logs stor
 
 ## How to verify this list against a running build
 
+**Canonical submission APK:** https://expo.dev/artifacts/eas/OUI85axlwSS8GQBL8zFend5zJtrfDNwuFkY9tRssrLA.apk (EAS build record: https://expo.dev/accounts/papajams.eth/projects/future-selves/builds/830cec5b-3565-43cf-ae4d-d8c8c6f791f6, source commit `1cadaf9`).
+
 After installing the submission APK on a device:
 
 1. Engage OS-level Airplane mode.

@@ -52,6 +52,7 @@ const provider = getAIProvider();
 - **Do not import `@qvac/sdk` from this file or any module that is bundled into the web build.** The QVAC SDK is native-only; pulling it into the web bundle will break the Vercel deploy. The `Platform.OS === "web"` guard in `getAIProvider()` exists to keep the two runtimes partitioned, and the import boundary has to honor it.
 - **Web is always "cloud"** — `getAIProvider()` enforces this unconditionally, regardless of env vars.
 - **Native defaults to "stub"** when `EXPO_PUBLIC_AI_PROVIDER` is unset. "stub" behaves like "cloud" but is a distinct value so the QVAC submission build can flip to "local" with a single env var. See `docs/edge-ai-qvac.md` §3.5 and §7 for the strategic context.
+- **The canonical QVAC submission APK is built via the `preview` profile** in `eas.json` (it mirrors the original `submission` profile after that one kept erroring during the deadline crunch). The preview profile pins `EXPO_PUBLIC_AI_PROVIDER=local` + the QVAC model env vars + `EXPO_PUBLIC_AUDIT_LOG=1` + the Convex deployment URL, so the resulting APK is fully self-contained and produces the audit-log evidence artifact automatically on first launch. APK URL in `README.md` § "Submission build".
 
 Valid values for `EXPO_PUBLIC_AI_PROVIDER`:
 

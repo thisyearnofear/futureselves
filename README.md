@@ -189,18 +189,36 @@ graph TB
 
 ## Submission build
 
-Build the on-device app for the QVAC hackathon judging panel:
+### Pre-built Android APK (the canonical submission artifact)
+
+**Download:** https://expo.dev/artifacts/eas/OUI85axlwSS8GQBL8zFend5zJtrfDNwuFkY9tRssrLA.apk
+
+- Built: 2026-06-21 23:18 UTC
+- Source commit: `1cadaf9`
+- EAS build record: https://expo.dev/accounts/papajams.eth/projects/future-selves/builds/830cec5b-3565-43cf-ae4d-d8c8c6f791f6
+- Profile: `preview` in `apps/default/eas.json` (mirrors the original `submission` profile after three `submission`-profile builds failed during the deadline crunch — same env, same code, same artifact)
+- Bundled `EXPO_PUBLIC_*` vars (Metro inlines these at build time, verifiable in the EAS build log):
+  - `EXPO_PUBLIC_AI_PROVIDER=local` → activates the QVAC on-device path
+  - `EXPO_PUBLIC_QVAC_DEFAULT_LLM=LLAMA_3_2_1B_INST_Q4_0`
+  - `EXPO_PUBLIC_QVAC_DEFAULT_TTS=chatterbox`
+  - `EXPO_PUBLIC_QVAC_DEFAULT_STT=WHISPER_EN_BASE_Q8_0`
+  - `EXPO_PUBLIC_AUDIT_LOG=1` → writes the structured JSONL audit artifact on every launch (see `docs/audit-log.md`)
+  - `EXPO_PUBLIC_CONVEX_URL=https://useful-fly-881.convex.cloud` → real deployed backend
+
+### Building from source
 
 ```bash
-# 1. Build the native app with the local provider
+# Android APK via EAS (preview profile carries the full submission env)
 cd apps/default
-EXPO_PUBLIC_AI_PROVIDER=local npx expo run:ios --configuration Release
+npx eas-cli build --profile preview --platform android --non-interactive --no-wait
 
-# 2. Or build via EAS
-npx eas build --profile submission --platform ios
+# Or locally on a connected Android device
+EXPO_PUBLIC_AI_PROVIDER=local npx expo run:android --variant release
 
-# 3. The `.env.production` at the repo root already sets
-#    EXPO_PUBLIC_AI_PROVIDER=local for the submission
+# iOS via EAS (submission profile is iOS-ready but builds keep erroring in
+# install-deps — investigation pending; iOS path is not the primary demo
+# device per docs/edge-ai-qvac.md §3.5)
+npx eas-cli build --profile submission --platform ios
 ```
 
 ## Cost comparison
