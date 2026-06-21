@@ -130,7 +130,7 @@ export function useTransmissionAudio(
     if (
       ttsModelReady &&
       state === "error" &&
-      retryCount < MAX_RETRIES &&
+      shouldRetry(retryCount) &&
       retryCount === 0
     ) {
       void retry();

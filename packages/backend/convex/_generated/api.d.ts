@@ -15,13 +15,17 @@ import type * as choice_effects from "../choice_effects.js";
 import type * as face from "../face.js";
 import type * as functions from "../functions.js";
 import type * as game from "../game.js";
+import type * as generate_sample from "../generate_sample.js";
 import type * as http from "../http.js";
+import type * as melius from "../melius.js";
 import type * as migrations from "../migrations.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as seed from "../seed.js";
 import type * as state_signals from "../state_signals.js";
+import type * as synthesis from "../synthesis.js";
 import type * as validators from "../validators.js";
 import type * as voice from "../voice.js";
+import type * as voicemail from "../voicemail.js";
 
 import type {
   ApiFromModules,
@@ -37,13 +41,17 @@ declare const fullApi: ApiFromModules<{
   face: typeof face;
   functions: typeof functions;
   game: typeof game;
+  generate_sample: typeof generate_sample;
   http: typeof http;
+  melius: typeof melius;
   migrations: typeof migrations;
   rateLimit: typeof rateLimit;
   seed: typeof seed;
   state_signals: typeof state_signals;
+  synthesis: typeof synthesis;
   validators: typeof validators;
   voice: typeof voice;
+  voicemail: typeof voicemail;
 }>;
 
 /**

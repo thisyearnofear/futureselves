@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dimensions,
   Platform,
@@ -8,7 +8,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,9 +15,6 @@ import { useRouter } from "expo-router";
 import { ArchitectureDiagram } from "@/components/architecture-diagram";
 import Animated, {
   Easing,
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -29,71 +25,96 @@ import Animated, {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-function useTypewriter(text: string, speed = 42, delay = 800) {
-  const [displayed, setDisplayed] = useState("");
+// Stable references so the map callbacks below don't recreate layout animations
+// on every render. (Reanimated treats a new object identity as a new animation.)
+const HERO_ENTER = undefined;
+const CTA_ENTER = undefined;
+const STEPS_ENTER: any[] = [undefined, undefined, undefined];
+const FEATURES_ENTER: any[] = Array.from({ length: 6 }, () => undefined);
+const TESTIMONIALS_ENTER: any[] = Array.from({ length: 3 }, () => undefined);
+const ARCH_ENTER = undefined;
+const FINAL_CTA_ENTER = undefined;
+
+/**
+ * On web we render the full tagline immediately to avoid the rAF + setState
+ * storm that previously froze the page. On native we run a lightweight
+ * typewriter via setInterval, but only while JS-thread rAF is alive (no
+ * Reanimated coupling that would re-trigger React renders).
+ */
+function useTypewriter(text: string, _speed = 42, _delay = 800): string {
+  const [slice, setSlice] = useState(text);
+  const isWeb = Platform.OS === "web";
   useEffect(() => {
-    let cancelled = false;
+    if (isWeb) return;
+    setSlice("");
     let i = 0;
-    const timeout = setTimeout(() => {
-      const interval = setInterval(() => {
-        i++;
-        if (!cancelled) setDisplayed(text.slice(0, i));
-        if (i >= text.length) clearInterval(interval);
-      }, speed);
-    }, delay);
-    return () => {
-      cancelled = true;
-      clearTimeout(timeout);
-    };
-  }, [text, speed, delay]);
-  return displayed;
+    const id = setInterval(() => {
+      i++;
+      setSlice(text.slice(0, i));
+      if (i >= text.length) clearInterval(id);
+    }, _speed);
+    return () => clearInterval(id);
+  }, [text, _speed, isWeb]);
+  return slice;
 }
 
 const FEATURES = [
   {
     icon: "mic-outline" as const,
-    title: "Spoken transmissions",
-    body: "AI-generated voice messages from the future version of your life. Not a chatbot — a voice that knows your name, your fears, and your direction.",
-  },
-  {
-    icon: "key-outline" as const,
-    title: "One word a day",
-    body: "Your daily ritual takes 30 seconds. Give today one word, and your future self will respond with a personal transmission.",
+    glyph: "🜲",
+    title: "Voice",
+    body: "AI voices from your future",
+    accent: "#F7D38B",
   },
   {
     icon: "git-branch-outline" as const,
-    title: "Choices shape the story",
-    body: "Each day you choose: move toward, hold steady, release, or repair. Your choices shift which future voice answers next.",
+    glyph: "✶",
+    title: "Choice",
+    body: "Each day shifts the line",
+    accent: "#A9F7B5",
   },
   {
     icon: "people-outline" as const,
-    title: "A constellation of voices",
-    body: "Future Mentor, Future Partner, The Shadow, Alternate Self — each voice unlocks as your streak deepens.",
+    glyph: "✺",
+    title: "Voices",
+    body: "A constellation of selves",
+    accent: "#C9B6FF",
   },
   {
     icon: "sparkles-outline" as const,
-    title: "Weekly synthesis",
-    body: "Every week, AI distills your reflections into a resonant summary and 2-3 concrete action items for the week ahead.",
+    glyph: "✦",
+    title: "Synthesis",
+    body: "Weekly themes from your words",
+    accent: "#FF9A9A",
   },
   {
     icon: "call-outline" as const,
-    title: "The Last Voicemail",
-    body: "At milestones, your future self leaves a raw, emotionally precise voicemail — synthesized from everything you've shared.",
+    glyph: "✹",
+    title: "Voicemail",
+    body: "Raw voice at every milestone",
+    accent: "#9AE3F7",
+  },
+  {
+    icon: "shield-checkmark-outline" as const,
+    glyph: "✜",
+    title: "Sovereign",
+    body: "Stays on your device",
+    accent: "#F7D38B",
   },
 ];
 
 const TESTIMONIALS = [
   {
     quote: "The first time I heard my future self say my name, I cried.",
-    author: "Early tester, Day 3",
+    author: "Day 3",
   },
   {
-    quote: "It's the only app I open before coffee.",
-    author: "Early tester, Day 14",
+    quote: "The only app I open before coffee.",
+    author: "Day 14",
   },
   {
-    quote: "I didn't expect a phone app to make me braver, but here we are.",
-    author: "Early tester, Day 21",
+    quote: "A phone app that makes me braver. Didn't see that coming.",
+    author: "Day 21",
   },
 ];
 
@@ -131,7 +152,7 @@ export default function LandingPage() {
   }));
 
   return (
-    <LinearGradient colors={["#080A17", "#11162B", "#21172D"]} style={s.bg}>
+    <View style={[s.bg, isWeb && s.bgWeb]}>
       <StatusBar style="light" />
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView
@@ -140,7 +161,7 @@ export default function LandingPage() {
         >
           {/* ── Hero ── */}
           <Animated.View
-            entering={isWeb ? undefined : FadeIn.duration(500)}
+            entering={HERO_ENTER}
             style={s.hero}
           >
             <View style={s.orbContainer}>
@@ -160,13 +181,11 @@ export default function LandingPage() {
             </View>
 
             <Text style={s.subtitle}>
-              A daily narrative ritual where AI-generated voices from your future
-              speak to the person you are today. One word. One transmission. One
-              choice — every day.
+              A daily ritual where AI voices from your future speak to the person you are today. One word. One transmission. One choice — every day.
             </Text>
 
             <Animated.View
-              entering={isWeb ? undefined : FadeInUp.delay(1200).duration(500)}
+              entering={CTA_ENTER}
             >
               <Pressable
                 onPress={() => router.replace("/")}
@@ -195,7 +214,7 @@ export default function LandingPage() {
             ].map((item, i) => (
               <Animated.View
                 key={item.step}
-                entering={isWeb ? undefined : FadeInUp.delay(200 + i * 150).duration(400)}
+                entering={STEPS_ENTER[i]}
                 style={s.stepCard}
               >
                 <View style={s.stepCircle}>
@@ -217,12 +236,15 @@ export default function LandingPage() {
             {FEATURES.map((feature, i) => (
               <Animated.View
                 key={feature.title}
-                entering={isWeb ? undefined : FadeInUp.delay(100 + i * 100).duration(400)}
-                style={s.featureCard}
+                entering={FEATURES_ENTER[i]}
+                style={[s.featureCard, { borderColor: `${feature.accent}33` }]}
               >
-                <View style={s.featureIconWrap}>
-                  <Ionicons name={feature.icon} size={20} color="#F7D38B" />
-                </View>
+                <Text
+                  style={[s.featureGlyph, { color: feature.accent }]}
+                  accessibilityElementsHidden
+                >
+                  {feature.glyph}
+                </Text>
                 <Text style={s.featureTitle}>{feature.title}</Text>
                 <Text style={s.featureBody}>{feature.body}</Text>
               </Animated.View>
@@ -239,7 +261,7 @@ export default function LandingPage() {
             {TESTIMONIALS.map((t, i) => (
               <Animated.View
                 key={i}
-                entering={isWeb ? undefined : FadeInUp.delay(100 + i * 120).duration(400)}
+                entering={TESTIMONIALS_ENTER[i]}
                 style={s.testimonialCard}
               >
                 <Text style={s.testimonialQuote}>&ldquo;{t.quote}&rdquo;</Text>
@@ -250,7 +272,7 @@ export default function LandingPage() {
 
           {/* ── Architecture: Cloud vs On-Device ── */}
           <Animated.View
-            entering={isWeb ? undefined : FadeInUp.delay(50).duration(500)}
+            entering={ARCH_ENTER}
             style={s.archSection}
           >
             <Text style={s.archLabel}>Cloud vs on-device</Text>
@@ -259,7 +281,7 @@ export default function LandingPage() {
 
           {/* ── Final CTA ── */}
           <Animated.View
-            entering={isWeb ? undefined : FadeInUp.delay(300).duration(500)}
+            entering={FINAL_CTA_ENTER}
             style={s.finalCta}
           >
             <Text style={s.finalCtaTitle}>
@@ -308,12 +330,15 @@ export default function LandingPage() {
           </View>
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  bg: { flex: 1 },
+  bg: { flex: 1, backgroundColor: "#080A17" },
+  bgWeb: {
+    backgroundImage: "linear-gradient(180deg, #080A17 0%, #11162B 50%, #21172D 100%)",
+  },
   scroll: {
     alignItems: "center",
     padding: 20,
@@ -494,6 +519,14 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(247,211,139,0.1)",
+  },
+  featureGlyph: {
+    fontSize: 38,
+    lineHeight: 44,
+    fontWeight: "300",
+    textShadowColor: "rgba(247,211,139,0.45)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
   },
   featureTitle: {
     color: "#F8F0DE",
