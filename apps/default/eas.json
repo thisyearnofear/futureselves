@@ -14,12 +14,18 @@
       }
     },
     "submission": {
-      "distribution": "store",
+      "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_AI_PROVIDER": "local"
+        "EXPO_PUBLIC_AI_PROVIDER": "local",
+        "EXPO_PUBLIC_QVAC_DEFAULT_LLM": "LLAMA_3_2_1B_INST_Q4_0",
+        "EXPO_PUBLIC_QVAC_DEFAULT_TTS": "chatterbox",
+        "EXPO_PUBLIC_QVAC_DEFAULT_STT": "WHISPER_EN_BASE_Q8_0"
       },
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
       }
     }
   }

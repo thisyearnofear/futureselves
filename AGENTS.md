@@ -18,6 +18,7 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 - `apps/default/lib/local-llm.ts` - Client-side LLM orchestrator: builds the transmission prompt locally, calls QVAC `chatCompletion`, parses JSON, falls back to built-in script
 - `apps/default/lib/audio-cache.ts` - Persona-scoped TTS audio cache (WAV files on disk, metadata in `expo-secure-store`); evict, getCacheSizeBytes for the readout chip
 - `apps/default/hooks/` - Native hooks: `use-network-kill`, `use-transmission-audio` (TTS pre-generation + retry), `use-related-signals` (embedding-based similarity), `use-speech-recognition` (press-to-record STT), `use-qvac-prewarm`
+- `apps/default/components/futureself-home.tsx` - Hosts the local-mode cloud-call enforcement: `voicemail.native.generateNativeVoicemail`, `face.generateAvatar`, and `synthesis.generateWeeklySynthesis` are all guarded by `isLocalMode()` so the submission build makes zero third-party network calls during a ritual loop
 - `apps/default/components/` - Client UI (see `apps/default/components/` for the full list; key ones below)
 - `apps/default/components/constellation-map.tsx` - Visual star map of voice constellation with animated glows and divergence warping
 - `apps/default/components/divergence-gauge.tsx` - Visual arc gauge for the timeline divergence score

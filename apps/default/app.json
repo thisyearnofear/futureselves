@@ -10,7 +10,6 @@
     "icon": "../../assets/images/futureself-icon.png",
     "scheme": "futureself",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.futureselves.app",
@@ -54,7 +53,6 @@
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "displayName": "Future Selves"
+    }
   }
 }

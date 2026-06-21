@@ -61,14 +61,28 @@ Valid values for `EXPO_PUBLIC_AI_PROVIDER`:
 | `local` | Use the on-device QVAC SDK path (model load/unload + TTS wired). |
 | `stub`  | Default. Behaves like "cloud" but signals "local not wired up." |
 
-## QVAC integration (in progress)
+## QVAC integration
 
-The app is being extended so transmissions, TTS, and STT run locally via the [QVAC SDK](https://github.com/tetherto/qvac). **The submission path is fully local** — no cloud LLM, no ElevenLabs. New files planned for this work:
+The app runs transmissions, TTS, STT, and embeddings locally via the [QVAC SDK](https://github.com/tetherto/qvac). **The submission path is fully local** — no cloud LLM, no ElevenLabs, no Replicate. Files that carry this:
 
-- `lib/qvac.ts` — QVAC SDK lifecycle wrapper with three named hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`). Platform-guarded at the function level. Type-only import of `@qvac/sdk` on web (no bundle impact). Model load/unload and TTS are wired (Phase D complete); STT remains a stub for Phase F. See `docs/edge-ai-qvac.md` §7.
-- `hooks/use-network-kill.ts` — proves the app still works when Wi-Fi + cellular are disabled; the demo video uses this
-- `hooks/use-qvac-model.ts` — wraps `loadModel` with progress events surfaced to the splash screen
-- `components/memory-readout.tsx` — small dev-overlay chip: *bytes uploaded: 0 · inference: on-device · last model · cache hit*. In scope for the demo, not optional.
+- `lib/qvac.ts` — QVAC SDK lifecycle wrapper with named hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`, `useQVACChat`, `useLocalEmbeddings`). Platform-guarded at the function level. Type-only import of `@qvac/sdk` on web (no bundle impact).
+- `lib/local-llm.ts` — client-side LLM orchestrator: builds the transmission prompt locally, calls QVAC `completion()`, parses JSON, falls back to a built-in script.
+- `lib/audio-cache.ts` — persona-scoped WAV cache (metadata in `expo-secure-store`, bytes on disk).
+- `hooks/use-qvac-prewarm.ts` — loads LLM + TTS + STT in parallel on app start, surfaced via the cold-start progress UI.
+- `hooks/use-network-kill.ts` — proves the app still works when Wi-Fi + cellular are disabled; the submission video uses this.
+- `hooks/use-speech-recognition.ts` — press-to-record STT for spoken check-ins, wired through `useLocalSTT`.
+- `hooks/use-related-signals.ts` — local-embedding semantic similarity over past transmissions (the "related signals" surface in the archive).
+- `components/memory-readout.tsx` — dev-overlay chip: *bytes uploaded: 0 · inference: on-device · last model · cache hit*. On during demo recording.
+
+### Local-mode cloud-call enforcement
+
+`isLocalMode()` from `lib/ai.ts` is honoured everywhere a Convex action would otherwise reach a third-party API. Three fire-and-forget actions are guarded inside `components/futureself-home.tsx`:
+
+- `voicemail.native.generateNativeVoicemail` (would call Anthropic + ElevenLabs) — Day-1 welcome trigger skips entirely in local mode.
+- `face.generateAvatar` (would call Replicate) — voice-unlock avatar generation no-ops in local mode; the unlock UI still renders.
+- `synthesis.generateWeeklySynthesis` (would call Anthropic) — weekly synthesis handler early-returns with an Alert explaining the local-only build isn't shipping the 7-day log.
+
+This means a judge can airplane-mode the device and the entire ritual loop (check-in → LLM → TTS → playback → choice → unlock) runs end to end with zero network traffic. The transmission flow itself never had a cloud leak — the guards close the secondary paths.
 
 QVAC is an officially supported Expo runtime target, so it slots into this workspace without a new native module. Defaults (configurable via `EXPO_PUBLIC_QVAC_DEFAULT_*` env vars):
 

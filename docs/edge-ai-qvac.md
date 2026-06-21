@@ -186,9 +186,21 @@ These phases assume Tracks A + B as the core submission. Track C is a stretch la
 
 ### Phase 6 — Submission polish
 - 90-second video for Track A
-- Architecture diagram (cloud path vs. QVAC on-device path)
-- README + repo banner with the QVAC badge
-- Cost comparison: cloud per-transmission vs. zero marginal cost on device
+- ✅ Architecture diagram (cloud path vs. QVAC on-device path) in `README.md` + landing page
+- ✅ README + repo banner with the QVAC badge
+- ✅ Cost comparison: cloud per-transmission vs. zero marginal cost on device
+
+### Phase 7 — Hardening (late-stage)
+- ✅ Render-loop freeze fix: `app/_layout.tsx` was calling `setPrewarmState` during render via `QVACPrewarmUpdater`, causing an infinite re-render loop and the "Cannot update a component while rendering a different component" warning. Moved the publish into a `useEffect` keyed on primitive status strings.
+- ✅ Local-mode cloud-call enforcement: three fire-and-forget Convex actions previously fired regardless of provider mode and would have broken the "zero bytes leave the device" thesis. Each is now gated by `isLocalMode()` inside `apps/default/components/futureself-home.tsx`:
+  - `voicemail.native.generateNativeVoicemail` → Anthropic + ElevenLabs
+  - `face.generateAvatar` → Replicate
+  - `synthesis.generateWeeklySynthesis` → Anthropic
+- ✅ Day-1 progress visibility: `shouldShowSystemDepth` threshold lowered from `>= 5` to `>= 1` so streak, divergence gauge, constellation map, and next-unlock card appear immediately after the first transmission.
+- ✅ Speech-first ReceiveSignalSection on native local mode: large primary mic button with pulsing halo replaces the text-input-with-tiny-mic layout; text field demoted to a small "or type" fallback.
+- ✅ Faster arrival sequence: phase durations cut from 12s to ~4.8s (liminal 2800→1200, gathering 4200→1800, whisper 5000→1800).
+- ✅ Pulsing gold halo around the play button until first tap (both native and web players).
+- ✅ Landing-page web perf: removed `LinearGradient` thrash (CSS `background-image` on web), killed the rAF + setState typewriter storm, stable module-level `entering` refs.
 
 ---
 

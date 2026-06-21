@@ -131,11 +131,26 @@ On-Device Path                Cloud (deprecated)
 └─────────────────────┘
 ```
 
+### Phase 7: Late-stage hardening
+
+Things you only catch after the integration is "done":
+
+- **Freeze + setState-in-render bug.** `app/_layout.tsx` was calling the parent `setPrewarmState` during render via `QVACPrewarmUpdater`. Object literal → fresh reference every tick → infinite re-render loop → page froze + React emitted "Cannot update a component while rendering a different component." Moved the publish into a `useEffect` keyed on primitive status strings.
+- **Three cloud-call leaks in local mode.** The transmission flow was clean, but three fire-and-forget Convex actions in `futureself-home.tsx` still hit cloud APIs regardless of provider:
+  - `voicemail.native.generateNativeVoicemail` → Anthropic + ElevenLabs (Day-1 welcome)
+  - `face.generateAvatar` → Replicate (voice-unlock avatars)
+  - `synthesis.generateWeeklySynthesis` → Anthropic (weekly synthesis)
+
+  Each is now gated by `isLocalMode()`. The "zero bytes leave the device" thesis now holds end-to-end through a full ritual loop including unlocks and weekly synthesis.
+- **UX pass.** Day-1 stats/constellation/divergence are now visible from the first transmission (gate lowered from `>= 5` to `>= 1`). The native local-mode check-in card leads with a large pulsing mic button instead of a text input. Arrival sequence is ~5s instead of ~12s. Play button pulses a gold halo until first tap.
+- **Web landing perf.** Killed an `expo-linear-gradient` web-thrash + a rAF + setState typewriter storm that was freezing the marketing page on Vercel.
+
 ## What's next
 
 - **Track C:** LoRA fine-tune a cast member variant on-device.
-- **The Last Voicemail port:** Melius MCP → QVAC local inference.
+- **The Last Voicemail port:** Melius MCP → QVAC local inference (the current free-tier path is gated off in local mode rather than ported).
 - **Video demo:** 90-second cut showing the full offline loop.
+- **Installable submission build:** EAS Android APK on the `submission` profile so judges can run the airplane-mode test themselves.
 
 ## Links
 
