@@ -39,12 +39,29 @@ elif [[ -d "$HOME/Library/Android/sdk" ]]; then
   SDK="$HOME/Library/Android/sdk"
 else
   echo "ERROR: Android SDK not found."
-  echo "  Open Android Studio and complete the first-launch setup wizard."
-  echo "  It will install the SDK to ~/Library/Android/sdk by default."
+  echo "  Either install Android Studio (Apple Silicon DMG from"
+  echo "  developer.android.com/studio) and complete its first-launch wizard,"
+  echo "  or run the bootstrap commands documented at the top of this script."
   exit 1
 fi
 export ANDROID_HOME="$SDK"
 export PATH="$SDK/platform-tools:$SDK/emulator:$SDK/cmdline-tools/latest/bin:$PATH"
+
+# JDK detection: prefer Android Studio's bundled JBR (arm64 on Apple Silicon).
+# sdkmanager/avdmanager need a JVM; system java may be absent on a fresh Mac.
+if [[ -z "${JAVA_HOME:-}" ]]; then
+  if [[ -d "/Applications/Android Studio.app/Contents/jbr/Contents/Home" ]]; then
+    export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+  elif /usr/libexec/java_home >/dev/null 2>&1; then
+    export JAVA_HOME="$(/usr/libexec/java_home)"
+  else
+    echo "ERROR: No JDK found."
+    echo "  Install Android Studio (its bundled JBR will be auto-detected) or"
+    echo "  set JAVA_HOME to a JDK 17+ install."
+    exit 1
+  fi
+fi
+export PATH="$JAVA_HOME/bin:$PATH"
 
 # Verify the APK is downloaded
 if [[ ! -f "$APK_PATH" ]]; then
@@ -86,18 +103,41 @@ fi
 
 # Start the emulator in background if no device is connected
 if ! adb devices | grep -q "emulator-"; then
-  echo "==> Starting emulator (this takes ~30s)..."
-  nohup emulator -avd "$AVD_NAME" -no-snapshot-load -no-boot-anim \
-    > /tmp/emulator.log 2>&1 &
+  echo "==> Starting emulator (full first-boot takes 5-10 min for a fresh AVD)..."
+  # Subshell + disown so the emulator survives this script ending or being killed
+  ( emulator -avd "$AVD_NAME" -no-snapshot-load -no-boot-anim \
+      > /tmp/emulator.log 2>&1 < /dev/null & disown ) >/dev/null 2>&1
   echo "    Emulator log: /tmp/emulator.log"
 
-  echo "==> Waiting for device..."
+  echo "==> Waiting for device handshake..."
   adb wait-for-device
-  # Wait for full boot
-  until [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; do
-    sleep 2
+
+  # Some emulator + system-image combinations never set sys.boot_completed
+  # reliably. The launcher PID is the practical "boot complete" signal: once
+  # com.android.launcher3 is up, the home screen is rendering and the device
+  # accepts app installs / activity launches.
+  echo "==> Waiting for launcher (first boot of a fresh AVD takes 5-10 min on arm64)..."
+  # Different system images use different launcher packages. AOSP images use
+  # com.android.launcher3; Google APIs / Pixel images use NexusLauncher. We
+  # accept any top activity ending in *Launcher*Activity as "boot complete".
+  is_launcher_up() {
+    adb shell dumpsys activity activities 2>/dev/null \
+      | grep -E 'topResumedActivity.*Launcher.*Activity' \
+      | grep -q .
+  }
+
+  for i in $(seq 1 120); do
+    if is_launcher_up; then
+      echo "==> Launcher up (after $((i * 5))s)."
+      break
+    fi
+    sleep 5
   done
-  echo "==> Emulator ready."
+
+  if ! is_launcher_up; then
+    echo "ERROR: Launcher did not start within 10 min. Check /tmp/emulator.log."
+    exit 1
+  fi
 fi
 
 # Uninstall old version if present (idempotent)
