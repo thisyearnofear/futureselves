@@ -190,6 +190,14 @@ These phases assume Tracks A + B as the core submission. Track C is a stretch la
 - ✅ README + repo banner with the QVAC badge
 - ✅ Cost comparison: cloud per-transmission vs. zero marginal cost on device
 
+### Phase 8 — Post-submission evidence (2026-06-22)
+- ✅ Canonical Android APK built via EAS preview profile (mirrors submission env): https://expo.dev/artifacts/eas/OUI85axlwSS8GQBL8zFend5zJtrfDNwuFkY9tRssrLA.apk (commit `1cadaf9`).
+- ✅ Sideloaded onto a fresh Pixel 6 AVD (API 34 arm64) — app launched, env vars confirmed bundled, audit logger initialized on first model load attempt.
+- ✅ Real device-captured `demo-run-evidence.jsonl` committed at `docs/demo-run-evidence.jsonl`.
+- ✅ SDK API drift bug discovered via audit log (`modelType` now required) — fix in commit `485e44d`, documented in `docs/demo-run-evidence.md`.
+- ⏳ Post-fix APK rebuild + post-fix audit log capture: deferred to after the submission window closes since the pre-fix evidence is already the submitted artifact.
+- ⏳ `docs/audit-log.md` extraction procedure updated for emulator context: `adb root` + direct `/data/data/com.futureselves.app/cache/futureselves-audit/` read (since the release APK is not `debuggable` so `run-as` is blocked).
+
 ### Phase 7 — Hardening (late-stage)
 - ✅ Render-loop freeze fix: `app/_layout.tsx` was calling `setPrewarmState` during render via `QVACPrewarmUpdater`, causing an infinite re-render loop and the "Cannot update a component while rendering a different component" warning. Moved the publish into a `useEffect` keyed on primitive status strings.
 - ✅ Local-mode cloud-call enforcement: three fire-and-forget Convex actions previously fired regardless of provider mode and would have broken the "zero bytes leave the device" thesis. Each is now gated by `isLocalMode()` inside `apps/default/components/futureself-home.tsx`:

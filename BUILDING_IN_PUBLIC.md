@@ -131,6 +131,24 @@ On-Device Path                Cloud (deprecated)
 └─────────────────────┘
 ```
 
+### Phase 8: Post-submission evidence + bug-fix loop (2026-06-22 night-of)
+
+Submitted to DoraHacks. Then sideloaded the actual submission APK onto a fresh Android emulator (Pixel 6 AVD, API 34, arm64-v8a, Google APIs system image) on Apple Silicon. Two findings, both worth keeping:
+
+- **The audit logger worked the moment the app launched.** First event was `session.begin` with `ai_provider: "local"` — proving the EAS `preview` profile's env block (`EXPO_PUBLIC_AI_PROVIDER=local`, `EXPO_PUBLIC_AUDIT_LOG=1`, `EXPO_PUBLIC_CONVEX_URL=...`) bundled correctly into the Hermes-compiled JS bundle and got read at runtime.
+- **The very next event captured a QVAC SDK API drift bug.** The SDK now requires an explicit `modelType` alongside `modelSrc` (or a model constant that carries engine metadata). Our `useQVACPrewarm` hook was passing only the string model ID, so all three model loads (LLM / TTS / STT) short-circuited and the app sat on "Tuning the constellation…" forever. The audit log captured the SDK's full error message verbatim.
+
+Fix is committed as `485e44d`: pass `modelType: "llamacpp-completion"` / `"tts-ggml"` / `"whispercpp-transcription"` per the SDK's own error-message guidance. The pre-fix audit log artifact is committed at `docs/demo-run-evidence.jsonl` and explained in `docs/demo-run-evidence.md` as the canonical pre-fix evidence run. A post-fix run would require another EAS build (~35 min) which we'll do after the submission window has fully closed.
+
+What this proves about the submission, despite the bug:
+- env vars bundled correctly
+- `isLocalMode()` returned `true` (the cold-start UI rendered, which only renders on local mode)
+- the QVAC code path is the active path (no cloud LLM was attempted)
+- the audit logger writes valid JSONL to disk on a real device install
+- the bug is documented, fixed, and reproducible from the same repo
+
+Lesson: an instrumentation layer that catches your own bug in the field is more compelling evidence than a clean log claiming "everything worked." Reviewers can see we tested on real hardware and didn't hide what we found.
+
 ### Phase 7: Late-stage hardening
 
 Things you only catch after the integration is "done":

@@ -116,6 +116,17 @@ head -5 demo-run.jsonl | jq .
 
 `run-as` is required because the cache directory is in the app's private sandbox. The `com.futureselves.app` package ID is set in `apps/default/app.json`.
 
+**Caveat for release builds:** `run-as` only works on `debuggable` APKs. The canonical submission APK is a release build (`debuggable=false`), so `run-as` returns `package not debuggable`. On an emulator you can work around this by running `adb root` first (works on Google APIs system images; gives the shell root access to `/data/data/com.futureselves.app/...` directly). On a real consumer device you'd need either a debuggable build or to wire up an in-app share-sheet export — both are tracked as follow-ups.
+
+```bash
+# Emulator-only fallback when the APK isn't debuggable
+adb root
+adb shell ls /data/data/com.futureselves.app/cache/futureselves-audit/
+adb shell cat /data/data/com.futureselves.app/cache/futureselves-audit/run-*.jsonl > demo-run.jsonl
+```
+
+This is exactly the procedure used to capture `docs/demo-run-evidence.jsonl` — see `docs/demo-run-evidence.md` for the full walkthrough.
+
 ### iOS
 
 Use Xcode's Devices and Simulators window → select the app → "Download Container..." → extract the cache directory from the resulting `.xcappdata`. The audit log will be at `Library/Caches/futureselves-audit/run-*.jsonl`.

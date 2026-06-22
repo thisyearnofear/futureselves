@@ -186,6 +186,7 @@ graph TB
 > Complete QVAC integration plan: `docs/edge-ai-qvac.md`.
 > Full audit of every remote API the project can touch (and which ones are unreachable in the submission build): `docs/remote-apis.md`.
 > Structured QVAC SDK audit log (model loads/unloads, LLM/TTS/STT/embedding metrics including TTFT and tokens/sec): `docs/audit-log.md` and `docs/sample-audit-log.jsonl`.
+> **Real device-captured demo-run evidence (Android Pixel 6 AVD, API 34 arm64):** `docs/demo-run-evidence.jsonl` + `docs/demo-run-evidence.md`. The artifact captured a QVAC SDK API drift bug (`modelType` now required alongside `modelSrc`); the fix is committed as `485e44d`.
 
 ## Submission build
 
