@@ -110,12 +110,12 @@ export function useQVACPrewarm(options: UseQVACPrewarmOptions = { personaId: nul
           // a no-op load with the cached id. If the SDK throws
           // "already loaded" we treat it as success.
           try {
-            await llm.load({ modelSrc: QVAC_MODELS.llm as any });
+            await llm.load({ modelSrc: QVAC_MODELS.llm as any, modelType: "llamacpp-completion" as any });
           } catch {
             // fall through
           }
         } else {
-          await llm.load({ modelSrc: QVAC_MODELS.llm as any });
+          await llm.load({ modelSrc: QVAC_MODELS.llm as any, modelType: "llamacpp-completion" as any });
           const id = llm.modelId;
           if (id) await rememberModelId(scope, QVAC_MODELS.llm, id);
         }
@@ -130,12 +130,12 @@ export function useQVACPrewarm(options: UseQVACPrewarmOptions = { personaId: nul
         const existing = await recallModelId(scope, QVAC_MODELS.tts);
         if (existing) {
           try {
-            await tts.load({ modelSrc: QVAC_MODELS.tts as any });
+            await tts.load({ modelSrc: QVAC_MODELS.tts as any, modelType: "tts-ggml" as any });
           } catch {
             // fall through
           }
         } else {
-          await tts.load({ modelSrc: QVAC_MODELS.tts as any });
+          await tts.load({ modelSrc: QVAC_MODELS.tts as any, modelType: "tts-ggml" as any });
           const id = tts.modelId;
           if (id) await rememberModelId(scope, QVAC_MODELS.tts, id);
         }
@@ -150,12 +150,12 @@ export function useQVACPrewarm(options: UseQVACPrewarmOptions = { personaId: nul
         const existing = await recallModelId(scope, QVAC_MODELS.stt);
         if (existing) {
           try {
-            await stt.load({ modelSrc: QVAC_MODELS.stt as any });
+            await stt.load({ modelSrc: QVAC_MODELS.stt as any, modelType: "whispercpp-transcription" as any });
           } catch {
             // fall through
           }
         } else {
-          await stt.load({ modelSrc: QVAC_MODELS.stt as any });
+          await stt.load({ modelSrc: QVAC_MODELS.stt as any, modelType: "whispercpp-transcription" as any });
           const id = stt.modelId;
           if (id) await rememberModelId(scope, QVAC_MODELS.stt, id);
         }
