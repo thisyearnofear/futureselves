@@ -298,7 +298,7 @@ export function useLocalSTT(modelId?: string): UseLocalSTTResult {
         const { transcribe } = await import("@qvac/sdk");
         const result = await transcribe({
           modelId,
-          audioChunk: { type: "filePath", value: fileUri },
+          audioChunk: fileUri,
         });
         const text = typeof result === "string" ? result : String(result ?? "");
         void logSTTTranscribe({
@@ -326,11 +326,10 @@ export function useLocalSTT(modelId?: string): UseLocalSTTResult {
       const t0 = Date.now();
       try {
         const { transcribe: qvacTranscribe } = await import("@qvac/sdk");
-        // Encode raw bytes as base64 for the SDK.
-        const b64 = uint8ArrayToBase64(audioBytes);
+        // Pass raw bytes as a Buffer — SDK 0.14 accepts string | Buffer.
         const result = await qvacTranscribe({
           modelId,
-          audioChunk: { type: "base64", value: b64 },
+          audioChunk: audioBytes as unknown as Buffer,
         });
         const text = typeof result === "string" ? result : String(result ?? "");
         void logSTTTranscribe({

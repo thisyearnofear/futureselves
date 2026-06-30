@@ -25,11 +25,12 @@ if (!existsSync(NM)) {
 }
 
 // Runtimes we actually use (per docs/edge-ai-qvac.md §3.5)
+// Updated for QVAC SDK 0.14.0: Supertonic3 TTS replaces Chatterbox
 const KEEP_RUNTIMES = new Set([
   "@qvac/sdk",
   "@qvac/llm-llamacpp",       // LLAMA 3.2 1B narrative
-  "@qvac/tts-ggml",           // Chatterbox TTS
-  "@qvac/transcription-parakeet", // Parakeet STT
+  "@qvac/tts-ggml",           // Supertonic3 TTS (31 languages, 0.14)
+  "@qvac/transcription-parakeet", // Parakeet STT (Android GPU in 0.14)
   "@qvac/decoder-audio",      // Required by @qvac/sdk/dist/constants/audio.js
   // Shared infra (small, required by the above)
   "@qvac/infer-base",

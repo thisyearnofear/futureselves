@@ -33,10 +33,15 @@ import { useQVACModel } from "@/lib/qvac";
  * Canonical model descriptors. The constants are imported from the
  * SDK's registry, but the strings here are stable identifiers we
  * surface to the user (and to secure-store for cache-key lookup).
+ *
+ * Updated for QVAC SDK 0.14.0:
+ * - TTS: Supertonic3 (31 languages, up from Chatterbox's 5)
+ * - STT: Whisper (now GPU-accelerated on iOS in 0.14)
+ * - LLM: LLAMA 3.2 1B (thinking tokens now kept out of KV cache)
  */
 export const QVAC_MODELS = {
   llm: "LLAMA_3_2_1B_INST_Q4_0",
-  tts: "chatterbox",
+  tts: "supertonic3",
   stt: "WHISPER_EN_BASE_Q8_0",
 } as const;
 

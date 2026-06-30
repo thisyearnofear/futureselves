@@ -18,7 +18,7 @@
     "@convex-dev/auth": "^0.0.90",
     "@expo/vector-icons": "^15.0.3",
     "@qvac/decoder-audio": "^0.3.7",
-    "@qvac/sdk": "^0.12.1",
+    "@qvac/sdk": "^0.14.0",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
