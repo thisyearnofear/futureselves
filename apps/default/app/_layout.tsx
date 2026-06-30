@@ -93,6 +93,17 @@ export default function RootLayout() {
                             headerBackButtonDisplayMode: "minimal",
                         }}
                     />
+                    <Stack.Screen
+                        name="football-drill"
+                        options={{
+                            title: "Drill",
+                            headerShown: false,
+                            headerTransparent: true,
+                            headerShadowVisible: false,
+                            headerTintColor: "#F8F0DE",
+                            headerBackButtonDisplayMode: "minimal",
+                        }}
+                    />
                 </Stack>
             </QVACPrewarmProvider>
         </ConvexAuthProvider>

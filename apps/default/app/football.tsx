@@ -1,10 +1,10 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "convex/react";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { api } from "@/convex/_generated/api";
 import { FootballAmbitionDeclaration } from "@/components/football-ambition-declaration";
 import { FootballHome } from "@/components/football-home";
@@ -13,15 +13,12 @@ import { useQVACPrewarmContext } from "@/lib/qvac-prewarm-context";
 import { isLocalMode } from "@/lib/ai";
 
 export default function FootballScreen() {
+    const router = useRouter();
     const prewarm = useQVACPrewarmContext();
     const ambition = useQuery(api.football.getActiveAmbition, {});
     const state = useQuery(api.game.getState, {
         dateKey: new Date().toISOString().split("T")[0]!,
     });
-
-    const [, setDrillRoute] = useState<
-        "reaction_time" | "juggling" | "sprint" | null
-    >(null);
 
     const llmModelId = isLocalMode() ? prewarm?.llm.modelId ?? null : null;
     const sttModelId = isLocalMode() ? prewarm?.stt.modelId ?? null : null;
@@ -32,10 +29,8 @@ export default function FootballScreen() {
     }, []);
 
     const handleOpenDrill = useCallback((drillType: "reaction_time" | "juggling" | "sprint") => {
-        setDrillRoute(drillType);
-        // Drill screens will be built in Phase 2.
-        // TODO: router.push(`/football/drills/${drillType}`)
-    }, []);
+        router.push({ pathname: "/football-drill", params: { type: drillType } } as any);
+    }, [router]);
 
     return (
         <LinearGradient colors={["#080A17", "#11162B", "#21172D"]} style={styles.background}>
