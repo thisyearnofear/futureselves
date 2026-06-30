@@ -184,22 +184,47 @@ export function SprintDrill({ onComplete, onCancel }: SprintDrillProps) {
                 </View>
               )}
               <View style={styles.doneButtons}>
-                <Pressable style={styles.retryButton} onPress={handleRetry}>
+                <Pressable
+                  style={({ pressed }) => [styles.retryButton, pressed && { transform: [{ scale: 0.97 }] }]}
+                  onPress={handleRetry}
+                >
                   <Text style={styles.retryButtonText}>Retry</Text>
                 </Pressable>
-                <Pressable style={styles.shareButtonSmall} onPress={async () => {
-                  if (Platform.OS === "web") return;
-                  try {
-                    const { Share: RNShare } = await import("react-native");
-                    await RNShare.share({
-                      message: `My ${distance}m sprint: ${formatResult("sprint", sprintSeconds)}. ${comparison?.diffLabel ?? ""} #FootballPath`,
-                      title: "My Football Path Result",
-                    });
-                  } catch { /* cancelled */ }
-                }}>
+                <Pressable
+                  style={({ pressed }) => [styles.challengeButtonSmall, pressed && { transform: [{ scale: 0.96 }] }]}
+                  onPress={async () => {
+                    if (Platform.OS === "web") return;
+                    try {
+                      const { Share: RNShare } = await import("react-native");
+                      const link = `futureself://challenge?drill=sprint&target=${sprintSeconds.toFixed(2)}&from=Me`;
+                      await RNShare.share({
+                        message: `My ${distance}m sprint: ${formatResult("sprint", sprintSeconds)}. ${comparison?.diffLabel ?? ""}. Think you can beat me? ${link} #FootballPath`,
+                        title: "Football Path Challenge",
+                      });
+                    } catch { /* cancelled */ }
+                  }}
+                >
+                  <Ionicons name="flash-outline" size={16} color="#F7D38B" />
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.shareButtonSmall, pressed && { transform: [{ scale: 0.96 }] }]}
+                  onPress={async () => {
+                    if (Platform.OS === "web") return;
+                    try {
+                      const { Share: RNShare } = await import("react-native");
+                      await RNShare.share({
+                        message: `My ${distance}m sprint: ${formatResult("sprint", sprintSeconds)}. ${comparison?.diffLabel ?? ""} #FootballPath`,
+                        title: "My Football Path Result",
+                      });
+                    } catch { /* cancelled */ }
+                  }}
+                >
                   <Ionicons name="share-outline" size={16} color="#F7D38B" />
                 </Pressable>
-                <Pressable style={styles.saveButton} onPress={handleSave}>
+                <Pressable
+                  style={({ pressed }) => [styles.saveButton, pressed && { transform: [{ scale: 0.97 }] }]}
+                  onPress={handleSave}
+                >
                   <Text style={styles.saveButtonText}>Save</Text>
                 </Pressable>
               </View>
@@ -301,6 +326,16 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(247,211,139,0.15)",
     borderWidth: 1,
     borderColor: "rgba(247,211,139,0.3)",
+  },
+  challengeButtonSmall: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(247,211,139,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.25)",
   },
   retryButton: {
     paddingHorizontal: 24,

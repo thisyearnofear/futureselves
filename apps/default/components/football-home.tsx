@@ -167,6 +167,18 @@ export function FootballHome({
     (d) => d.resultValue !== undefined,
   );
 
+  // Match Day: track which of the 3 drills were completed today
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayMs = todayStart.getTime();
+  const drillsCompletedToday = new Set(
+    completedDrills
+      .filter((d) => d.startedAt >= todayMs)
+      .map((d) => d.drillType),
+  );
+  const matchDayComplete = drillsCompletedToday.size === 3;
+  const matchDayProgress = drillsCompletedToday.size;
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Ambition card */}
@@ -190,6 +202,44 @@ export function FootballHome({
             </View>
           )}
         </View>
+      </Animated.View>
+
+      {/* Match Day progress */}
+      <Animated.View entering={FadeIn.delay(50)} style={styles.matchDayCard}>
+        {matchDayComplete ? (
+          <View style={styles.matchDayComplete}>
+            <Ionicons name="trophy" size={20} color="#A9F7B5" />
+            <Text style={styles.matchDayCompleteText}>Match complete</Text>
+            <Text style={styles.matchDaySub}>Come back tomorrow for your next match</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.matchDayHeader}>
+              <Text style={styles.matchDayTitle}>Match Day</Text>
+              <Text style={styles.matchDayCount}>{matchDayProgress}/3</Text>
+            </View>
+            <View style={styles.matchDayProgress}>
+              {(["reaction_time", "juggling", "sprint"] as const).map((dt) => (
+                <View
+                  key={dt}
+                  style={[
+                    styles.matchDayDot,
+                    drillsCompletedToday.has(dt) && styles.matchDayDotDone,
+                  ]}
+                >
+                  {drillsCompletedToday.has(dt) && (
+                    <Ionicons name="checkmark" size={12} color="#080A17" />
+                  )}
+                </View>
+              ))}
+            </View>
+            <Text style={styles.matchDayHint}>
+              {matchDayProgress === 0
+                ? "Complete all 3 drills to play your match today"
+                : `${3 - matchDayProgress} drill${3 - matchDayProgress === 1 ? "" : "s"} left to complete your match`}
+            </Text>
+          </>
+        )}
       </Animated.View>
 
       {/* Receive transmission */}
@@ -384,6 +434,68 @@ const styles = StyleSheet.create({
     color: "#BFC6DE",
     fontSize: 12,
     fontWeight: "600",
+  },
+  matchDayCard: {
+    gap: 10,
+    padding: 18,
+    borderRadius: 24,
+    backgroundColor: "rgba(14,17,34,0.6)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  matchDayHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  matchDayTitle: {
+    color: "#F8F0DE",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  matchDayCount: {
+    color: "#F7D38B",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  matchDayProgress: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  matchDayDot: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  matchDayDotDone: {
+    backgroundColor: "#F7D38B",
+    height: 22,
+    borderRadius: 11,
+  },
+  matchDayHint: {
+    color: "#6B7290",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  matchDayComplete: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  matchDayCompleteText: {
+    color: "#A9F7B5",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  matchDaySub: {
+    color: "#6B7290",
+    fontSize: 12,
+    fontWeight: "600",
+    width: "100%",
   },
   receiveButton: {
     flexDirection: "row",

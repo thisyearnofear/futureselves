@@ -30,6 +30,31 @@ import {
   CARD_TIER_COLORS,
 } from "@/lib/drill-utils";
 
+// ─── Next goal calculation ───────────────────────────────────────────────────
+
+const TIER_THRESHOLDS = [
+  { tier: "bronze", min: 0 },
+  { tier: "silver", min: 50 },
+  { tier: "gold", min: 70 },
+  { tier: "elite", min: 85 },
+] as const;
+
+function getNextTier(overall: number): { label: string; min: number } | null {
+  for (const t of TIER_THRESHOLDS) {
+    if (overall < t.min) return { label: t.tier.toUpperCase(), min: t.min };
+  }
+  return null;
+}
+
+function getWeakestStat(stats: CardStats): { label: string; value: number } {
+  const statsArr = [
+    { label: "PAC", value: stats.pac },
+    { label: "REA", value: stats.rea },
+    { label: "CTR", value: stats.ctr },
+  ];
+  return statsArr.reduce((min, s) => (s.value < min.value ? s : min));
+}
+
 const POSITION_SHORT: Record<string, string> = {
   goalkeeper: "GK",
   center_back: "CB",
@@ -210,6 +235,10 @@ export function PlayerCardShare({ showShareHint = true, ...cardProps }: PlayerCa
       >
         <PlayerCard ref={cardRef as any} {...cardProps} />
       </Pressable>
+
+      {/* Next goal indicator */}
+      <NextGoal stats={cardProps.stats} />
+
       {showShareHint && (
         <View style={shareStyles.hintRow}>
           {isSharing ? (
@@ -227,6 +256,74 @@ export function PlayerCardShare({ showShareHint = true, ...cardProps }: PlayerCa
     </View>
   );
 }
+
+// ─── Next goal indicator ─────────────────────────────────────────────────────
+
+function NextGoal({ stats }: { stats: CardStats }) {
+  const nextTier = getNextTier(stats.overall);
+  const weakest = getWeakestStat(stats);
+
+  if (!nextTier) {
+    // Already elite
+    return (
+      <View style={goalStyles.container}>
+        <Ionicons name="trophy" size={14} color="#A0F4D8" />
+        <Text style={goalStyles.text}>Elite tier — max rank achieved</Text>
+      </View>
+    );
+  }
+
+  const pointsToNext = nextTier.min - stats.overall;
+
+  return (
+    <View style={goalStyles.container}>
+      <View style={goalStyles.row}>
+        <Ionicons name="trending-up" size={14} color="#F7D38B" />
+        <Text style={goalStyles.text}>
+          {pointsToNext} points to <Text style={goalStyles.highlight}>{nextTier.label}</Text>
+        </Text>
+      </View>
+      {weakest.value > 0 && (
+        <Text style={goalStyles.sub}>
+          Train {weakest.label} (lowest at {weakest.value}) to climb faster
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const goalStyles = StyleSheet.create({
+  container: {
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    backgroundColor: "rgba(14,17,34,0.6)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    marginTop: 10,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  text: {
+    color: "#BFC6DE",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  highlight: {
+    color: "#F7D38B",
+    fontWeight: "800",
+  },
+  sub: {
+    color: "#6B7290",
+    fontSize: 11,
+    fontWeight: "600",
+    paddingLeft: 20,
+  },
+});
 
 // ─── Card styles (ViewShot-safe: no animations, no opacity) ──────────────────
 

@@ -236,21 +236,44 @@ export function ReactionTimeDrill({ onComplete, onCancel }: ReactionTimeDrillPro
                 ))}
               </View>
               <View style={styles.doneButtons}>
-                <Pressable style={styles.shareButton} onPress={async () => {
-                  if (Platform.OS === "web") return;
-                  try {
-                    const { Share: RNShare } = await import("react-native");
-                    await RNShare.share({
-                      message: `My reaction time: ${formatResult("reaction_time", avgResult)}. ${comparison?.diffLabel ?? ""} #FootballPath`,
-                      title: "My Football Path Result",
-                    });
-                  } catch { /* cancelled */ }
-                }}>
+                <Pressable
+                  style={({ pressed }) => [styles.challengeButton, pressed && { transform: [{ scale: 0.97 }] }]}
+                  onPress={async () => {
+                    if (Platform.OS === "web") return;
+                    try {
+                      const { Share: RNShare } = await import("react-native");
+                      const link = `futureself://challenge?drill=reaction_time&target=${Math.round(avgResult)}&from=Me`;
+                      await RNShare.share({
+                        message: `I scored ${formatResult("reaction_time", avgResult)} on reaction time. ${comparison?.diffLabel ?? ""}. Think you can beat me? ${link} #FootballPath`,
+                        title: "Football Path Challenge",
+                      });
+                    } catch { /* cancelled */ }
+                  }}
+                >
+                  <Ionicons name="flash-outline" size={16} color="#F7D38B" />
+                  <Text style={styles.challengeButtonText}>Challenge</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.shareButton, pressed && { transform: [{ scale: 0.97 }] }]}
+                  onPress={async () => {
+                    if (Platform.OS === "web") return;
+                    try {
+                      const { Share: RNShare } = await import("react-native");
+                      await RNShare.share({
+                        message: `My reaction time: ${formatResult("reaction_time", avgResult)}. ${comparison?.diffLabel ?? ""} #FootballPath`,
+                        title: "My Football Path Result",
+                      });
+                    } catch { /* cancelled */ }
+                  }}
+                >
                   <Ionicons name="share-outline" size={18} color="#080A17" />
                   <Text style={styles.shareButtonText}>Share</Text>
                 </Pressable>
-                <Pressable style={styles.finishButton} onPress={handleFinish}>
-                  <Text style={styles.finishButtonText}>Save result</Text>
+                <Pressable
+                  style={({ pressed }) => [styles.finishButton, pressed && { transform: [{ scale: 0.97 }] }]}
+                  onPress={handleFinish}
+                >
+                  <Text style={styles.finishButtonText}>Save</Text>
                 </Pressable>
               </View>
             </Animated.View>
@@ -359,9 +382,21 @@ const styles = StyleSheet.create({
   },
   doneButtons: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
     marginTop: 12,
   },
+  challengeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 24,
+    backgroundColor: "rgba(247,211,139,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.3)",
+  },
+  challengeButtonText: { color: "#F7D38B", fontSize: 13, fontWeight: "700" },
   shareButton: {
     flexDirection: "row",
     alignItems: "center",

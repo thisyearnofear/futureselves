@@ -16,12 +16,14 @@
  */
 
 import { useCallback, useState } from "react";
-import { StyleSheet, View, Text, ActivityIndicator } from "react-native";
+import { StyleSheet, View, Text, ActivityIndicator, Pressable, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "convex/react";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
+import * as Haptics from "expo-haptics";
 import { api } from "@/convex/_generated/api";
 import { ReactionTimeDrill } from "@/components/drill-reaction-time";
 import { JugglingDrill } from "@/components/drill-juggling";
@@ -29,7 +31,12 @@ import { SprintDrill } from "@/components/drill-sprint";
 import { useQVACPrewarmContext } from "@/lib/qvac-prewarm-context";
 import { interpretTrajectory, type FootballPosition } from "@/lib/football-llm";
 import { isLocalMode } from "@/lib/ai";
-import type { DrillType } from "@/lib/drill-utils";
+import {
+  type DrillType,
+  formatResult,
+  getProComparison,
+  DRILL_LABELS,
+} from "@/lib/drill-utils";
 
 export default function FootballDrillScreen() {
     const router = useRouter();
@@ -44,6 +51,8 @@ export default function FootballDrillScreen() {
 
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [showResult, setShowResult] = useState(false);
+    const [savedResultValue, setSavedResultValue] = useState<number | null>(null);
 
     const llmModelId = isLocalMode() ? prewarm?.llm.modelId ?? null : null;
 
@@ -112,11 +121,19 @@ export default function FootballDrillScreen() {
                     }
                 }
 
-                // 6. Navigate back to football home
-                router.replace("/football" as any);
+                // 6. Show result summary instead of navigating back
+                setSavedResultValue(resultValue);
+                setShowResult(true);
+                setIsSaving(false);
+                if (Platform.OS !== "web") {
+                    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                }
             } catch (e) {
                 setSaveError(e instanceof Error ? e.message : "Could not save drill result.");
                 setIsSaving(false);
+                // Still show result even if save failed — the drill itself completed
+                setSavedResultValue(resultValue);
+                setShowResult(true);
             }
         },
         [
@@ -146,6 +163,119 @@ export default function FootballDrillScreen() {
                         <Text style={styles.savingSub}>
                             Your future self is interpreting your trajectory.
                         </Text>
+                    </View>
+                </SafeAreaView>
+            </LinearGradient>
+        );
+    }
+
+    // ─── Result summary phase ──────────────────────────────────────────────
+
+    if (showResult && savedResultValue !== null) {
+        const comparison = getProComparison(drillType, savedResultValue, ambition?.targetPosition as any);
+        const allDrills: DrillType[] = ["reaction_time", "juggling", "sprint"];
+        const otherDrills = allDrills.filter((d) => d !== drillType);
+
+        const handleChallengeFriend = async () => {
+            if (Platform.OS === "web") return;
+            try {
+                const { Share: RNShare } = await import("react-native");
+                const link = `futureself://challenge?drill=${drillType}&target=${savedResultValue}&from=Me`;
+                await RNShare.share({
+                    message: `I scored ${formatResult(drillType, savedResultValue)} on ${DRILL_LABELS[drillType]}. ${comparison?.diffLabel ?? ""}. Think you can beat me? ${link} #FootballPath`,
+                    title: "Football Path Challenge",
+                });
+            } catch { /* cancelled */ }
+        };
+
+        const handleNextDrill = (nextType: DrillType) => {
+            setShowResult(false);
+            setSavedResultValue(null);
+            router.setParams({ type: nextType });
+        };
+
+        const handleGoHome = () => {
+            router.replace("/football" as any);
+        };
+
+        return (
+            <LinearGradient colors={["#080A17", "#11162B", "#21172D"]} style={styles.background}>
+                <StatusBar style="light" />
+                <Stack.Screen options={{ headerShown: false }} />
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={styles.resultContainer}>
+                        {/* Success header */}
+                        <View style={styles.resultHeader}>
+                            <View style={styles.resultCheckCircle}>
+                                <Ionicons name="checkmark" size={28} color="#A9F7B5" />
+                            </View>
+                            <Text style={styles.resultTitle}>Drill complete</Text>
+                            <Text style={styles.resultDrillName}>{DRILL_LABELS[drillType]}</Text>
+                        </View>
+
+                        {/* Score */}
+                        <Text style={styles.resultScoreLabel}>Your score</Text>
+                        <Text style={styles.resultScoreValue}>
+                            {formatResult(drillType, savedResultValue)}
+                        </Text>
+
+                        {/* Pro comparison */}
+                        {comparison && (
+                            <View style={styles.resultComparison}>
+                                <Text style={styles.resultComparisonMain}>{comparison.diffLabel}</Text>
+                                <Text style={styles.resultComparisonSub}>{comparison.percentileLabel}</Text>
+                            </View>
+                        )}
+
+                        {saveError && (
+                            <Text style={styles.resultError}>{saveError}</Text>
+                        )}
+
+                        {/* Next actions */}
+                        <Text style={styles.resultNextLabel}>Keep training</Text>
+                        <View style={styles.resultNextDrills}>
+                            {otherDrills.map((dt) => (
+                                <Pressable
+                                    key={dt}
+                                    style={({ pressed }) => [
+                                        styles.resultNextDrillCard,
+                                        pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+                                    ]}
+                                    onPress={() => handleNextDrill(dt)}
+                                >
+                                    <Ionicons
+                                        name={dt === "reaction_time" ? "flash" : dt === "juggling" ? "football" : "speedometer"}
+                                        size={18}
+                                        color="#F7D38B"
+                                    />
+                                    <Text style={styles.resultNextDrillText}>{DRILL_LABELS[dt]}</Text>
+                                    <Ionicons name="chevron-forward" size={14} color="#6B7290" />
+                                </Pressable>
+                            ))}
+                        </View>
+
+                        {/* Bottom actions */}
+                        <View style={styles.resultBottomActions}>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.resultChallengeBtn,
+                                    pressed && { transform: [{ scale: 0.97 }] },
+                                ]}
+                                onPress={handleChallengeFriend}
+                            >
+                                <Ionicons name="flash-outline" size={16} color="#F7D38B" />
+                                <Text style={styles.resultChallengeText}>Challenge a friend</Text>
+                            </Pressable>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.resultHomeBtn,
+                                    pressed && { transform: [{ scale: 0.97 }] },
+                                ]}
+                                onPress={handleGoHome}
+                            >
+                                <Text style={styles.resultHomeText}>See my card</Text>
+                            </Pressable>
+                        </View>
                     </View>
                 </SafeAreaView>
             </LinearGradient>
@@ -195,4 +325,136 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(255,154,154,0.1)",
     },
     errorText: { color: "#FF9A9A", fontSize: 14 },
+    // ─── Result summary styles ───────────────────────────────────────────
+    resultContainer: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 16,
+        paddingHorizontal: 24,
+    },
+    resultHeader: {
+        alignItems: "center",
+        gap: 8,
+    },
+    resultCheckCircle: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(169,247,181,0.1)",
+        borderWidth: 1,
+        borderColor: "rgba(169,247,181,0.3)",
+    },
+    resultTitle: {
+        color: "#F8F0DE",
+        fontSize: 22,
+        fontWeight: "800",
+    },
+    resultDrillName: {
+        color: "#6B7290",
+        fontSize: 13,
+        fontWeight: "700",
+        letterSpacing: 1,
+    },
+    resultScoreLabel: {
+        color: "#6B7290",
+        fontSize: 13,
+        fontWeight: "700",
+        letterSpacing: 1,
+    },
+    resultScoreValue: {
+        color: "#F7D38B",
+        fontSize: 56,
+        fontWeight: "900",
+    },
+    resultComparison: {
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 20,
+        backgroundColor: "rgba(14,17,34,0.6)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.06)",
+    },
+    resultComparisonMain: {
+        color: "#F7D38B",
+        fontSize: 14,
+        fontWeight: "700",
+    },
+    resultComparisonSub: {
+        color: "#6B7290",
+        fontSize: 12,
+        fontWeight: "600",
+    },
+    resultError: {
+        color: "#FF9A9A",
+        fontSize: 13,
+    },
+    resultNextLabel: {
+        color: "#6B7290",
+        fontSize: 12,
+        fontWeight: "700",
+        letterSpacing: 1,
+        alignSelf: "flex-start",
+        marginLeft: 4,
+    },
+    resultNextDrills: {
+        width: "100%",
+        gap: 8,
+    },
+    resultNextDrillCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        paddingHorizontal: 18,
+        paddingVertical: 16,
+        borderRadius: 20,
+        backgroundColor: "rgba(14,17,34,0.6)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.06)",
+    },
+    resultNextDrillText: {
+        flex: 1,
+        color: "#F8F0DE",
+        fontSize: 15,
+        fontWeight: "700",
+    },
+    resultBottomActions: {
+        flexDirection: "row",
+        gap: 10,
+        width: "100%",
+        marginTop: 4,
+    },
+    resultChallengeBtn: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        paddingVertical: 16,
+        borderRadius: 24,
+        backgroundColor: "rgba(247,211,139,0.12)",
+        borderWidth: 1,
+        borderColor: "rgba(247,211,139,0.3)",
+    },
+    resultChallengeText: {
+        color: "#F7D38B",
+        fontSize: 14,
+        fontWeight: "700",
+    },
+    resultHomeBtn: {
+        flex: 1,
+        alignItems: "center",
+        paddingVertical: 16,
+        borderRadius: 24,
+        backgroundColor: "#F7D38B",
+    },
+    resultHomeText: {
+        color: "#080A17",
+        fontSize: 14,
+        fontWeight: "800",
+    },
 });
