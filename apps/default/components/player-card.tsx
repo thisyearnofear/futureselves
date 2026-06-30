@@ -203,7 +203,11 @@ export function PlayerCardShare({ showShareHint = true, ...cardProps }: PlayerCa
 
   return (
     <View style={shareStyles.container}>
-      <Pressable onPress={handleShare} disabled={isSharing}>
+      <Pressable
+        onPress={handleShare}
+        disabled={isSharing}
+        style={({ pressed }) => pressed ? { transform: [{ scale: 0.98 }], opacity: 0.92 } : undefined}
+      >
         <PlayerCard ref={cardRef as any} {...cardProps} />
       </Pressable>
       {showShareHint && (

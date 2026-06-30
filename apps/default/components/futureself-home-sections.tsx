@@ -849,10 +849,11 @@ function VisualChoiceCard({
           if (Platform.OS !== "web") void Haptics.selectionAsync();
           onChoice(choice);
         }}
-        style={[
+        style={({ pressed }) => [
           styles.choiceButtonHero,
           isSelected && styles.choiceButtonHeroActive,
           { borderColor: isSelected ? color : "rgba(247,211,139,0.35)" },
+          pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
         ]}
       >
         <Animated.View style={[StyleSheet.absoluteFill, glowStyle, { backgroundColor: color, borderRadius: 20 }]} pointerEvents="none" />
@@ -885,9 +886,10 @@ function VisualChoiceCard({
         if (Platform.OS !== "web") void Haptics.selectionAsync();
         onChoice(choice);
       }}
-      style={[
+      style={({ pressed }) => [
         styles.choiceButtonSecondary,
         isSelected && { backgroundColor: `${color}22`, borderColor: `${color}66` },
+        pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
       ]}
     >
       <Animated.View style={[StyleSheet.absoluteFill, glowStyle, { backgroundColor: color, borderRadius: 16 }]} pointerEvents="none" />

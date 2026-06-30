@@ -196,7 +196,11 @@ export function FootballHome({
       {!transmission ? (
         <Animated.View entering={FadeInUp.delay(100)}>
           <Pressable
-            style={[styles.receiveButton, isGenerating && styles.receiveButtonDisabled]}
+            style={({ pressed }) => [
+              styles.receiveButton,
+              isGenerating && styles.receiveButtonDisabled,
+              pressed && { transform: [{ scale: 0.97 }] },
+            ]}
             onPress={handleReceiveTransmission}
             disabled={isGenerating}
           >
@@ -263,7 +267,10 @@ export function FootballHome({
             return (
               <Pressable
                 key={drillType}
-                style={styles.drillCard}
+                style={({ pressed }) => [
+                  styles.drillCard,
+                  pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+                ]}
                 onPress={() => onOpenDrill(drillType)}
               >
                 <Ionicons name={DRILL_ICONS[drillType] as any} size={22} color="#F7D38B" />

@@ -332,7 +332,10 @@ function StarNode({ star, x, y, nodeSize, labelWidth, isNext, onStarPress }: Sta
               onStarPress!(star);
             }
           }}
-          style={styles.starPressable}
+          style={({ pressed }) => [
+            styles.starPressable,
+            pressed && styles.starPressed,
+          ]}
         >
           <AvatarReveal castMember={star.castMember} size={actualNodeSize} />
         </Pressable>
@@ -407,6 +410,10 @@ const styles = StyleSheet.create({
   starPressable: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  starPressed: {
+    transform: [{ scale: 0.92 }],
+    opacity: 0.85,
   },
   starLocked: {
     alignItems: "center",

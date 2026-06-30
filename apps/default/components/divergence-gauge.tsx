@@ -68,7 +68,13 @@ export function DivergenceGauge({ score, label }: DivergenceGaugeProps) {
 
   return (
     <View style={styles.container}>
-      <Pressable onPress={() => setShowTooltip(!showTooltip)} style={styles.gaugeWrap}>
+      <Pressable
+        onPress={() => setShowTooltip(!showTooltip)}
+        style={({ pressed }) => [
+          styles.gaugeWrap,
+          pressed && styles.gaugePressed,
+        ]}
+      >
         {/* Arc segments */}
         <View style={styles.arcContainer}>
           {Array.from({ length: SEGMENTS }, (_, i) => {
@@ -148,6 +154,10 @@ const styles = StyleSheet.create({
     width: 180,
     height: 120,
   },
+  gaugePressed: {
+    transform: [{ scale: 0.96 }],
+    opacity: 0.9,
+  },
   arcContainer: {
     flexDirection: "row",
     gap: 3,
@@ -209,7 +219,7 @@ const styles = StyleSheet.create({
   tooltip: {
     gap: 8,
     padding: 14,
-    borderRadius: 16,
+    borderRadius: 20,
     backgroundColor: "rgba(14,17,34,0.92)",
     borderWidth: 1,
     borderColor: "rgba(247,211,139,0.16)",

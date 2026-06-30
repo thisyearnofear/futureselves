@@ -148,9 +148,10 @@ export function FootballAmbitionDeclaration({
       {/* Speak button */}
       <Animated.View entering={FadeInUp.delay(100)} style={styles.micSection}>
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.micButton,
             speech.isRecording && styles.micButtonRecording,
+            pressed && { transform: [{ scale: 0.96 }] },
           ]}
           onPress={speech.isRecording ? speech.stopRecording : speech.startRecording}
           disabled={!canUseSTT && !speech.isRecording}
@@ -200,7 +201,11 @@ export function FootballAmbitionDeclaration({
       {transcribedText && !extractedPreview ? (
         <Animated.View entering={FadeInUp}>
           <Pressable
-            style={[styles.extractButton, isExtracting && styles.extractButtonDisabled]}
+            style={({ pressed }) => [
+              styles.extractButton,
+              isExtracting && styles.extractButtonDisabled,
+              pressed && { transform: [{ scale: 0.97 }] },
+            ]}
             onPress={handleExtract}
             disabled={isExtracting}
           >
@@ -237,7 +242,11 @@ export function FootballAmbitionDeclaration({
             Your first transmission will tell you what this path actually demands.
           </Text>
           <Pressable
-            style={[styles.confirmButton, isSaving && styles.confirmButtonDisabled]}
+            style={({ pressed }) => [
+              styles.confirmButton,
+              isSaving && styles.confirmButtonDisabled,
+              pressed && { transform: [{ scale: 0.97 }] },
+            ]}
             onPress={handleConfirm}
             disabled={isSaving}
           >

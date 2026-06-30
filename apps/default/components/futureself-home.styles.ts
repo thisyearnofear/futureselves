@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
   hero: {
     gap: 18,
     padding: 24,
-    borderRadius: 36,
+    borderRadius: 28,
     borderCurve: "continuous",
     backgroundColor: "rgba(14,17,34,0.84)",
     borderWidth: 1,
@@ -232,7 +232,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    borderRadius: 30,
+    borderRadius: 28,
     borderCurve: "continuous",
     backgroundColor: "rgba(8,10,23,0.68)",
     paddingHorizontal: 24,
@@ -325,7 +325,7 @@ export const styles = StyleSheet.create({
   receiveCard: {
     gap: 14,
     padding: 18,
-    borderRadius: 30,
+    borderRadius: 28,
     borderCurve: "continuous",
     backgroundColor: "rgba(246,240,222,0.08)",
     borderWidth: 1,
@@ -1329,7 +1329,7 @@ export const styles = StyleSheet.create({
   archiveHero: {
     gap: 14,
     padding: 22,
-    borderRadius: 30,
+    borderRadius: 28,
     borderCurve: "continuous",
     backgroundColor: "rgba(14,17,34,0.82)",
     borderWidth: 1,
