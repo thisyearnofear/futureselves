@@ -53,3 +53,23 @@ export const avatarTierValidator = v.union(
   v.literal("generated"),
   v.literal("personalized"),
 );
+
+// ─── Football Path (Tether Developers Cup) ───────────────────────────────────
+
+export const drillTypeValidator = v.union(
+  v.literal("reaction_time"),
+  v.literal("juggling"),
+  v.literal("sprint"),
+);
+
+export const positionValidator = v.union(
+  v.literal("goalkeeper"),
+  v.literal("center_back"),
+  v.literal("full_back"),
+  v.literal("defensive_mid"),
+  v.literal("central_mid"),
+  v.literal("attacking_mid"),
+  v.literal("winger"),
+  v.literal("striker"),
+  v.literal("unknown"),
+);

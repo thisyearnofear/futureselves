@@ -82,6 +82,17 @@ export default function RootLayout() {
                             headerBackButtonDisplayMode: "minimal",
                         }}
                     />
+                    <Stack.Screen
+                        name="football"
+                        options={{
+                            title: "Football Path",
+                            headerShown: false,
+                            headerTransparent: true,
+                            headerShadowVisible: false,
+                            headerTintColor: "#F8F0DE",
+                            headerBackButtonDisplayMode: "minimal",
+                        }}
+                    />
                 </Stack>
             </QVACPrewarmProvider>
         </ConvexAuthProvider>

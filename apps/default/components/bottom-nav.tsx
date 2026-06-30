@@ -27,6 +27,12 @@ const TABS: Array<TabConfig> = [
     href: "/",
   },
   {
+    label: "Football",
+    icon: "football-outline",
+    iconActive: "football",
+    href: "/football",
+  },
+  {
     label: "Voices",
     icon: "star-outline",
     iconActive: "star",

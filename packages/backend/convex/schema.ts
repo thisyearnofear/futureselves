@@ -7,6 +7,8 @@ import {
   archetypeValidator,
   castMemberValidator,
   avatarTierValidator,
+  drillTypeValidator,
+  positionValidator,
 } from "./validators";
 
 export default defineSchema({
@@ -193,4 +195,82 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_userId_and_week", ["userId", "weekStartDateKey"]),
+
+  // ─── Football Path (Tether Developers Cup) ───────────────────────────────
+
+  // A user's declared football ambition — what they want to become.
+  // Created when the user speaks their ambition via on-device STT.
+  // The LLM extracts the structured fields from the spoken text.
+  ambitions: defineTable({
+    userId: v.id("users"),
+    // Raw spoken text from STT
+    spokenText: v.string(),
+    // LLM-extracted: what position/role they aspire to
+    targetPosition: positionValidator,
+    // LLM-extracted: free-text description of their dream
+    description: v.string(),
+    // LLM-extracted: current level (beginner, amateur, competitive, semi-pro, pro)
+    currentLevel: v.string(),
+    // LLM-extracted: age if mentioned (affects trajectory realism)
+    age: v.optional(v.string()),
+    // Whether this is the user's active ambition
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_active", ["userId", "isActive"]),
+
+  // A single drill session — one measurement event.
+  drillSessions: defineTable({
+    userId: v.id("users"),
+    ambitionId: v.id("ambitions"),
+    drillType: drillTypeValidator,
+    // Session-level metadata
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    // Overall result for this session (drill-type specific)
+    // reaction_time: milliseconds (lower is better)
+    // juggling: count of juggles
+    // sprint: seconds (lower is better)
+    resultValue: v.optional(v.number()),
+    // Raw sensor/tap data for audit and re-analysis
+    rawData: v.optional(v.array(v.object({
+      timestamp: v.number(),
+      value: v.number(),
+    }))),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_ambition", ["userId", "ambitionId"])
+    .index("by_userId_and_drillType", ["userId", "drillType"])
+    .index("by_userId_and_createdAt", ["userId", "createdAt"]),
+
+  // Trajectory snapshots — computed periodically from drill sessions.
+  // Stores the trend so the LLM can narrate progress without re-reading
+  // every raw data point.
+  trajectories: defineTable({
+    userId: v.id("users"),
+    ambitionId: v.id("ambitions"),
+    drillType: drillTypeValidator,
+    // Number of sessions this trajectory covers
+    sessionCount: v.number(),
+    // First and latest result values
+    firstValue: v.number(),
+    latestValue: v.number(),
+    // Best result so far
+    bestValue: v.number(),
+    // Simple linear trend: percent change per session
+    // Positive = improving, negative = declining
+    trendPercent: v.number(),
+    // LLM-generated narrative summary of the trajectory
+    // (voiced by the future self via TTS)
+    narrative: v.optional(v.string()),
+    // Suggested position based on this drill's pattern
+    suggestedPosition: v.optional(positionValidator),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_ambition", ["userId", "ambitionId"])
+    .index("by_userId_and_drillType", ["userId", "drillType"]),
 });
