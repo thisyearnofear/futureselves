@@ -25,6 +25,7 @@ Use this when recording or presenting for the QVAC "Unleash Edge AI" submission.
 - **The memory-readout dev overlay is on by default** during the entire recording. *bytes uploaded: 0 · inference: on-device · last model · cache hit*.
 - Pre-warm the QVAC TTS model once before recording so cold-start latency doesn't show.
 - **Do not hide the cold start.** If a 25-second warm-up happens at any point in the take, the splash-screen progress UI must be visible. The speaker acknowledges it: *"the first transmission takes ~25 seconds while the model warms up."* Hiding it is worse than showing it.
+- **For the Football Path variant:** have a football ambition ready to speak (e.g., "I want to be a pro winger") and pre-warm the QVAC models — STT, LLM, and TTS — before recording so the on-device loop runs smoothly.
 
 ### Operator flow (record in one take)
 
@@ -65,6 +66,43 @@ If any one of the three is missing, re-record. The unforgeable version is the ve
 ### If the kill switch is unavailable on a particular platform
 
 Record the cloud-side data flow with a network inspector (Charles / Proxyman) showing the upload. Then engage airplane mode and record the second transmission. The narrative is the same: *no traffic, voice still arrives.*
+
+---
+
+## Football Path variant (90–120 seconds, Tether Developers Cup)
+
+Use this when recording or presenting the Football Path for the Tether Developers Cup (QVAC track). All AI runs on-device via the QVAC SDK — STT, LLM, and TTS. Screen-record + voiceover; no live staging.
+
+### Operator flow (record in one take)
+
+| Time | On screen | What to say |
+|---|---|---|
+| 0:00–0:08 | App open, tap "Football" tab | "A new path in Future Selves — built for the Tether Developers Cup." |
+| 0:08–0:22 | Ambition declaration screen, press-and-hold to speak: "I want to be a pro winger" | "You speak your football dream out loud. QVAC speech-to-text transcribes it on the device." |
+| 0:22–0:35 | Tap "Understand my dream" — QVAC LLM extracts position/level/description | "The on-device language model understands what you said — position, level, and the dream itself." |
+| 0:35–0:45 | Preview card: position (Winger), level, dream description | "A structured ambition, extracted locally. Nothing left the phone." |
+| 0:45–0:52 | Tap "Begin the path" — ambition saved | "You begin the path." |
+| 0:52–1:00 | Football home: ambition card with position badge | "Your home base — your ambition, your position, your path forward." |
+| 1:00–1:18 | Tap "Receive transmission" — QVAC LLM generates a voicemail from the future self, grounded in what being a winger actually demands — QVAC TTS synthesizes voice on-device — play/pause with progress bar | "A voicemail from your future self — the winger you're becoming. Generated and spoken entirely on-device." |
+| 1:18–1:28 | Tap a drill card (e.g., Reaction Time) — drill screen opens | "Now you train. The path turns your dream into measurable drills." |
+| 1:28–1:40 | Complete 5 rounds of reaction time test — average calculated | "Five rounds. The phone measures your reaction time to the millisecond." |
+| 1:40–1:52 | Saving screen: "Your future self is interpreting your trajectory" — QVAC LLM interprets the drill result as a narrative | "The on-device model reads your result and writes what it means for the winger you're becoming." |
+| 1:52–2:00 | Return to football home — trajectory narrative card appears with TTS playback | "Your trajectory, interpreted. Spoken back to you by your future self." |
+| 2:00–2:12 | **Network-kill moment.** Toggle airplane mode. Tap "Receive transmission" again — transmission still arrives. | "And when the network is gone — the future self still speaks. Fully local. Fully on-device." |
+
+### What to emphasize in the edit
+
+- The **transmission playback** is the emotional centerpiece — let the voicemail play for a few seconds so the voice lands.
+- The **trajectory narrative** is the proof that the loop closes: speak → understand → train → interpret → hear back.
+- The **network-kill moment** is the same unforgeable test as the QVAC submission variant. Hold on airplane mode for 2–3 seconds after the second transmission arrives.
+- Show the dev-overlay chip ("on-device · 0 KB uploaded") during the post-kill transmission.
+
+### What to avoid (hard rules for the Football Path variant)
+
+- **No cloud AI calls.** STT, LLM, and TTS all run via the QVAC SDK on-device. No hybrid framing.
+- **No skipping the drill.** The measurement → interpretation loop is the whole thesis. Show at least one full drill completion.
+- **No narration of sensor architecture or drill scoring logic.** This is a dream-to-voice pitch, not an engineering talk.
+- **Do not hide the cold start.** If model warm-up happens, the splash-screen progress UI must be visible. Same rule as the QVAC submission variant.
 
 ---
 

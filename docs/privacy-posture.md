@@ -27,6 +27,10 @@
 | Avatars (Tier 1) | Generated on-device from text prompts; no photo involved | Only you |
 | Selfies (Tier 2, opt-in) | Processed in memory at generation time, then deleted | Only you, briefly |
 | Crash and error logs | Optional, on-device only. No remote telemetry. | Only you |
+| Football ambition (spoken text + extracted position/level) | On-device (QVAC STT + LLM) | Only you |
+| Football drill measurements (reaction time, juggling count, sprint time) | On-device (sensors) | Only you |
+| Football transmission text and audio | On-device (QVAC LLM + TTS) | Only you |
+| Trajectory interpretation narratives | On-device (QVAC LLM) | Only you |
 
 The on-device model cache is encrypted with a key held in your device's secure enclave. A stolen phone is a stolen brick for the purposes of this app.
 
@@ -38,6 +42,9 @@ The on-device model cache is encrypted with a key held in your device's secure e
 - The AI model's inputs or outputs
 - Any biometric data
 - Any usage analytics tied to your account
+- Your spoken football ambition
+- Your drill measurement data
+- Your football-path transmissions (text or audio)
 
 ## What *might* leave your device, and why
 

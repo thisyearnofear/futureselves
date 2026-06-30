@@ -20,6 +20,8 @@ The intent of the **submission build** (`EXPO_PUBLIC_AI_PROVIDER=local`, EAS pro
 | **Google / GitHub / Apple OAuth** | Optional sign-in providers | `convex/auth.ts:1-9` | **Optional.** Anonymous + Password providers are also wired; the demo persona uses Anonymous, so no third-party identity provider is contacted. Only fires if the user explicitly chooses a social login. |
 | **QVAC model registry** | First-cold-start model download (LLAMA 3.2 1B, Chatterbox, Whisper) | Inside `@qvac/sdk` `loadModel()` calls in `apps/default/lib/qvac.ts` | **Enabled on first launch only.** After the ~1.1 GB cold-start download, model weights are cached on-device (`expo-secure-store` metadata, disk bytes). All subsequent launches and all inference are fully offline. The cold start is announced to the user via the splash-screen progress UI; it is not hidden. |
 
+> **Football Path note:** The Football Path (Tether Developers Cup, QVAC track) adds **no new remote APIs** to this table. It reuses the same Convex sync layer (row above) and the same QVAC on-device models (LLM for ambition extraction / transmission generation / trajectory interpretation, TTS for voice playback, STT for spoken ambition declaration). The drill measurement layer (accelerometer for juggling, tap for reaction time, timer for sprint) is native sensors / pure software — not AI — so it does not introduce any AI network calls.
+
 ---
 
 ## Per-API details
@@ -75,6 +77,8 @@ The intent of the **submission build** (`EXPO_PUBLIC_AI_PROVIDER=local`, EAS pro
 - **Purpose:** authentication heartbeat, persona/game-state persistence, cross-device sync, scheduled cron jobs (game-loop maintenance).
 - **What's shipped over the wire:** game state — persona metadata, streak count, divergence score, completed check-ins. **What is NOT shipped:** the AI model's inputs or outputs in local mode are generated and consumed entirely on the device; they are also stored in Convex as part of the persona's history (so the user can sync across devices), but they are never sent to a third-party AI provider.
 - **Honesty note:** "zero bytes leave the device" in the submission pitch refers to the *AI inference path*. Convex sync traffic exists because the product is a multi-device journal. This is documented in `docs/privacy-posture.md` § "What might leave your device, and why." A future P2P sync mode would remove even this dependency.
+- **Football Path addition:** The Football Path (Tether Developers Cup, QVAC track) adds three new tables — `ambitions`, `drillSessions`, `trajectories` — and new API functions in `packages/backend/convex/football.ts`: `getActiveAmbition`, `saveAmbition`, `startDrillSession`, `completeDrillSession`, `getDrillHistory`, `getTrajectories`, `recomputeTrajectory`, `updateTrajectoryNarrative`. All of these are synced through the same Convex layer described above, with **zero AI input/output over the wire** — the LLM extraction, transmission generation, and trajectory interpretation all run on-device via the QVAC SDK, and only the resulting structured game state is persisted to Convex.
+- **Football Path measurement data:** The drill measurement data (accelerometer readings for juggling, reaction times for the tap test, sprint times for the timer) is stored in Convex as game state alongside the rest of the persona's history. The **AI interpretation** of that measurement data (trajectory narrative generation) runs entirely on-device via the QVAC LLM — the raw sensor/tap/timer values are never sent to any third-party AI provider.
 
 ### 7. OAuth providers (Google / GitHub / Apple)
 
@@ -136,4 +140,4 @@ Expected traffic: occasional `*.convex.cloud` packets (auth heartbeat, state syn
 - `.env.example` — every env var the project understands
 - `apps/default/lib/ai.ts` — `getAIProvider()` / `isLocalMode()` / `isLocalLLMMode()` runtime split
 
-*Last audited from source: 2026-06-21.*
+*Last audited from source: 2026-07-01.*
