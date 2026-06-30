@@ -15,7 +15,7 @@
  * Future enhancement: accelerometer-based auto-start/stop.
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -50,6 +50,16 @@ export function SprintDrill({ onComplete, onCancel }: SprintDrillProps) {
   const startTimeRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const rawDataRef = useRef<Array<{ timestamp: number; value: number }>>([]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
 
   const cleanup = () => {
     if (timerRef.current) {

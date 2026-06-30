@@ -13,7 +13,7 @@
  * The result is stored as the average reaction time in milliseconds.
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -53,6 +53,16 @@ export function ReactionTimeDrill({ onComplete, onCancel }: ReactionTimeDrillPro
   const showTimeRef = useRef<number>(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rawDataRef = useRef<Array<{ timestamp: number; value: number }>>([]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const ballScale = useSharedValue(0);
   const ballStyle = useAnimatedStyle(() => ({

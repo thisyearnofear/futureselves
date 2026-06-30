@@ -36,6 +36,40 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 - `docs/audit-log.md` + `docs/sample-audit-log.jsonl` - Structured JSONL audit log of QVAC SDK calls (model loads/unloads, LLM/TTS/STT/embedding metrics inc. TTFT and tokens/sec). Logger at `apps/default/lib/audit-log.ts`. Gated by `EXPO_PUBLIC_AUDIT_LOG=1`. Required artifact for the hackathon evidence bundle.
 - `docs/build-small-strategy.md` - Prize strategy for the Build Small hackathon (separate submission via `hf-space/`)
 
+## Football Path (Tether Developers Cup — QVAC track)
+
+The Football Path is a goal-achievement feature built for the Tether Developers Cup hackathon (QVAC track). All AI runs on-device via the QVAC SDK — no cloud AI APIs.
+
+### Architecture
+
+- `apps/default/lib/football-llm.ts` - On-device LLM functions (QVAC SDK only): `extractAmbition` (STT text → structured position/level/description), `generateFootballTransmission` (position-grounded voicemail from future self), `interpretTrajectory` (drill trend → narrative + position suggestion)
+- `apps/default/lib/drill-utils.ts` - Sensor measurement utilities: `countJugglePeaks` (accelerometer peak detection), `formatResult`, `isImprovement`, drill metadata
+- `apps/default/components/football-ambition-declaration.tsx` - Speak-your-dream UI: QVAC STT → LLM extraction → preview → save
+- `apps/default/components/football-home.tsx` - Ambition card, receive transmission (QVAC LLM + TTS), drill grid, trajectory narratives
+- `apps/default/components/football-audio-player.tsx` - Self-contained TTS player for football transmissions and trajectory narratives (QVAC TTS, file-based playback, audio cache)
+- `apps/default/components/drill-reaction-time.tsx` - 5-round tap-based reaction time test (pure software, ms precision, false-start detection)
+- `apps/default/components/drill-juggling.tsx` - Accelerometer-based juggle counter (expo-sensors, real-time peak detection + offline verification)
+- `apps/default/components/drill-sprint.tsx` - Manual start/stop sprint timer (pure software, distance selection, ms precision)
+- `apps/default/app/football.tsx` - Football Path route (switches between ambition declaration and home)
+- `apps/default/app/football-drill.tsx` - Drill route (hosts all 3 drills, handles completion flow: start session → complete → recompute trajectory → QVAC LLM interpretation → save narrative)
+- `packages/backend/convex/football.ts` - Convex API: `getActiveAmbition`, `saveAmbition`, `startDrillSession`, `completeDrillSession`, `getDrillHistory`, `getTrajectories`, `recomputeTrajectory`, `updateTrajectoryNarrative`
+- Schema tables: `ambitions`, `drillSessions`, `trajectories` (in `schema.ts`)
+- Validators: `drillTypeValidator` (reaction_time, juggling, sprint), `positionValidator` (8 football positions + unknown) (in `validators.ts`)
+
+### Measurement vs AI separation
+
+The QVAC track requires all AI to run on-device through the QVAC SDK. The measurement layer uses native sensors (accelerometer) and pure software (tap/timer) — it is NOT AI. This keeps it outside the QVAC track's on-device-AI-only rule. The interpretation of measurement results runs through QVAC LLM separately.
+
+### User flow
+
+1. User taps Football tab → sees ambition declaration
+2. Speaks dream → QVAC STT transcribes → QVAC LLM extracts {position, level, description}
+3. Confirms → ambition saved to Convex
+4. Football home shows → taps "Receive transmission" → QVAC LLM generates voicemail grounded in position + level → QVAC TTS synthesizes voice on-device
+5. Taps a drill card → drill screen opens → completes drill
+6. Result saved → trajectory recomputed → QVAC LLM interprets → narrative saved
+7. Returns to football home → sees updated results + trajectory narrative with TTS playback
+
 ## Build Small (hf-space/) notes
 
 - Space uses Gradio 5.50.0 (Python 3.13 compat)

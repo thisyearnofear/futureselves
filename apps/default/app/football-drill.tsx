@@ -48,7 +48,11 @@ export default function FootballDrillScreen() {
     const llmModelId = isLocalMode() ? prewarm?.llm.modelId ?? null : null;
 
     // Drill type is passed via router params: /football-drill?type=reaction_time
-    const drillType = (params.type as DrillType | undefined) ?? "reaction_time";
+    const validDrillTypes: DrillType[] = ["reaction_time", "juggling", "sprint"];
+    const rawType = params.type as DrillType | undefined;
+    const drillType: DrillType = rawType && validDrillTypes.includes(rawType)
+        ? rawType
+        : "reaction_time";
 
     const handleComplete = useCallback(
         async (resultValue: number, rawData: Array<{ timestamp: number; value: number }>) => {

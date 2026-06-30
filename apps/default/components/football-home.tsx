@@ -32,6 +32,7 @@ import {
   type FootballTransmissionContext,
   type FootballPosition,
 } from "@/lib/football-llm";
+import { FootballAudioPlayer } from "@/components/football-audio-player";
 import { isLocalMode } from "@/lib/ai";
 
 const POSITION_LABELS: Record<string, string> = {
@@ -242,6 +243,13 @@ export function FootballHome({
         <Animated.View entering={FadeInUp} style={styles.transmissionCard}>
           <Text style={styles.transmissionTitle}>{transmission.title}</Text>
           <Text style={styles.transmissionText}>{transmission.text}</Text>
+          {isLocalMode() && ttsModelId && (
+            <FootballAudioPlayer
+              text={`${transmission.title}. ${transmission.text} ${transmission.actionPrompt} ${transmission.cliffhanger}`}
+              cacheKey={`football-transmission-${ambition._id}-${transmission.title.slice(0, 20)}`}
+              ttsModelId={ttsModelId}
+            />
+          )}
           <View style={styles.actionBox}>
             <Text style={styles.actionLabel}>TONIGHT'S DRILL</Text>
             <Text style={styles.actionText}>{transmission.actionPrompt}</Text>
@@ -303,6 +311,13 @@ export function FootballHome({
                   {DRILL_META[t.drillType as keyof typeof DRILL_META]?.label ?? t.drillType}
                 </Text>
                 <Text style={styles.trajectoryNarrative}>{t.narrative}</Text>
+                {isLocalMode() && ttsModelId && t.narrative && (
+                  <FootballAudioPlayer
+                    text={t.narrative}
+                    cacheKey={`football-trajectory-${t._id}`}
+                    ttsModelId={ttsModelId}
+                  />
+                )}
                 {t.suggestedPosition && t.suggestedPosition !== "unknown" && (
                   <Text style={styles.trajectorySuggestion}>
                     Consider: {POSITION_LABELS[t.suggestedPosition] ?? t.suggestedPosition}

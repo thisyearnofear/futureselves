@@ -51,6 +51,7 @@ export function JugglingDrill({ onComplete, onCancel }: JugglingDrillProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [count, setCount] = useState(0);
   const [elapsed, setElapsed] = useState(0);
+  const [sensorError, setSensorError] = useState<string | null>(null);
 
   const samplesRef = useRef<Array<{ timestamp: number; value: number }>>([]);
   const startTimeRef = useRef<number>(0);
@@ -118,6 +119,7 @@ export function JugglingDrill({ onComplete, onCancel }: JugglingDrillProps) {
     setPhase("counting");
     setCount(0);
     setElapsed(0);
+    setSensorError(null);
     countRef.current = 0;
     samplesRef.current = [];
     lastPeakTimeRef.current = 0;
@@ -137,7 +139,7 @@ export function JugglingDrill({ onComplete, onCancel }: JugglingDrillProps) {
       subscriptionRef.current = Accelerometer.addListener(handleAccelData);
     } catch (e) {
       console.warn("[JugglingDrill] Accelerometer not available:", e);
-      // Fallback: tap-based counting
+      setSensorError("Accelerometer unavailable. Count may be inaccurate.");
     }
 
     // Start elapsed timer
@@ -215,6 +217,9 @@ export function JugglingDrill({ onComplete, onCancel }: JugglingDrillProps) {
               <Text style={styles.countLabel}>juggles</Text>
             </Animated.View>
             <Text style={styles.countingSub}>Juggling... tap stop when done</Text>
+            {sensorError && (
+              <Text style={styles.sensorErrorText}>{sensorError}</Text>
+            )}
             <Pressable style={styles.stopButton} onPress={handleStop}>
               <Ionicons name="stop-circle" size={24} color="#080A17" />
               <Text style={styles.stopButtonText}>Stop & count</Text>
@@ -295,6 +300,7 @@ const styles = StyleSheet.create({
   countNumber: { color: "#F7D38B", fontSize: 64, fontWeight: "900" },
   countLabel: { color: "#BFC6DE", fontSize: 14, fontWeight: "600" },
   countingSub: { color: "#6B7290", fontSize: 14 },
+  sensorErrorText: { color: "#FF9A9A", fontSize: 12, textAlign: "center", maxWidth: 240 },
   stopButton: {
     flexDirection: "row",
     alignItems: "center",

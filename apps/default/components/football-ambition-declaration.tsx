@@ -58,6 +58,7 @@ export function FootballAmbitionDeclaration({
 }: FootballAmbitionDeclarationProps) {
   const [transcribedText, setTranscribedText] = useState("");
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [extractedPreview, setExtractedPreview] = useState<{
     position: FootballPosition;
     description: string;
@@ -110,8 +111,9 @@ export function FootballAmbitionDeclaration({
   }, [transcribedText, llmModelId]);
 
   const handleConfirm = useCallback(async () => {
-    if (!extractedPreview) return;
+    if (!extractedPreview || isSaving) return;
     setError(null);
+    setIsSaving(true);
     try {
       await saveAmbition({
         spokenText: transcribedText,
@@ -125,8 +127,10 @@ export function FootballAmbitionDeclaration({
       onDeclared();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save your ambition.");
+    } finally {
+      setIsSaving(false);
     }
-  }, [extractedPreview, transcribedText, saveAmbition, onDeclared]);
+  }, [extractedPreview, transcribedText, saveAmbition, onDeclared, isSaving]);
 
   const isNative = Platform.OS !== "web";
   const canUseSTT = isNative && isLocalMode() && sttModelId !== null;
@@ -232,8 +236,16 @@ export function FootballAmbitionDeclaration({
           <Text style={styles.previewHint}>
             Your first transmission will tell you what this path actually demands.
           </Text>
-          <Pressable style={styles.confirmButton} onPress={handleConfirm}>
-            <Text style={styles.confirmButtonText}>Begin the path</Text>
+          <Pressable
+            style={[styles.confirmButton, isSaving && styles.confirmButtonDisabled]}
+            onPress={handleConfirm}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#080A17" size="small" />
+            ) : (
+              <Text style={styles.confirmButtonText}>Begin the path</Text>
+            )}
           </Pressable>
         </Animated.View>
       ) : null}
@@ -410,6 +422,9 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     backgroundColor: "#F7D38B",
     marginTop: 4,
+  },
+  confirmButtonDisabled: {
+    opacity: 0.6,
   },
   confirmButtonText: {
     color: "#080A17",
