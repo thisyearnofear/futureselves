@@ -23,7 +23,7 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 - `apps/default/components/constellation-map.tsx` - Visual star map of voice constellation with animated glows and divergence warping
 - `apps/default/components/divergence-gauge.tsx` - Visual arc gauge for the timeline divergence score
 - `apps/default/components/ritual-state.tsx` - Game-state visualization: streak risk, choice patterns, consequence chains
-- `apps/default/components/bottom-nav.tsx` - Bottom tab navigation (Today / Voices / Archive)
+- `apps/default/components/bottom-nav.tsx` - Bottom tab navigation (Today / Football / Voices / Archive)
 - `packages/backend/convex/game.ts` - Game actions including transmission generation
 - `packages/backend/convex/melius.ts` - Melius MCP client for agentic workflows
 - `packages/backend/convex/voicemail.ts` - 'The Last Voicemail' critique-driven pipeline
@@ -43,15 +43,18 @@ The Football Path is a goal-achievement feature built for the Tether Developers 
 ### Architecture
 
 - `apps/default/lib/football-llm.ts` - On-device LLM functions (QVAC SDK only): `extractAmbition` (STT text → structured position/level/description), `generateFootballTransmission` (position-grounded voicemail from future self), `interpretTrajectory` (drill trend → narrative + position suggestion)
-- `apps/default/lib/drill-utils.ts` - Sensor measurement utilities: `countJugglePeaks` (accelerometer peak detection), `formatResult`, `isImprovement`, drill metadata
+- `apps/default/lib/drill-utils.ts` - Sensor measurement utilities: `countJugglePeaks` (accelerometer peak detection), `formatResult`, `isImprovement`, drill metadata, pro benchmarks (`getProComparison`), player card stat engine (`calculateCardStats`, `getCardTier`, `CARD_TIER_COLORS`)
+- `apps/default/lib/design-tokens.ts` - Shared design system tokens: animation durations, border radii, easing curves, colors. Single source of truth for UI consistency across personal and football surfaces
 - `apps/default/components/football-ambition-declaration.tsx` - Speak-your-dream UI: QVAC STT → LLM extraction → preview → save
-- `apps/default/components/football-home.tsx` - Ambition card, receive transmission (QVAC LLM + TTS), drill grid, trajectory narratives
+- `apps/default/components/football-home.tsx` - Ambition card, Match Day progress tracker (daily engagement loop), receive transmission (QVAC LLM + TTS), drill grid with pro comparisons, player card with next-goal indicator
 - `apps/default/components/football-audio-player.tsx` - Self-contained TTS player for football transmissions and trajectory narratives (QVAC TTS, file-based playback, audio cache)
-- `apps/default/components/drill-reaction-time.tsx` - 5-round tap-based reaction time test (pure software, ms precision, false-start detection)
-- `apps/default/components/drill-juggling.tsx` - Accelerometer-based juggle counter (expo-sensors, real-time peak detection + offline verification)
-- `apps/default/components/drill-sprint.tsx` - Manual start/stop sprint timer (pure software, distance selection, ms precision)
+- `apps/default/components/player-card.tsx` - FIFA Ultimate Team style player card (shareable via ViewShot + RN Share), next-goal indicator showing points to next tier and weakest stat to train
+- `apps/default/components/drill-reaction-time.tsx` - 5-round tap-based reaction time test (pure software, ms precision, false-start detection, pro comparison + challenge + share on result)
+- `apps/default/components/drill-juggling.tsx` - Accelerometer-based juggle counter (expo-sensors, real-time peak detection + offline verification, pro comparison + challenge + share on result)
+- `apps/default/components/drill-sprint.tsx` - Manual start/stop sprint timer (pure software, distance selection, ms precision, pro comparison + challenge + share on result)
 - `apps/default/app/football.tsx` - Football Path route (switches between ambition declaration and home)
-- `apps/default/app/football-drill.tsx` - Drill route (hosts all 3 drills, handles completion flow: start session → complete → recompute trajectory → QVAC LLM interpretation → save narrative)
+- `apps/default/app/football-drill.tsx` - Drill route (hosts all 3 drills, handles completion flow: start session → complete → recompute trajectory → QVAC LLM interpretation → save narrative → post-drill result summary with next-drill cards + challenge)
+- `apps/default/app/challenge.tsx` - Deep link route for challenge-a-friend viral loop (`futureself://challenge?drill=X&target=Y&from=Z`). Handles challenge banner → drill → win/loss comparison → challenge back. Redirects to ambition declaration if no ambition exists
 - `packages/backend/convex/football.ts` - Convex API: `getActiveAmbition`, `saveAmbition`, `startDrillSession`, `completeDrillSession`, `getDrillHistory`, `getTrajectories`, `recomputeTrajectory`, `updateTrajectoryNarrative`
 - Schema tables: `ambitions`, `drillSessions`, `trajectories` (in `schema.ts`)
 - Validators: `drillTypeValidator` (reaction_time, juggling, sprint), `positionValidator` (8 football positions + unknown) (in `validators.ts`)
@@ -65,10 +68,35 @@ The QVAC track requires all AI to run on-device through the QVAC SDK. The measur
 1. User taps Football tab → sees ambition declaration
 2. Speaks dream → QVAC STT transcribes → QVAC LLM extracts {position, level, description}
 3. Confirms → ambition saved to Convex
-4. Football home shows → taps "Receive transmission" → QVAC LLM generates voicemail grounded in position + level → QVAC TTS synthesizes voice on-device
+4. Football home shows → Match Day progress bar (0/3 drills) → taps "Receive transmission" → QVAC LLM generates voicemail grounded in position + level → QVAC TTS synthesizes voice on-device
 5. Taps a drill card → drill screen opens → completes drill
 6. Result saved → trajectory recomputed → QVAC LLM interprets → narrative saved
-7. Returns to football home → sees updated results + trajectory narrative with TTS playback
+7. Post-drill result summary shows: score, pro comparison, next-drill cards, challenge + see card buttons
+8. Returns to football home → Match Day progress updated → player card shows updated stats + next-goal indicator (points to next tier, weakest stat to train)
+9. Taps player card → captures as image → share sheet opens with deep link
+
+### Viral loop (challenge a friend)
+
+1. User completes a drill → taps "Challenge" → share sheet opens with `futureself://challenge?drill=X&target=Y&from=Z`
+2. Friend opens link → sees challenge banner ("Beat Alex's 340ms")
+3. If friend has ambition → drill starts immediately; if not → redirected to declare ambition first (new user acquisition)
+4. Friend completes drill → sees win/loss comparison vs. challenger + pro player
+5. Friend taps "Challenge back" → creates a new deep link → the loop continues
+
+### Engagement loop (Match Day)
+
+- Football home tracks which of 3 drills were completed today via `startedAt` timestamps
+- Progress bar: 0/3 → 1/3 → 2/3 → 3/3
+- When all 3 done: "Match complete — come back tomorrow for your next match"
+- Gives users a concrete daily goal and reason to return
+
+### Deep linking
+
+- URL scheme: `futureself` (defined in `app.json`)
+- Expo Router handles deep links automatically based on file structure
+- `futureself://challenge` → `app/challenge.tsx` (challenge a friend viral loop)
+- `futureself://football` → `app/football.tsx` (football path)
+- `futureself://football-drill?type=X` → `app/football-drill.tsx` (specific drill)
 
 ## Build Small (hf-space/) notes
 
@@ -93,3 +121,11 @@ When working on the local-AI pivot, keep these in mind:
 - For tests, mock `@qvac/sdk` at the module boundary. Do not hit real on-device inference in unit tests.
 - The primary demo device is an **iPhone** (dev/test) or a **mid-range Android** (QVAC submission headliner, per `docs/edge-ai-qvac.md` §3.5). macOS (Apple Silicon) is the dev/test target — the `darwin-arm64` prebuild runs the full SDK natively on your Mac for fast iteration. iOS builds ship via EAS (`eas build --profile development --platform ios`). Android is not required for daily development but must be verified for the QVAC submission.
 - **node_modules trim:** `@qvac/sdk` installs ~4.2 GB of native ML runtimes as direct deps. `scripts/trim-node-modules.mjs` runs on postinstall and keeps only the three runtimes we use (`llm-llamacpp`, `tts-ggml`, `transcription-parakeet`) and only for `darwin-arm64`, `ios-arm64`, and `android-arm64`. It also removes heavy transitive deps (`bare-ffmpeg`, `react-native-bare-kit`, `rocksdb-native`). Reduces node_modules from ~5.6 GB to ~1.3 GB. The trim is fragile — it will break if the SDK internally imports a removed package at runtime.
+
+<!-- convex-ai-start -->
+This project uses [Convex](https://convex.dev) as its backend.
+
+When working on Convex code, **always read `convex/_generated/ai/guidelines.md` first** for important guidelines on how to correctly use Convex APIs and patterns. The file contains rules that override what you may have learned about Convex from training data.
+
+Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
+<!-- convex-ai-end -->
