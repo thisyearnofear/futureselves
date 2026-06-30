@@ -26,7 +26,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
-import { formatResult } from "@/lib/drill-utils";
+import { formatResult, getProComparison } from "@/lib/drill-utils";
 
 type Phase = "idle" | "running" | "done";
 
@@ -169,21 +169,43 @@ export function SprintDrill({ onComplete, onCancel }: SprintDrillProps) {
           </View>
         )}
 
-        {phase === "done" && (
-          <Animated.View entering={FadeInUp} style={styles.centerContent}>
-            <Text style={styles.doneLabel}>{distance}m sprint time</Text>
-            <Text style={styles.doneValue}>{formatResult("sprint", elapsedMs / 1000)}</Text>
-            <Text style={styles.doneDistance}>{distance} meters</Text>
-            <View style={styles.doneButtons}>
-              <Pressable style={styles.retryButton} onPress={handleRetry}>
-                <Text style={styles.retryButtonText}>Retry</Text>
-              </Pressable>
-              <Pressable style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Save result</Text>
-              </Pressable>
-            </View>
-          </Animated.View>
-        )}
+        {phase === "done" && (() => {
+          const sprintSeconds = elapsedMs / 1000;
+          const comparison = getProComparison("sprint", sprintSeconds);
+          return (
+            <Animated.View entering={FadeInUp} style={styles.centerContent}>
+              <Text style={styles.doneLabel}>{distance}m sprint time</Text>
+              <Text style={styles.doneValue}>{formatResult("sprint", sprintSeconds)}</Text>
+              <Text style={styles.doneDistance}>{distance} meters</Text>
+              {comparison && (
+                <View style={styles.comparisonBox}>
+                  <Text style={styles.comparisonMain}>{comparison.diffLabel}</Text>
+                  <Text style={styles.comparisonSub}>{comparison.percentileLabel}</Text>
+                </View>
+              )}
+              <View style={styles.doneButtons}>
+                <Pressable style={styles.retryButton} onPress={handleRetry}>
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </Pressable>
+                <Pressable style={styles.shareButtonSmall} onPress={async () => {
+                  if (Platform.OS === "web") return;
+                  try {
+                    const { Share: RNShare } = await import("react-native");
+                    await RNShare.share({
+                      message: `My ${distance}m sprint: ${formatResult("sprint", sprintSeconds)}. ${comparison?.diffLabel ?? ""} #FootballPath`,
+                      title: "My Football Path Result",
+                    });
+                  } catch { /* cancelled */ }
+                }}>
+                  <Ionicons name="share-outline" size={16} color="#F7D38B" />
+                </Pressable>
+                <Pressable style={styles.saveButton} onPress={handleSave}>
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          );
+        })()}
       </View>
     </View>
   );
@@ -257,7 +279,29 @@ const styles = StyleSheet.create({
   doneLabel: { color: "#BFC6DE", fontSize: 14, fontWeight: "600" },
   doneValue: { color: "#F7D38B", fontSize: 56, fontWeight: "900" },
   doneDistance: { color: "#6B7290", fontSize: 14 },
-  doneButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
+  doneButtons: { flexDirection: "row", gap: 10, marginTop: 8, alignItems: "center" },
+  comparisonBox: {
+    gap: 4,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: "rgba(247,211,139,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.15)",
+    marginTop: 8,
+    alignItems: "center",
+  },
+  comparisonMain: { color: "#F7D38B", fontSize: 14, fontWeight: "700" },
+  comparisonSub: { color: "#6B7290", fontSize: 12, fontWeight: "600" },
+  shareButtonSmall: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(247,211,139,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.3)",
+  },
   retryButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,

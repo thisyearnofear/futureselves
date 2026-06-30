@@ -34,7 +34,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInUp, useSharedValue, withTiming, useAnimatedStyle, withRepeat } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Accelerometer } from "expo-sensors";
-import { countJugglePeaks, formatResult } from "@/lib/drill-utils";
+import { countJugglePeaks, formatResult, getProComparison } from "@/lib/drill-utils";
 
 type Phase = "idle" | "counting" | "done";
 
@@ -227,21 +227,42 @@ export function JugglingDrill({ onComplete, onCancel }: JugglingDrillProps) {
           </View>
         )}
 
-        {phase === "done" && (
-          <Animated.View entering={FadeInUp} style={styles.centerContent}>
-            <Text style={styles.doneLabel}>Total juggles</Text>
-            <Text style={styles.doneValue}>{formatResult("juggling", count)}</Text>
-            <Text style={styles.doneTime}>in {elapsed} seconds</Text>
-            <View style={styles.doneButtons}>
-              <Pressable style={styles.retryButton} onPress={handleRetry}>
-                <Text style={styles.retryButtonText}>Retry</Text>
-              </Pressable>
-              <Pressable style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Save result</Text>
-              </Pressable>
-            </View>
-          </Animated.View>
-        )}
+        {phase === "done" && (() => {
+          const comparison = getProComparison("juggling", count);
+          return (
+            <Animated.View entering={FadeInUp} style={styles.centerContent}>
+              <Text style={styles.doneLabel}>Total juggles</Text>
+              <Text style={styles.doneValue}>{formatResult("juggling", count)}</Text>
+              <Text style={styles.doneTime}>in {elapsed} seconds</Text>
+              {comparison && (
+                <View style={styles.comparisonBox}>
+                  <Text style={styles.comparisonMain}>{comparison.diffLabel}</Text>
+                  <Text style={styles.comparisonSub}>{comparison.percentileLabel}</Text>
+                </View>
+              )}
+              <View style={styles.doneButtons}>
+                <Pressable style={styles.retryButton} onPress={handleRetry}>
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </Pressable>
+                <Pressable style={styles.shareButtonSmall} onPress={async () => {
+                  if (Platform.OS === "web") return;
+                  try {
+                    const { Share: RNShare } = await import("react-native");
+                    await RNShare.share({
+                      message: `I juggled a football ${count} times. ${comparison?.diffLabel ?? ""} #FootballPath`,
+                      title: "My Football Path Result",
+                    });
+                  } catch { /* cancelled */ }
+                }}>
+                  <Ionicons name="share-outline" size={16} color="#F7D38B" />
+                </Pressable>
+                <Pressable style={styles.saveButton} onPress={handleSave}>
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          );
+        })()}
       </View>
     </View>
   );
@@ -315,7 +336,29 @@ const styles = StyleSheet.create({
   doneLabel: { color: "#BFC6DE", fontSize: 14, fontWeight: "600" },
   doneValue: { color: "#F7D38B", fontSize: 64, fontWeight: "900" },
   doneTime: { color: "#6B7290", fontSize: 14 },
-  doneButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
+  doneButtons: { flexDirection: "row", gap: 10, marginTop: 8, alignItems: "center" },
+  comparisonBox: {
+    gap: 4,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: "rgba(247,211,139,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.15)",
+    marginTop: 8,
+    alignItems: "center",
+  },
+  comparisonMain: { color: "#F7D38B", fontSize: 14, fontWeight: "700" },
+  comparisonSub: { color: "#6B7290", fontSize: 12, fontWeight: "600" },
+  shareButtonSmall: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(247,211,139,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.3)",
+  },
   retryButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,

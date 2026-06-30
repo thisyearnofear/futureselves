@@ -25,7 +25,6 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useQuery } from "convex/react";
-import { useRouter } from "expo-router";
 import { api } from "@/convex/_generated/api";
 import {
   generateFootballTransmission,
@@ -33,7 +32,18 @@ import {
   type FootballPosition,
 } from "@/lib/football-llm";
 import { FootballAudioPlayer } from "@/components/football-audio-player";
+import { PlayerCardShare } from "@/components/player-card";
 import { isLocalMode } from "@/lib/ai";
+import {
+  type DrillType,
+  type TrajectoryItem,
+  getProComparison,
+  calculateCardStats,
+  DRILL_ICONS,
+  DRILL_LABELS,
+  DRILL_DESCRIPTIONS,
+  formatResult,
+} from "@/lib/drill-utils";
 
 const POSITION_LABELS: Record<string, string> = {
   goalkeeper: "Goalkeeper",
@@ -47,8 +57,7 @@ const POSITION_LABELS: Record<string, string> = {
   unknown: "Footballer",
 };
 
-// Local types matching the Convex football API return shapes.
-// These will be replaced by generated types once `npx convex dev` is run.
+// Local type for drill sessions (Convex return shape).
 interface DrillSessionItem {
   _id: string;
   _creationTime: number;
@@ -58,41 +67,6 @@ interface DrillSessionItem {
   completedAt?: number;
   createdAt: number;
 }
-
-interface TrajectoryItem {
-  _id: string;
-  _creationTime: number;
-  drillType: "reaction_time" | "juggling" | "sprint";
-  sessionCount: number;
-  firstValue: number;
-  latestValue: number;
-  bestValue: number;
-  trendPercent: number;
-  narrative?: string;
-  suggestedPosition?: string;
-  updatedAt: number;
-}
-
-const DRILL_META = {
-  reaction_time: {
-    label: "Reaction Time",
-    icon: "flash-outline" as const,
-    unit: "ms",
-    description: "Tap when the ball appears",
-  },
-  juggling: {
-    label: "Juggling",
-    icon: "football-outline" as const,
-    unit: "touches",
-    description: "Count your juggles",
-  },
-  sprint: {
-    label: "Sprint",
-    icon: "speedometer-outline" as const,
-    unit: "s",
-    description: "Time your sprint",
-  },
-};
 
 interface FootballHomeProps {
   llmModelId: string | null;
@@ -258,28 +232,55 @@ export function FootballHome({
         </Animated.View>
       )}
 
+      {/* Player card */}
+      {(() => {
+        const trajs = (trajectories as TrajectoryItem[] | undefined) ?? [];
+        const stats = calculateCardStats(trajs);
+        if (!stats) return null;
+        return (
+          <Animated.View entering={FadeInUp.delay(150)}>
+            <PlayerCardShare
+              playerName={playerName}
+              position={ambition.targetPosition}
+              positionLabel={positionLabel}
+              level={ambition.currentLevel}
+              stats={stats}
+            />
+          </Animated.View>
+        );
+      })()}
+
       {/* Drills */}
       <Animated.View entering={FadeInUp.delay(200)} style={styles.drillsSection}>
         <Text style={styles.sectionTitle}>Measure your path</Text>
         <View style={styles.drillGrid}>
           {(["reaction_time", "juggling", "sprint"] as const).map((drillType) => {
-            const meta = DRILL_META[drillType];
             const lastResult = completedDrills.find((d: DrillSessionItem) => d.drillType === drillType);
             const traj = ((trajectories as TrajectoryItem[] | undefined) ?? []).find((t: TrajectoryItem) => t.drillType === drillType);
+            const comparison = lastResult?.resultValue !== undefined
+              ? getProComparison(drillType, lastResult.resultValue, ambition.targetPosition)
+              : null;
             return (
               <Pressable
                 key={drillType}
                 style={styles.drillCard}
                 onPress={() => onOpenDrill(drillType)}
               >
-                <Ionicons name={meta.icon} size={22} color="#F7D38B" />
-                <Text style={styles.drillLabel}>{meta.label}</Text>
+                <Ionicons name={DRILL_ICONS[drillType] as any} size={22} color="#F7D38B" />
+                <Text style={styles.drillLabel}>{DRILL_LABELS[drillType]}</Text>
                 {lastResult ? (
-                  <Text style={styles.drillResult}>
-                    {lastResult.resultValue}{meta.unit}
-                  </Text>
+                  <>
+                    <Text style={styles.drillResult}>
+                      {formatResult(drillType, lastResult.resultValue!)}
+                    </Text>
+                    {comparison && (
+                      <Text style={styles.drillComparison}>
+                        {comparison.diffLabel}
+                      </Text>
+                    )}
+                  </>
                 ) : (
-                  <Text style={styles.drillPending}>{meta.description}</Text>
+                  <Text style={styles.drillPending}>{DRILL_DESCRIPTIONS[drillType]}</Text>
                 )}
                 {traj && traj.sessionCount > 1 && (
                   <Text
@@ -298,35 +299,6 @@ export function FootballHome({
           })}
         </View>
       </Animated.View>
-
-      {/* Trajectory narratives */}
-      {((trajectories as TrajectoryItem[] | undefined) ?? []).filter((t) => t.narrative).length > 0 && (
-        <Animated.View entering={FadeInUp.delay(300)} style={styles.trajectorySection}>
-          <Text style={styles.sectionTitle}>Your future self on your progress</Text>
-          {((trajectories as TrajectoryItem[] | undefined) ?? [])
-            .filter((t) => t.narrative)
-            .map((t) => (
-              <View key={t._id} style={styles.trajectoryCard}>
-                <Text style={styles.trajectoryDrill}>
-                  {DRILL_META[t.drillType as keyof typeof DRILL_META]?.label ?? t.drillType}
-                </Text>
-                <Text style={styles.trajectoryNarrative}>{t.narrative}</Text>
-                {isLocalMode() && ttsModelId && t.narrative && (
-                  <FootballAudioPlayer
-                    text={t.narrative}
-                    cacheKey={`football-trajectory-${t._id}`}
-                    ttsModelId={ttsModelId}
-                  />
-                )}
-                {t.suggestedPosition && t.suggestedPosition !== "unknown" && (
-                  <Text style={styles.trajectorySuggestion}>
-                    Consider: {POSITION_LABELS[t.suggestedPosition] ?? t.suggestedPosition}
-                  </Text>
-                )}
-              </View>
-            ))}
-        </Animated.View>
-      )}
 
       {error && (
         <View style={styles.errorBox}>
@@ -504,31 +476,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
-  trajectorySection: { gap: 12 },
-  trajectoryCard: {
-    gap: 8,
-    padding: 18,
-    borderRadius: 22,
-    backgroundColor: "rgba(14,17,34,0.6)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  trajectoryDrill: {
-    color: "#F7D38B",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  trajectoryNarrative: {
-    color: "#BFC6DE",
-    fontSize: 14,
-    lineHeight: 22,
-    fontStyle: "italic",
-  },
-  trajectorySuggestion: {
-    color: "#A9F7B5",
-    fontSize: 13,
+  drillComparison: {
+    color: "#6B7290",
+    fontSize: 10,
     fontWeight: "600",
+    lineHeight: 14,
   },
   errorBox: {
     padding: 16,

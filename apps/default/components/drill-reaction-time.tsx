@@ -30,7 +30,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
-import { formatResult } from "@/lib/drill-utils";
+import { formatResult, getProComparison } from "@/lib/drill-utils";
 
 type Phase = "idle" | "waiting" | "show" | "result" | "falseStart" | "done";
 
@@ -216,22 +216,46 @@ export function ReactionTimeDrill({ onComplete, onCancel }: ReactionTimeDrillPro
           </Animated.View>
         )}
 
-        {phase === "done" && (
-          <Animated.View entering={FadeInUp} style={styles.centerContent}>
-            <Text style={styles.doneLabel}>Average reaction time</Text>
-            <Text style={styles.doneValue}>{formatResult("reaction_time", avgResult!)}</Text>
-            <View style={styles.resultsList}>
-              {results.map((r, i) => (
-                <View key={i} style={styles.resultPill}>
-                  <Text style={styles.resultPillText}>{formatResult("reaction_time", r)}</Text>
+        {phase === "done" && avgResult !== null && (() => {
+          const comparison = getProComparison("reaction_time", avgResult);
+          return (
+            <Animated.View entering={FadeInUp} style={styles.centerContent}>
+              <Text style={styles.doneLabel}>Average reaction time</Text>
+              <Text style={styles.doneValue}>{formatResult("reaction_time", avgResult)}</Text>
+              {comparison && (
+                <View style={styles.comparisonBox}>
+                  <Text style={styles.comparisonMain}>{comparison.diffLabel}</Text>
+                  <Text style={styles.comparisonSub}>{comparison.percentileLabel}</Text>
                 </View>
-              ))}
-            </View>
-            <Pressable style={styles.finishButton} onPress={handleFinish}>
-              <Text style={styles.finishButtonText}>Save result</Text>
-            </Pressable>
-          </Animated.View>
-        )}
+              )}
+              <View style={styles.resultsList}>
+                {results.map((r, i) => (
+                  <View key={i} style={styles.resultPill}>
+                    <Text style={styles.resultPillText}>{formatResult("reaction_time", r)}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.doneButtons}>
+                <Pressable style={styles.shareButton} onPress={async () => {
+                  if (Platform.OS === "web") return;
+                  try {
+                    const { Share: RNShare } = await import("react-native");
+                    await RNShare.share({
+                      message: `My reaction time: ${formatResult("reaction_time", avgResult)}. ${comparison?.diffLabel ?? ""} #FootballPath`,
+                      title: "My Football Path Result",
+                    });
+                  } catch { /* cancelled */ }
+                }}>
+                  <Ionicons name="share-outline" size={18} color="#080A17" />
+                  <Text style={styles.shareButtonText}>Share</Text>
+                </Pressable>
+                <Pressable style={styles.finishButton} onPress={handleFinish}>
+                  <Text style={styles.finishButtonText}>Save result</Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          );
+        })()}
       </Pressable>
     </View>
   );
@@ -313,12 +337,49 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.06)",
   },
   resultPillText: { color: "#BFC6DE", fontSize: 13, fontWeight: "600" },
+  comparisonBox: {
+    gap: 4,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: "rgba(247,211,139,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.15)",
+    marginTop: 8,
+    alignItems: "center",
+  },
+  comparisonMain: {
+    color: "#F7D38B",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  comparisonSub: {
+    color: "#6B7290",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  doneButtons: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+  },
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 24,
+    backgroundColor: "rgba(247,211,139,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.3)",
+  },
+  shareButtonText: { color: "#F7D38B", fontSize: 14, fontWeight: "700" },
   finishButton: {
-    paddingHorizontal: 32,
+    flex: 1,
+    alignItems: "center",
     paddingVertical: 14,
     borderRadius: 24,
     backgroundColor: "#F7D38B",
-    marginTop: 12,
   },
   finishButtonText: { color: "#080A17", fontSize: 16, fontWeight: "800" },
 });
