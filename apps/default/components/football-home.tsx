@@ -116,6 +116,7 @@ export function FootballHome({
         description: ambition.description,
         currentLevel: ambition.currentLevel,
         age: ambition.age,
+        coachPersona: ambition.coachPersona,
         recentDrills: ((drillHistory as DrillSessionItem[] | undefined) ?? [])
           .filter((d) => d.resultValue !== undefined)
           .slice(0, 5)
@@ -293,13 +294,14 @@ export function FootballHome({
         if (!stats) return null;
         return (
           <Animated.View entering={FadeInUp.delay(150)}>
-            <PlayerCardShare
-              playerName={playerName}
-              position={ambition.targetPosition}
-              positionLabel={positionLabel}
-              level={ambition.currentLevel}
-              stats={stats}
-            />
+          <PlayerCardShare
+            playerName={playerName}
+            position={ambition.targetPosition}
+            positionLabel={positionLabel}
+            level={ambition.currentLevel}
+            stats={stats}
+            coachPersona={ambition.coachPersona}
+          />
           </Animated.View>
         );
       })()}

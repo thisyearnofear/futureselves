@@ -13,6 +13,7 @@ import type * as auth from "../auth.js";
 import type * as cast from "../cast.js";
 import type * as choice_effects from "../choice_effects.js";
 import type * as face from "../face.js";
+import type * as football from "../football.js";
 import type * as functions from "../functions.js";
 import type * as game from "../game.js";
 import type * as generate_sample from "../generate_sample.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   cast: typeof cast;
   choice_effects: typeof choice_effects;
   face: typeof face;
+  football: typeof football;
   functions: typeof functions;
   game: typeof game;
   generate_sample: typeof generate_sample;

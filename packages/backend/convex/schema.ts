@@ -9,6 +9,7 @@ import {
   avatarTierValidator,
   drillTypeValidator,
   positionValidator,
+  coachPersonaValidator,
 } from "./validators";
 
 export default defineSchema({
@@ -213,6 +214,10 @@ export default defineSchema({
     currentLevel: v.string(),
     // LLM-extracted: age if mentioned (affects trajectory realism)
     age: v.optional(v.string()),
+    // Coach persona chosen at declaration. Today conditions the LLM system
+    // prompt; when the QVAC SDK ships `loadAdapter`, this field becomes the
+    // LoRA handle for hot-swapping a local personality adapter.
+    coachPersona: v.optional(coachPersonaValidator),
     // Whether this is the user's active ambition
     isActive: v.boolean(),
     createdAt: v.number(),

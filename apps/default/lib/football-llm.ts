@@ -49,6 +49,9 @@ export interface FootballTransmissionContext {
   description: string;
   currentLevel: string;
   age?: string;
+  // Coach persona chosen at declaration. Conditions the on-device LLM
+  // voice today; will become a LoRA handle when QVAC SDK ships `loadAdapter`.
+  coachPersona?: FootballCoachPersona | string;
   // Recent drill results (for trajectory-aware transmissions)
   recentDrills: Array<{
     drillType: "reaction_time" | "juggling" | "sprint";
@@ -85,6 +88,57 @@ function guessPosition(text: string): FootballPosition {
     if (keywords.some((kw) => lower.includes(kw))) return position;
   }
   return "unknown";
+}
+
+// ─── Coach persona mapping ─────────────────────────────────────────────
+
+export type FootballCoachPersona =
+  | "tactician"
+  | "enforcer"
+  | "mentor"
+  | "broadcaster";
+
+// Persona-conditioned behavior for the on-device QVAC LLM. Today these
+// are system-prompt injections; when the QVAC SDK ships `loadAdapter`,
+// each key becomes a hot-swappable LoRA persona downloaded onto the device.
+const COACH_PERSONAS: Record<FootballCoachPersona, { label: string; style: string }> = {
+  tactician: {
+    label: "The Tactician",
+    style:
+      "Adopt the persona of a calm, methodical upper-league coach — " +
+      "reads the field three passes ahead, frames every drill as a pattern, " +
+      "talks the way a manager speaks privately to a player they believe in. " +
+      "Never raises their voice. This is the future self of the player's coach.",
+  },
+  enforcer: {
+    label: "The Enforcer",
+    style:
+      "Adopt the persona of a ruthless, physically demanding coach in the Roy Keane mold — " +
+      "demands effort, calls out softness, references the cost of the work, " +
+      "speaks like a captain who is disappointed but still betting on the player. " +
+      "Honest, sometimes harsh, never cruel. The standard is non-negotiable.",
+  },
+  mentor: {
+    label: "The Mentor",
+    style:
+      "Adopt the persona of a long-retired professional who now coaches the next generation — " +
+      "warm, specific, generous with anecdote, calibrated to the player's level, " +
+      "speaks like a grandfather who played at the top and now watches them train every day. " +
+      "Patient with mistakes. Brutal on quit. Always has time for one more question.",
+  },
+  broadcaster: {
+    label: "The Broadcaster",
+    style:
+      "Adopt the persona of a top-flight co-commentator narrating the player's training session — " +
+      "vivid, observational, paints every touch in a stadium-phrase, " +
+      "speaks like a broadcast that respects the listener and respects the sport. " +
+      "When they tap Play, this is their soundtrack.",
+  },
+};
+
+export function getCoachPersonaLabel(persona: string | undefined): string {
+  if (!persona) return COACH_PERSONAS.tactician.label;
+  return COACH_PERSONAS[persona as FootballCoachPersona]?.label ?? COACH_PERSONAS.tactician.label;
 }
 
 // ─── Ambition extraction ─────────────────────────────────────────────────────
@@ -217,8 +271,13 @@ function buildFootballPrompt(ctx: FootballTransmissionContext): string {
 
   const positionReality = POSITION_REALITY[ctx.targetPosition];
   const levelContext = LEVEL_CONTEXT[ctx.currentLevel] ?? LEVEL_CONTEXT["beginner"];
+  const personaKey = (ctx.coachPersona as FootballCoachPersona | undefined) ?? "tactician";
+  const persona = COACH_PERSONAS[personaKey] ?? COACH_PERSONAS.tactician;
 
   return `Create today's football path transmission as JSON only.
+
+Coach persona (THIS IS NON-NEGOTIABLE — VOICE COMES FROM HERE):
+${persona.style}
 
 Player profile:
 - Name: ${ctx.playerName}
@@ -278,7 +337,7 @@ function footballFallbackTransmission(ctx: FootballTransmissionContext): Footbal
     title: "The path nobody told you about",
     text: `${ctx.playerName}, you said you want to be a ${positionName}. Here's what that actually means. ${reality} The question isn't whether you want it. Everyone wants it. The question is whether you'll do the boring part — the part nobody watches, the part that doesn't feel like progress. Tonight, one drill. Not a game. Not a highlight. A drill.`,
     actionPrompt: "Do one specific football drill for 10 minutes. Time it. Don't stop before 10.",
-    cliffhanger: "Do it tonight, and tomorrow I'll tell you what the first week actually looks like.",
+    cliffhanger: "Do it tonight, and tomorrow I'll tell you what the first week actually looks like. Welcome to the Tether Developers Cup — you just took the first honest step.",
   };
 }
 

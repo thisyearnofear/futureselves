@@ -29,6 +29,7 @@ import {
   getCardTier,
   CARD_TIER_COLORS,
 } from "@/lib/drill-utils";
+import { getCoachPersonaLabel } from "@/lib/football-llm";
 
 // ─── Next goal calculation ───────────────────────────────────────────────────
 
@@ -73,6 +74,8 @@ interface PlayerCardProps {
   positionLabel: string;
   level: string;
   stats: CardStats;
+  /** Coach persona chosen at declaration. Drives the "Trained by" badge. */
+  coachPersona?: string;
   /** Optional stat delta to show as a callout badge (e.g. "REA +5"). */
   statDelta?: { label: string; delta: number } | null;
 }
@@ -82,9 +85,10 @@ interface PlayerCardProps {
  * No animations, no opacity transforms — ViewShot-compatible only.
  */
 export const PlayerCard = forwardRef<View, PlayerCardProps>(
-  function PlayerCard({ playerName, position, positionLabel, level, stats, statDelta }, ref) {
+  function PlayerCard({ playerName, position, positionLabel, level, stats, coachPersona, statDelta }, ref) {
     const tier = getCardTier(stats.overall);
     const colors = CARD_TIER_COLORS[tier];
+    const personaLabel = getCoachPersonaLabel(coachPersona);
 
     return (
       <View ref={ref} collapsable={false} style={cardStyles.wrapper}>
@@ -135,7 +139,23 @@ export const PlayerCard = forwardRef<View, PlayerCardProps>(
             <Text style={cardStyles.levelText}>{level.toUpperCase()}</Text>
             <View style={cardStyles.deviceBadge}>
               <Ionicons name="shield-checkmark" size={10} color="#6B7290" />
-              <Text style={cardStyles.deviceBadgeText}>BUILT ON-DEVICE</Text>
+              <Text style={cardStyles.deviceBadgeText}>QVAC ON-DEVICE</Text>
+            </View>
+          </View>
+
+          {/* Coach + inference chip strip */}
+          <View style={cardStyles.coachChipRow}>
+            <View style={cardStyles.coachChip}>
+              <Ionicons name="flame" size={10} color={colors.primary} />
+              <Text style={[cardStyles.coachChipText, { color: colors.primary }]} numberOfLines={1}>
+                {personaLabel.toUpperCase()}
+              </Text>
+            </View>
+            <View style={cardStyles.deviceChip}>
+              <Ionicons name="cloud-offline-outline" size={10} color="#F7D38B" />
+              <Text style={cardStyles.deviceChipText} numberOfLines={1}>
+                0 BYTES UPLOADED
+              </Text>
             </View>
           </View>
 
@@ -452,6 +472,48 @@ const cardStyles = StyleSheet.create({
   deltaText: {
     fontSize: 11,
     fontWeight: "800",
+  },
+  coachChipRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 2,
+  },
+  coachChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    flex: 1,
+  },
+  coachChipText: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    flexShrink: 1,
+  },
+  deviceChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(247,211,139,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.18)",
+  },
+  deviceChipText: {
+    color: "#F7D38B",
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 0.8,
   },
 });
 

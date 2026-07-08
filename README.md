@@ -129,7 +129,8 @@ Without those, the app can still run in a text-first mode for development and te
 
 Everything demo-specific now lives under `demo/`.
 
-- `demo/DEMO.md` — recording plan, sample personas, capture tips
+- `demo/DEMO.md` — recording plan for the personal-ritual pitch, sample personas, capture tips
+- `demo/CUP_DEMO.md` — **Football-Path-only 3-minute shot-by-shot for the Tether Developers Cup submission** (network-kill, on-device STT/LLM/TTS, accelerometer juggling, FUT card share). This is the canonical script for the Cup deadline.
 - `demo/videos/` — exported demo artifacts
 
 ## Utility scripts

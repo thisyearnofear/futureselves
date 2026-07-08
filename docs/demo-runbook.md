@@ -73,6 +73,8 @@ Record the cloud-side data flow with a network inspector (Charles / Proxyman) sh
 
 Use this when recording or presenting the Football Path for the Tether Developers Cup (QVAC track). All AI runs on-device via the QVAC SDK — STT, LLM, and TTS. Screen-record + voiceover; no live staging.
 
+> For the Cup deadline, use [`demo/CUP_DEMO.md`](../demo/CUP_DEMO.md) — it's the canonical 3-minute shot-by-shot and supersedes the runbook summary below until the Cup is filed.
+
 ### Operator flow (record in one take)
 
 | Time | On screen | What to say |

@@ -38,7 +38,7 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 
 ## Football Path (Tether Developers Cup — QVAC track)
 
-The Football Path is a goal-achievement feature built for the Tether Developers Cup hackathon (QVAC track). All AI runs on-device via the QVAC SDK — no cloud AI APIs.
+The Football Path is a goal-achievement feature built for the Tether Developers Cup hackathon (QVAC track). All AI runs on-device via the QVAC SDK — no cloud AI APIs. The 3-minute Cup submission script lives at `demo/CUP_DEMO.md` — use that, not `demo/DEMO.md`, when recording for the Cup deadline.
 
 ### Architecture
 
@@ -57,7 +57,8 @@ The Football Path is a goal-achievement feature built for the Tether Developers 
 - `apps/default/app/challenge.tsx` - Deep link route for challenge-a-friend viral loop (`futureself://challenge?drill=X&target=Y&from=Z`). Handles challenge banner → drill → win/loss comparison → challenge back. Redirects to ambition declaration if no ambition exists
 - `packages/backend/convex/football.ts` - Convex API: `getActiveAmbition`, `saveAmbition`, `startDrillSession`, `completeDrillSession`, `getDrillHistory`, `getTrajectories`, `recomputeTrajectory`, `updateTrajectoryNarrative`
 - Schema tables: `ambitions`, `drillSessions`, `trajectories` (in `schema.ts`)
-- Validators: `drillTypeValidator` (reaction_time, juggling, sprint), `positionValidator` (8 football positions + unknown) (in `validators.ts`)
+- Validators: `drillTypeValidator` (reaction_time, juggling, sprint), `positionValidator` (8 football positions + unknown), `coachPersonaValidator` (tactician, enforcer, mentor, broadcaster) (in `validators.ts`)
+- **Coach persona** is the on-device LLM voice for football transmissions. The user picks one during ambition declaration (`football-ambition-declaration.tsx`); `COACH_PERSONAS` in `apps/default/lib/football-llm.ts` injects a non-negotiable persona-style block into `buildFootballPrompt`. Today this is a system-prompt injection — when `@qvac/sdk` ships `loadAdapter`, the same `coachPersona` key on `ambitions` becomes the handle for a hot-swappable local LoRA persona, zero code change at the call site.
 
 ### Measurement vs AI separation
 

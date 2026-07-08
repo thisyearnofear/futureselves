@@ -73,3 +73,13 @@ export const positionValidator = v.union(
   v.literal("striker"),
   v.literal("unknown"),
 );
+
+// Coach persona — conditions the on-device LLM voice for football
+// transmissions. Today these are prompt-conditioned; when the QVAC SDK
+// ships `loadAdapter` they can be hot-swapped LoRA personalities.
+export const coachPersonaValidator = v.union(
+  v.literal("tactician"),
+  v.literal("enforcer"),
+  v.literal("mentor"),
+  v.literal("broadcaster"),
+);

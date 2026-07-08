@@ -27,7 +27,7 @@ import * as Haptics from "expo-haptics";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
-import { extractAmbition, type FootballPosition } from "@/lib/football-llm";
+import { extractAmbition, type FootballPosition, type FootballCoachPersona } from "@/lib/football-llm";
 import { isLocalMode } from "@/lib/ai";
 
 const POSITION_LABELS: Record<string, string> = {
@@ -41,6 +41,13 @@ const POSITION_LABELS: Record<string, string> = {
   striker: "Striker",
   unknown: "Footballer",
 };
+
+const COACH_PERSONAS: Array<{ id: FootballCoachPersona; label: string; tagline: string }> = [
+  { id: "tactician", label: "The Tactician", tagline: "Reads the pattern, names the move" },
+  { id: "enforcer", label: "The Enforcer", tagline: "Cost of the work, no excuses" },
+  { id: "mentor", label: "The Mentor", tagline: "Patient. Brutal on quit." },
+  { id: "broadcaster", label: "The Broadcaster", tagline: "Match commentary for your training" },
+];
 
 interface FootballAmbitionDeclarationProps {
   /** LLM model ID from QVAC loadModel. Required for ambition extraction. */
@@ -57,6 +64,7 @@ export function FootballAmbitionDeclaration({
   onDeclared,
 }: FootballAmbitionDeclarationProps) {
   const [transcribedText, setTranscribedText] = useState("");
+  const [coachPersona, setCoachPersona] = useState<FootballCoachPersona>("tactician");
   const [isExtracting, setIsExtracting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [extractedPreview, setExtractedPreview] = useState<{
@@ -120,6 +128,7 @@ export function FootballAmbitionDeclaration({
         targetPosition: extractedPreview.position,
         description: extractedPreview.description,
         currentLevel: extractedPreview.level,
+        coachPersona,
       });
       if (Platform.OS !== "web") {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -129,8 +138,7 @@ export function FootballAmbitionDeclaration({
       setError(e instanceof Error ? e.message : "Could not save your ambition.");
     } finally {
       setIsSaving(false);
-    }
-  }, [extractedPreview, transcribedText, saveAmbition, onDeclared, isSaving]);
+    }    }, [extractedPreview, transcribedText, saveAmbition, onDeclared, isSaving, coachPersona]);
 
   const isNative = Platform.OS !== "web";
   const canUseSTT = isNative && isLocalMode() && sttModelId !== null;
@@ -194,6 +202,39 @@ export function FootballAmbitionDeclaration({
           >
             <Text style={styles.editButtonText}>Clear & re-record</Text>
           </Pressable>
+        </Animated.View>
+      ) : null}
+
+      {/* Coach persona picker */}
+      {transcribedText ? (
+        <Animated.View entering={FadeInUp} style={styles.personaSection}>
+          <Text style={styles.personaLabel}>PICK YOUR COACH</Text>
+          <Text style={styles.personaHint}>
+            Selects who your future self sounds like. Powered by the on-device QVAC LLM.
+          </Text>
+          <View style={styles.personaGrid}>
+            {COACH_PERSONAS.map((p) => {
+              const active = coachPersona === p.id;
+              return (
+                <Pressable
+                  key={p.id}
+                  style={({ pressed }) => [
+                    styles.personaChip,
+                    active && styles.personaChipActive,
+                    pressed && { transform: [{ scale: 0.97 }] },
+                  ]}
+                  onPress={() => setCoachPersona(p.id)}
+                >
+                  <Text style={[styles.personaChipLabel, active && styles.personaChipLabelActive]}>
+                    {p.label}
+                  </Text>
+                  <Text style={[styles.personaChipTagline, active && styles.personaChipTaglineActive]}>
+                    {p.tagline}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </Animated.View>
       ) : null}
 
@@ -446,6 +487,58 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,154,154,0.1)",
     borderWidth: 1,
     borderColor: "rgba(255,154,154,0.2)",
+  },
+  personaSection: {
+    gap: 8,
+  },
+  personaLabel: {
+    color: "#F7D38B",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+  },
+  personaHint: {
+    color: "#6B7290",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  personaGrid: {
+    gap: 8,
+  },
+  personaChip: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: "rgba(14,17,34,0.6)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  personaChipActive: {
+    backgroundColor: "rgba(247,211,139,0.12)",
+    borderColor: "rgba(247,211,139,0.4)",
+  },
+  personaChipLabel: {
+    color: "#BFC6DE",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  personaChipLabelActive: {
+    color: "#F7D38B",
+    fontWeight: "800",
+  },
+  personaChipTagline: {
+    color: "#6B7290",
+    fontSize: 11,
+    fontStyle: "italic",
+    flexShrink: 1,
+    textAlign: "right",
+  },
+  personaChipTaglineActive: {
+    color: "#BFC6DE",
   },
   errorText: {
     color: "#FF9A9A",

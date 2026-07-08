@@ -13,6 +13,7 @@ import { authMutation, authQuery } from "./functions";
 import {
   drillTypeValidator,
   positionValidator,
+  coachPersonaValidator,
 } from "./validators";
 
 // ─── Ambitions ───────────────────────────────────────────────────────────────
@@ -30,6 +31,9 @@ export const getActiveAmbition = authQuery({
       description: v.string(),
       currentLevel: v.string(),
       age: v.optional(v.string()),
+      // Coach persona chosen at declaration; today a prompt key, will become
+      // a LoRA handle once QVAC SDK ships `loadAdapter`.
+      coachPersona: v.optional(coachPersonaValidator),
       isActive: v.boolean(),
       createdAt: v.number(),
       updatedAt: v.number(),
@@ -53,6 +57,7 @@ export const saveAmbition = authMutation({
     description: v.string(),
     currentLevel: v.string(),
     age: v.optional(v.string()),
+    coachPersona: v.optional(coachPersonaValidator),
   },
   returns: v.id("ambitions"),
   handler: async (ctx, args) => {
@@ -74,6 +79,7 @@ export const saveAmbition = authMutation({
       description: args.description,
       currentLevel: args.currentLevel,
       age: args.age,
+      coachPersona: args.coachPersona,
       isActive: true,
       createdAt: now,
       updatedAt: now,
