@@ -54,6 +54,19 @@ export const avatarTierValidator = v.union(
   v.literal("personalized"),
 );
 
+// ─── RevenueCat / Monetization (Shipaton 2026) ───────────────────────────────
+
+export const personaTierValidator = v.union(
+  v.literal("free"),
+  v.literal("premium"),
+);
+
+// Where the current `tier` grant came from — see docs/shipaton-2026.md.
+export const premiumSourceValidator = v.union(
+  v.literal("streak"),
+  v.literal("purchase"),
+);
+
 // ─── Football Path (Tether Developers Cup) ───────────────────────────────────
 
 export const drillTypeValidator = v.union(

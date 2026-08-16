@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Platform } from "react-native";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type {
   Archetype,
@@ -37,6 +37,7 @@ import {
   voicePresetValues,
 } from "@/lib/futureself";
 import { SelfieConsentSheet } from "@/components/selfie-consent-sheet";
+import { presentAwakenedPaywall, restorePurchases as restoreRevenueCatPurchases } from "@/lib/revenuecat";
 
 interface SettingsPreferences {
   timeline: Timeline;
@@ -76,6 +77,12 @@ export function FutureselfSettingsSheet({
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderHour, setReminderHour] = useState(9);
   const [personalizingCastMember, setPersonalizingCastMember] = useState<CastMember | null>(null);
+  const [isPresentingPaywall, setIsPresentingPaywall] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const entitlementStatus = useQuery(api.revenuecat.getEntitlementStatus);
+  const syncEntitlement = useMutation(api.revenuecat.syncEntitlementFromClient);
+  const isAwakened = entitlementStatus?.tier === "premium";
 
   const avatars = useQuery(api.face.getAvatarsForUser);
   const personalizedCastMembers = useMemo(() => {
@@ -134,6 +141,30 @@ export function FutureselfSettingsSheet({
       reminderEnabled,
       reminderHour,
     });
+  }
+
+  async function handleUnlockAwakened() {
+    setIsPresentingPaywall(true);
+    try {
+      const result = await presentAwakenedPaywall();
+      if (result === "purchased" || result === "restored") {
+        await syncEntitlement({ hasAwakenedEntitlement: true });
+      }
+    } finally {
+      setIsPresentingPaywall(false);
+    }
+  }
+
+  async function handleRestorePurchases() {
+    setIsRestoring(true);
+    try {
+      const result = await restoreRevenueCatPurchases();
+      if (result.success) {
+        await syncEntitlement({ hasAwakenedEntitlement: result.isAwakened });
+      }
+    } finally {
+      setIsRestoring(false);
+    }
   }
 
   return (
@@ -374,6 +405,62 @@ export function FutureselfSettingsSheet({
                     deleted. No biometric data is stored.
                   </Text>
                 </View>
+              </Section>
+            ) : null}
+
+            {Platform.OS !== "web" ? (
+              <Section
+                title="Awakened"
+                copy={
+                  isAwakened
+                    ? "Your voice is fully awakened. Unlimited cinematic voicemails, no streak required."
+                    : "Unlock unlimited cinematic voicemails without waiting for a streak milestone."
+                }
+              >
+                {isAwakened ? (
+                  <View style={styles.infoCard}>
+                    <Ionicons name="sparkles" size={18} color="#F7D38B" />
+                    <Text style={styles.infoText}>
+                      Thank you for supporting Future Selves. Manage your subscription through
+                      your device's App Store or Play Store account settings.
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    <Pressable
+                      onPress={handleUnlockAwakened}
+                      disabled={isPresentingPaywall}
+                      style={({ pressed }) => [
+                        styles.awakenedButton,
+                        pressed && styles.pressed,
+                        isPresentingPaywall && styles.primaryButtonDisabled,
+                      ]}
+                    >
+                      {isPresentingPaywall ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <>
+                          <Ionicons name="sparkles" size={16} color="#fff" />
+                          <Text style={styles.awakenedButtonText}>Become Awakened</Text>
+                        </>
+                      )}
+                    </Pressable>
+                    <Pressable
+                      onPress={handleRestorePurchases}
+                      disabled={isRestoring}
+                      style={({ pressed }) => [
+                        styles.restoreButton,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      {isRestoring ? (
+                        <ActivityIndicator color="#F8F0DE" size="small" />
+                      ) : (
+                        <Text style={styles.restoreButtonText}>Restore purchases</Text>
+                      )}
+                    </Pressable>
+                  </>
+                )}
               </Section>
             ) : null}
 
@@ -815,6 +902,31 @@ const styles = StyleSheet.create({
     color: "#F8F0DE",
     fontSize: 13,
     fontWeight: "800",
+  },
+  awakenedButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: "#7C4DFF",
+  },
+  awakenedButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  restoreButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+  },
+  restoreButtonText: {
+    color: "#8F96B4",
+    fontSize: 12,
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
   footer: {
     flexDirection: "row",

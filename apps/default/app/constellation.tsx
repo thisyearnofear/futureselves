@@ -10,6 +10,7 @@ import { getLocalDateKey } from "@/lib/futureself";
 import { ConstellationMap } from "@/components/constellation-map";
 import { DivergenceGauge } from "@/components/divergence-gauge";
 import { AvatarReveal } from "@/components/avatar-reveal";
+import { TimelineMorphStrip } from "@/components/timeline-morph-strip";
 import { BottomNav } from "@/components/bottom-nav";
 import { formatCastMember } from "@/lib/futureself";
 import type { CastMember, ConstellationStar } from "@/lib/futureself";
@@ -63,6 +64,17 @@ export default function ConstellationPage() {
               Each voice is a node in your timeline. Your daily choices shape which ones draw close.
             </Text>
           </Animated.View>
+
+          {/* Timeline morph — scrub between unlocked voices to see how the line shifts */}
+          {litStars.length > 0 ? (
+            <Animated.View entering={FadeInUp.delay(150).duration(400)} style={s.morphCard}>
+              <Text style={s.cardTitle}>Your timeline</Text>
+              <Text style={s.morphCopy}>
+                Tap through your unlocked voices to see how far the line has drifted.
+              </Text>
+              <TimelineMorphStrip stars={litStars} divergenceScore={divergenceScore} size={160} />
+            </Animated.View>
+          ) : null}
 
           {/* Star map */}
           <Animated.View entering={ZoomIn.delay(200).duration(600).springify().damping(14)} style={s.mapCard}>
@@ -218,6 +230,23 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(14,17,34,0.6)",
     borderWidth: 1,
     borderColor: "rgba(247,211,139,0.12)",
+  },
+  morphCard: {
+    alignItems: "center",
+    gap: 10,
+    padding: 20,
+    borderRadius: 28,
+    backgroundColor: "rgba(14,17,34,0.72)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  morphCopy: {
+    color: "#AEB6D4",
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center",
+    maxWidth: 260,
+    marginBottom: 4,
   },
   gaugeCard: {
     alignItems: "center",

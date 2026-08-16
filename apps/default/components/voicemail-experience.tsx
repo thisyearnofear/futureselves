@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { Image } from "expo-image";
@@ -21,6 +21,7 @@ import * as Haptics from "expo-haptics";
 import { useLocalVoicemail } from "@/hooks/use-local-voicemail";
 import { AvatarReveal } from "@/components/avatar-reveal";
 import { BottomNav } from "@/components/bottom-nav";
+import { presentAwakenedPaywall } from "@/lib/revenuecat";
 import { styles } from "./voicemail-experience.styles";
 
 export function VoicemailExperience() {
@@ -55,6 +56,23 @@ function LockedState({
   nextMilestone: number | null;
 }) {
   const progress = nextMilestone ? (streak / nextMilestone) * 100 : 0;
+  const [isPresentingPaywall, setIsPresentingPaywall] = useState(false);
+  const syncEntitlement = useMutation(api.revenuecat.syncEntitlementFromClient);
+
+  const handleUnlockNow = async () => {
+    if (Platform.OS !== "web") await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsPresentingPaywall(true);
+    try {
+      const result = await presentAwakenedPaywall();
+      if (result === "purchased" || result === "restored") {
+        // Fast-path confirmation — see docs/shipaton-2026.md "Sync architecture".
+        // The webhook will also arrive and apply the same state.
+        await syncEntitlement({ hasAwakenedEntitlement: true });
+      }
+    } finally {
+      setIsPresentingPaywall(false);
+    }
+  };
 
   return (
     <LinearGradient colors={["#080A17", "#11162B", "#21172D"]} style={styles.gradientBg}>
@@ -90,6 +108,27 @@ function LockedState({
                   : "Voicemail archive unlocks at Day 90"}
             </Text>
           </View>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.unlockNowButton,
+              pressed && styles.pressed,
+              isPresentingPaywall && styles.buttonDisabled,
+            ]}
+            onPress={handleUnlockNow}
+            disabled={isPresentingPaywall}
+          >
+            <LinearGradient colors={["#B388FF", "#7C4DFF"]} style={styles.gradient}>
+              {isPresentingPaywall ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="sparkles" size={16} color="#fff" />
+              )}
+              <Text style={[styles.buttonText, { color: "#fff" }]}>
+                Or become Awakened now
+              </Text>
+            </LinearGradient>
+          </Pressable>
 
           <View style={styles.previewList}>
             <Text style={styles.previewTitle}>What you'll experience</Text>

@@ -242,6 +242,12 @@ export const styles = StyleSheet.create({
     borderRadius: 18,
     overflow: "hidden",
   },
+  unlockNowButton: {
+    borderRadius: 18,
+    overflow: "hidden",
+    width: "100%",
+    maxWidth: 400,
+  },
   buttonDisabled: {
     opacity: 0.4,
   },

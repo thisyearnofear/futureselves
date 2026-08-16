@@ -1,8 +1,10 @@
 # Remote APIs — full inventory
 
-**Purpose:** Single source of truth for every remote API this project can touch. Audited from source: `grep -rE 'fetch.*https?://|api\.' packages/backend/convex apps/default`. The QVAC submission build is verifiable against this list — anything not listed here is not called.
+**Purpose:** Single source of truth for every remote API this project can touch. Audited from source: `grep -rE 'fetch.*https?://|api\.' packages/backend/convex apps/default`.
 
-The intent of the **submission build** (`EXPO_PUBLIC_AI_PROVIDER=local`, EAS profile `submission`) is that **no AI inference, image generation, voice synthesis, or speech recognition makes a network call**. Convex is retained as a thin auth + sync layer. Every other remote API is either gated off at the client by `isLocalMode()` or unreachable because no API key is provided in the submission build's env.
+**Status note (August 2026):** The "submission build" language below described the Tether Developers Cup (QVAC track) submission, which is complete. That constraint — zero AI inference over the network in the submission build — is preserved as a real product mode (`EXPO_PUBLIC_AI_PROVIDER=local`) but is no longer a hard rule for new work. The active focus is RevenueCat Shipaton 2026 (see `docs/shipaton-2026.md`), which requires RevenueCat's billing/entitlement network calls — those are infrastructure (same category as Convex sync below), not AI inference, so they don't conflict with the original QVAC posture even where it still applies.
+
+The intent of the **QVAC submission build** (`EXPO_PUBLIC_AI_PROVIDER=local`, EAS profile `submission`) was that **no AI inference, image generation, voice synthesis, or speech recognition makes a network call**. Convex was retained as a thin auth + sync layer. Every other remote API was either gated off at the client by `isLocalMode()` or unreachable because no API key is provided in that build's env.
 
 ---
 
@@ -17,6 +19,7 @@ The intent of the **submission build** (`EXPO_PUBLIC_AI_PROVIDER=local`, EAS pro
 | **Replicate** | Avatar image generation | `convex/face.ts:375,423,471` | **Disabled.** `face.generateAvatar` is gated by `!localMode` in `futureself-home.tsx`. Unlock UI still renders; the image call is skipped. `REPLICATE_API_TOKEN` unset. |
 | **Melius MCP** | Agentic orchestration ("Last Voicemail" premium tier) | `convex/melius.ts:27` → `convex/voicemail.ts` | **Disabled.** Premium voicemail is intentionally cloud-only. The free-tier voicemail (`voicemail.native.ts`) is gated off in local mode. `MELIUS_API_KEY` unset. |
 | **Convex** (`*.convex.cloud`, `*.convex.site`) | Auth + cross-device sync | All `useQuery` / `useMutation` / `useAction` hooks | **Enabled** — required for auth heartbeat and game-state persistence. **Carries zero AI input/output.** Onboarding text fields, check-in words/notes, and transmission output are stored in Convex as game state (encrypted at rest by Convex's storage layer); the *inference path* never leaves the device. |
+| **RevenueCat** | Billing / entitlement sync (Shipaton 2026) | `apps/default/lib/revenuecat.ts` (client SDK); `packages/backend/convex/revenuecat.ts` (webhook + sync mutation) | **Enabled, always.** Not gated by `isLocalMode()` — billing is infrastructure, not AI inference, so it's out of scope for the QVAC local-only posture. Carries no AI input/output: only subscription/entitlement state (`app_user_id`, `entitlement_ids`, purchase timestamps). |
 | **Google / GitHub / Apple OAuth** | Optional sign-in providers | `convex/auth.ts:1-9` | **Optional.** Anonymous + Password providers are also wired; the demo persona uses Anonymous, so no third-party identity provider is contacted. Only fires if the user explicitly chooses a social login. |
 | **QVAC model registry** | First-cold-start model download (LLAMA 3.2 1B, Chatterbox, Whisper) | Inside `@qvac/sdk` `loadModel()` calls in `apps/default/lib/qvac.ts` | **Enabled on first launch only.** After the ~1.1 GB cold-start download, model weights are cached on-device (`expo-secure-store` metadata, disk bytes). All subsequent launches and all inference are fully offline. The cold start is announced to the user via the splash-screen progress UI; it is not hidden. |
 
@@ -80,14 +83,24 @@ The intent of the **submission build** (`EXPO_PUBLIC_AI_PROVIDER=local`, EAS pro
 - **Football Path addition:** The Football Path (Tether Developers Cup, QVAC track) adds three new tables — `ambitions`, `drillSessions`, `trajectories` — and new API functions in `packages/backend/convex/football.ts`: `getActiveAmbition`, `saveAmbition`, `startDrillSession`, `completeDrillSession`, `getDrillHistory`, `getTrajectories`, `recomputeTrajectory`, `updateTrajectoryNarrative`. All of these are synced through the same Convex layer described above, with **zero AI input/output over the wire** — the LLM extraction, transmission generation, and trajectory interpretation all run on-device via the QVAC SDK, and only the resulting structured game state is persisted to Convex.
 - **Football Path measurement data:** The drill measurement data (accelerometer readings for juggling, reaction times for the tap test, sprint times for the timer) is stored in Convex as game state alongside the rest of the persona's history. The **AI interpretation** of that measurement data (trajectory narrative generation) runs entirely on-device via the QVAC LLM — the raw sensor/tap/timer values are never sent to any third-party AI provider.
 
-### 7. OAuth providers (Google / GitHub / Apple)
+### 7. RevenueCat (billing / entitlement sync — Shipaton 2026)
+
+- **Endpoints:** RevenueCat SDK calls `api.revenuecat.com` internally (client-side, opaque to app code); Convex receives inbound webhooks at `<CONVEX_SITE_URL>/revenuecat/webhook`.
+- **Call sites:** `apps/default/lib/revenuecat.ts` (SDK configure, `logIn`, `getCustomerInfo`, purchase/restore); `packages/backend/convex/revenuecat.ts` (webhook handler registered in `http.ts`) + `syncEntitlementFromClient` mutation (client-driven confirmation after a purchase).
+- **Env vars (client):** `EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY`, `EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY`. Placeholders until a RevenueCat project is created — the SDK configure call is skipped entirely if unset, so the app runs normally (premium tier just stays streak-gated only) without them.
+- **Env vars (Convex):** `REVENUECAT_WEBHOOK_SECRET` — compared against the static `Authorization` header RevenueCat is configured to send (RevenueCat webhooks are not HMAC-signed by default).
+- **When called:** every purchase, renewal, cancellation, and restore event. Not gated by `isLocalMode()` — billing is infrastructure (same category as Convex sync below), not AI inference, so it's outside the scope of the original QVAC "no cloud AI" posture.
+- **What's shipped over the wire:** subscription/entitlement state only — `app_user_id` (the Convex auth user id), `entitlement_ids`, product id, purchase/expiration timestamps, store (`APP_STORE`/`PLAY_STORE`). No persona content, check-in text, or transmission text is ever included in a RevenueCat payload.
+- **Entitlement mapping:** RevenueCat entitlement `awakened` → `personas.tier = "premium"`, `personas.premiumSource = "purchase"`. See `docs/shipaton-2026.md` for the full mapping and the streak-vs-purchase precedence rule (a lapsed subscription never revokes streak-earned premium).
+
+### 8. OAuth providers (Google / GitHub / Apple)
 
 - **Endpoints:** Provider OAuth endpoints (`accounts.google.com`, `github.com`, `appleid.apple.com`), reached only if the user picks a social login
 - **Call site:** `packages/backend/convex/auth.ts:1-9` (providers registered)
 - **Env vars:** `GOOGLE_CLIENT_ID/SECRET`, `GITHUB_ID/SECRET`, `APPLE_ID/SECRET` (optional)
 - **When called:** only if the user actively chooses social sign-in. The submission demo uses **Anonymous** auth (`@convex-dev/auth/providers/Anonymous`), which does not contact any third-party identity provider.
 
-### 8. QVAC model registry (cold-start download)
+### 9. QVAC model registry (cold-start download)
 
 - **Endpoint:** Resolved inside `@qvac/sdk`. Pulls weights for the three configured models on first launch.
 - **Call site:** `apps/default/lib/qvac.ts` — `useQVACModel().load(...)`, triggered by `apps/default/hooks/use-qvac-prewarm.ts` on app start.
@@ -134,10 +147,11 @@ Expected traffic: occasional `*.convex.cloud` packets (auth heartbeat, state syn
 
 ## Cross-references
 
+- `docs/shipaton-2026.md` — active RevenueCat Shipaton 2026 submission plan
 - `docs/privacy-posture.md` — public-facing privacy statement
-- `docs/edge-ai-qvac.md` — canonical QVAC integration plan
+- `docs/edge-ai-qvac.md` — canonical QVAC integration plan (submitted, historical)
 - `apps/default/README.md` § "Local-mode cloud-call enforcement" — code-level details of the gates
 - `.env.example` — every env var the project understands
 - `apps/default/lib/ai.ts` — `getAIProvider()` / `isLocalMode()` / `isLocalLLMMode()` runtime split
 
-*Last audited from source: 2026-07-01.*
+*Last audited from source: 2026-08-16 (added RevenueCat).*

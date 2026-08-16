@@ -10,6 +10,8 @@ import {
   drillTypeValidator,
   positionValidator,
   coachPersonaValidator,
+  personaTierValidator,
+  premiumSourceValidator,
 } from "./validators";
 
 export default defineSchema({
@@ -67,7 +69,13 @@ export default defineSchema({
     skinTone: v.optional(v.string()),
     hairStyle: v.optional(v.string()),
     distinguishing: v.optional(v.string()),
-    tier: v.optional(v.union(v.literal("free"), v.literal("premium"))),
+    tier: v.optional(personaTierValidator),
+    // Where the current `tier` grant came from. "purchase" = RevenueCat
+    // entitlement ("awakened"); "streak" reserved for a future standing
+    // streak-earned tier grant (not currently written by any code path —
+    // see docs/shipaton-2026.md). Used to prevent a lapsed RevenueCat
+    // subscription from revoking a non-purchase-based premium grant.
+    premiumSource: v.optional(premiumSourceValidator),
     voicemailCredits: v.optional(v.number()),
     voicemailUnlockedAt: v.optional(v.number()),
     createdAt: v.number(),

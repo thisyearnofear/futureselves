@@ -9,10 +9,19 @@ Set the following environment variables to configure AI inference providers:
 
 Providers are tried in order. If one is rate limited (HTTP 429), the system automatically falls back to the next configured provider.
 
-> **Strategic direction (June 2026):** We are pivoting the AI + audio layer onto the [QVAC](https://qvac.tether.io) on-device SDK so transmissions, TTS, and STT run **fully on the device**. The submission path is fully local — no cloud LLM, no ElevenLabs. Cloud providers above become emergency fallbacks for the backend Convex code only, and even there they are not on the public submission path. See `docs/edge-ai-qvac.md` for the full plan and `docs/privacy-posture.md` for the public-facing privacy statement.
+> **Strategic direction (August 2026):** The QVAC on-device pivot (Tether Developers Cup) and the Build Small hackathon (`hf-space/`) are both **complete, submitted, and no longer the active focus**. The QVAC local-AI mode still exists and works — it's a real product feature (offline ritual loop) — but the "zero third-party network calls" constraint documented below and in `docs/remote-apis.md` was specific to that submission and is no longer a hard rule for new work. **The active focus is RevenueCat Shipaton 2026** (Aug 1 – Sep 30, 2026): ship a public first release with RevenueCat-powered in-app purchases. See `docs/shipaton-2026.md` for the submission plan, entitlement model, and remaining store-readiness checklist.
+
+> **Historical note (June 2026):** We piloted pivoting the AI + audio layer onto the [QVAC](https://qvac.tether.io) on-device SDK so transmissions, TTS, and STT could run fully on the device, for the Tether Developers Cup submission. The submission path was fully local — no cloud LLM, no ElevenLabs — with cloud providers as emergency fallbacks only. See `docs/edge-ai-qvac.md` for the full plan and `docs/privacy-posture.md` for the public-facing privacy statement. This work is preserved and still functions (`EXPO_PUBLIC_AI_PROVIDER=local`), but is not the current priority.
 
 ## Project Structure
 
+- `apps/default/hooks/use-morph-progress.ts` - Wrapping-progress scrub primitive (adapted from the Luma Dream Machine Canvas2D morph effect) — drives crossfades between N discrete visual states via reanimated shared values
+- `apps/default/components/morphing-avatar.tsx` - Crossfades between cast-member portraits using `use-morph-progress`; reuses `avatar-reveal.tsx`'s image-resolution rules
+- `apps/default/components/timeline-morph-strip.tsx` - "Your timeline" widget on the constellation page: scrubs across a persona's unlocked voices, auto-positioned by `timelineDivergenceScore`
+- `packages/backend/convex/users.ts` - `getCurrentUserId` query; exposes the stable Convex auth user id to the client before a persona necessarily exists (used by `Purchases.logIn`)
+- `docs/shipaton-2026.md` - **Active hackathon.** RevenueCat Shipaton 2026 submission plan: entitlement model, paywall, webhook sync, remaining store-readiness checklist
+- `apps/default/lib/revenuecat.ts` - RevenueCat SDK lifecycle: `configureRevenueCat`, `useCustomerInfo`, `useIsAwakened` — client-side entitlement state, platform-guarded (no-op on web)
+- `packages/backend/convex/revenuecat.ts` - Webhook handler (`http.ts` route) + `syncEntitlementFromClient` mutation; maps the `awakened` RevenueCat entitlement onto `personas.tier`/`premiumSource`
 - `apps/default/lib/qvac.ts` - QVAC SDK lifecycle hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`, `useQVACChat`, `useLocalEmbeddings`, `useLoRAAdapter`), platform-guarded; all hooks wired
 - `apps/default/lib/ai.ts` - AI provider runtime split (`getAIProvider()`, `isLocalMode()`, `isLocalLLMMode()`); web=cloud, native=local when `EXPO_PUBLIC_AI_PROVIDER=local`
 - `apps/default/lib/local-llm.ts` - Client-side LLM orchestrator: builds the transmission prompt locally, calls QVAC `chatCompletion`, parses JSON, falls back to built-in script
@@ -36,7 +45,20 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 - `docs/audit-log.md` + `docs/sample-audit-log.jsonl` - Structured JSONL audit log of QVAC SDK calls (model loads/unloads, LLM/TTS/STT/embedding metrics inc. TTFT and tokens/sec). Logger at `apps/default/lib/audit-log.ts`. Gated by `EXPO_PUBLIC_AUDIT_LOG=1`. Required artifact for the hackathon evidence bundle.
 - `docs/build-small-strategy.md` - Prize strategy for the Build Small hackathon (separate submission via `hf-space/`)
 
-## Football Path (Tether Developers Cup — QVAC track)
+## RevenueCat / Monetization (active — Shipaton 2026)
+
+RevenueCat powers in-app purchases for the "Awakened" premium tier. Full plan in `docs/shipaton-2026.md`.
+
+- **Entitlement:** `awakened` (RevenueCat dashboard identifier). Maps to the existing `personas.tier === "premium"` field — no schema rename, just a second way to set it.
+- **`premiumSource` field** on `personas`: `"streak" | "purchase" | undefined`. Prevents a lapsed RevenueCat subscription from revoking premium status earned via the Day 30/90 streak milestones (`voicemail.milestones.ts`) — only `premiumSource === "purchase"` downgrades on `EXPIRATION`/`CANCELLATION`.
+- **App User ID = Convex auth user id** (`ctx.user._id`). `Purchases.logIn(convexUserId)` is called right after Convex auth resolves, so every RevenueCat webhook's `app_user_id` matches a Convex user directly — no separate identity mapping table.
+- **Sync is dual-path:** the Convex webhook (`packages/backend/convex/revenuecat.ts`, routed in `http.ts`) is the source of truth; the client also calls `syncEntitlementFromClient` immediately after a purchase/restore completes, since webhook delivery can lag a few seconds and the UI shouldn't wait on it.
+- **Webhook auth:** RevenueCat webhooks are not HMAC-signed by default — only a static `Authorization` header value you set in the RevenueCat dashboard. Verified against `REVENUECAT_WEBHOOK_SECRET` in Convex env vars.
+- **Env vars (client):** `EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY`, `EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY` — placeholders until a RevenueCat project exists; the SDK no-ops gracefully without them (see `apps/default/lib/revenuecat.ts`).
+- **Env vars (Convex):** `REVENUECAT_WEBHOOK_SECRET`.
+- **Paywall:** `react-native-purchases-ui`'s prebuilt `RevenueCatUI.Paywall` component, configured remotely in the RevenueCat dashboard (no app-store review needed to iterate on paywall copy/design). Surfaced from the premium voicemail gate (`voicemail-experience.tsx`) and Settings.
+
+## Football Path (Tether Developers Cup — QVAC track, submitted)
 
 The Football Path is a goal-achievement feature built for the Tether Developers Cup hackathon (QVAC track). All AI runs on-device via the QVAC SDK — no cloud AI APIs. The 3-minute Cup submission script lives at `demo/CUP_DEMO.md` — use that, not `demo/DEMO.md`, when recording for the Cup deadline.
 
@@ -99,7 +121,7 @@ The QVAC track requires all AI to run on-device through the QVAC SDK. The measur
 - `futureself://football` → `app/football.tsx` (football path)
 - `futureself://football-drill?type=X` → `app/football-drill.tsx` (specific drill)
 
-## Build Small (hf-space/) notes
+## Build Small (hf-space/) notes — submitted, historical
 
 - Space uses Gradio 5.50.0 (Python 3.13 compat)
 - Kokoro TTS skipped on Space (spacy dep chain has no cp313 wheel); falls back gracefully

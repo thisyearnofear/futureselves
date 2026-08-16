@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ConvexReactClient, Authenticated, useQuery } from "convex/react";
+import { ConvexReactClient, Authenticated, useQuery, useMutation, useConvexAuth } from "convex/react";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -7,6 +7,7 @@ import { Platform } from "react-native";
 import { useAvatarPreloading } from "@/hooks/use-avatar-preloading";
 import { useQVACPrewarm } from "@/hooks/use-qvac-prewarm";
 import { QVACPrewarmProvider, type QVACPrewarmState } from "@/lib/qvac-prewarm-context";
+import { configureRevenueCat, identifyRevenueCatUser, useCustomerInfo } from "@/lib/revenuecat";
 import { api } from "@/convex/_generated/api";
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!, {
@@ -21,6 +22,15 @@ const secureStorage = {
 
 const isNative = Platform.OS === "ios" || Platform.OS === "android";
 
+if (isNative) {
+    // Configured at module scope (not inside a component effect) so it's
+    // guaranteed to finish before any hook that depends on it — notably
+    // useCustomerInfo() in RevenueCatIdentifier below, which would silently
+    // skip its first fetch if `configured` were still false when its effect
+    // runs. See lib/revenuecat.ts.
+    configureRevenueCat();
+}
+
 const IDLE_PREWARM: QVACPrewarmState = {
     llm: { status: "idle" },
     tts: { status: "idle" },
@@ -30,6 +40,30 @@ const IDLE_PREWARM: QVACPrewarmState = {
 
 function AvatarPreloader() {
     useAvatarPreloading();
+    return null;
+}
+
+function RevenueCatIdentifier() {
+    const { isAuthenticated } = useConvexAuth();
+    const userId = useQuery(api.users.getCurrentUserId, isAuthenticated ? {} : "skip");
+    const { isAwakened, isLoading } = useCustomerInfo();
+    const syncEntitlement = useMutation(api.revenuecat.syncEntitlementFromClient);
+
+    useEffect(() => {
+        if (Platform.OS === "web" || !userId) return;
+        void identifyRevenueCatUser(userId);
+    }, [userId]);
+
+    // Closes a gap where a RevenueCat webhook arrives before this user's
+    // persona exists yet (e.g. purchased before finishing onboarding) — the
+    // webhook handler no-ops in that case (see revenuecat.ts
+    // applyEntitlementState), so re-apply once we have both a persona and
+    // RevenueCat's live entitlement state. See docs/shipaton-2026.md.
+    useEffect(() => {
+        if (Platform.OS === "web" || !userId || isLoading) return;
+        void syncEntitlement({ hasAwakenedEntitlement: isAwakened });
+    }, [userId, isAwakened, isLoading, syncEntitlement]);
+
     return null;
 }
 
@@ -57,6 +91,7 @@ export default function RootLayout() {
     return (
         <ConvexAuthProvider client={convex} storage={isNative ? secureStorage : undefined}>
             <QVACPrewarmProvider value={prewarmState}>
+                <RevenueCatIdentifier />
                 <Authenticated>
                     <AvatarPreloader />
                     <QVACPrewarmUpdater onState={setPrewarmState} />
