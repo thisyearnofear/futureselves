@@ -267,6 +267,12 @@ export interface PersonaReturn {
   peopleMentioned: Array<string>;
   significantDates: Array<string>;
   streak: number;
+  // Streak freeze tokens remaining (see game.progression.ts). Always
+  // present — the mapper defaults undefined to 1 for existing personas.
+  streakFreezeCount: number;
+  // DateKey of the most recent freeze consumption, so the client can report
+  // "a freeze caught the line today." Undefined when no freeze used yet.
+  streakFrozenDateKey?: string;
   lastCheckInDateKey?: string;
   lastTransmissionDateKey?: string;
   timelineDivergenceScore: number;

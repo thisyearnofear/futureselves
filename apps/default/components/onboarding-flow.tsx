@@ -169,7 +169,7 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
         hairStyle: undefined,
         distinguishing: undefined,
       });
-      onComplete?.();
+      onCompleted?.();
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
