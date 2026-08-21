@@ -61,6 +61,10 @@ export interface PersonaState {
   peopleMentioned: Array<string>;
   significantDates: Array<string>;
   streak: number;
+  /** Streak freeze tokens remaining (1 at creation, +1 at streak 7/30). */
+  streakFreezeCount: number;
+  /** DateKey of the most recent freeze consumption; tells the UI a freeze caught the line. */
+  streakFrozenDateKey?: string;
   lastCheckInDateKey?: string;
   lastTransmissionDateKey?: string;
   timelineDivergenceScore: number;
@@ -237,4 +241,34 @@ export function getLocalDateKey(date = new Date()): string {
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+
+export interface SignalLinkParams {
+  type: "transmission" | "milestone" | "unlock";
+  cast?: CastMember | string;
+  from?: string;
+  streak?: number;
+  quote?: string;
+}
+
+/**
+ * Builds the deep link behind a shared transmission/milestone/unlock (see
+ * app/signal.tsx). Stateless and self-contained by design: every field the
+ * landing screen needs travels in the URL itself, so a recipient without an
+ * account never triggers a lookup of the sender's data. Mirrors the same
+ * pattern already used by the Football Path's challenge deep link.
+ *
+ * Truncates `quote` defensively — share sheets and some deep-link handlers
+ * have practical URL length limits well under the 2000+ chars a full
+ * transmission could reach.
+ */
+export function buildSignalLink(params: SignalLinkParams): string {
+  const search = new URLSearchParams();
+  search.set("type", params.type);
+  if (params.cast) search.set("cast", params.cast);
+  if (params.from) search.set("from", params.from.slice(0, 60));
+  if (typeof params.streak === "number") search.set("streak", String(Math.max(0, params.streak)));
+  if (params.quote) search.set("quote", params.quote.slice(0, 280));
+  return `https://futureself.app/signal?${search.toString()}`;
 }

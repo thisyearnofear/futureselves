@@ -50,6 +50,84 @@ export function getCheckInProgressionUpdate({
   };
 }
 
+// ─── Streak freeze tokens ────────────────────────────────────────────────────
+//
+// Passive loss-aversion: when a check-in comes in after a missed day (raw
+// streak resets to 1) and the persona holds a freeze token, the streak is
+// held instead of reset — `streak` becomes `priorStreak + 1`, the token is
+// consumed, and `frozenDateKey` is stamped. One token covers exactly one
+// missed day; a second consecutive miss requires a second token.
+
+export const MAX_STREAK_FREEZES = 2;
+
+export const STREAK_FREEZE_MILESTONES = [7, 30];
+
+/**
+ * Detect whether a streak milestone granted a new freeze token.
+ * Returns the number of tokens to grant (1) on first crossing, else 0.
+ */
+export function getFreezeMilestoneGrant(
+  previousStreak: number,
+  newStreak: number,
+): number {
+  return STREAK_FREEZE_MILESTONES.some(
+    (milestone) =>
+      previousStreak < milestone && newStreak >= milestone,
+  )
+    ? 1
+    : 0;
+}
+
+export interface StreakFreezeResult {
+  /** Final streak after freeze application (or the raw reset streak). */
+  streak: number;
+  /** True if a freeze token was consumed this check-in. */
+  freezeConsumed: boolean;
+  /** Tokens remaining after this check-in. */
+  freezeRemaining: number;
+}
+
+interface ApplyStreakFreezeInput {
+  /** Raw streak from getCheckInProgressionUpdate (may already be 1 = reset). */
+  rawStreak: number;
+  /** The persona's streak before this check-in. */
+  priorStreak: number;
+  freezeCount: number | undefined;
+  frozenDateKey: string | undefined;
+  dateKey: string;
+}
+
+export function applyStreakFreeze({
+  rawStreak,
+  priorStreak,
+  freezeCount,
+  frozenDateKey,
+  dateKey,
+}: ApplyStreakFreezeInput): StreakFreezeResult {
+  const freezeRemainingBase = Math.max(0, Math.min(MAX_STREAK_FREEZES, freezeCount ?? 0));
+  // Only freeze on an actual loss: rawStreak dropped below priorStreak. A
+  // brand-new persona (prior 0) or a streak already at 1 (nothing lost) never
+  // spends a token.
+  const isRestart = rawStreak < priorStreak && priorStreak >= 1;
+  const alreadyFrozenToday = frozenDateKey === dateKey;
+  const canFreeze = isRestart && !alreadyFrozenToday && freezeRemainingBase > 0;
+
+  if (!canFreeze) {
+    return {
+      streak: rawStreak,
+      freezeConsumed: false,
+      freezeRemaining: freezeRemainingBase,
+    };
+  }
+
+  return {
+    // Holding the line: the streak continues as if today were consecutive.
+    streak: priorStreak + 1,
+    freezeConsumed: true,
+    freezeRemaining: freezeRemainingBase - 1,
+  };
+}
+
 export function getChoiceProgressionUpdate({
   towardCount,
   steadyCount,

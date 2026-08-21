@@ -248,6 +248,14 @@ export const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 400,
   },
+  awakenedSubtext: {
+    color: "#8F96B4",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+    maxWidth: 320,
+    marginTop: -4,
+  },
   buttonDisabled: {
     opacity: 0.4,
   },

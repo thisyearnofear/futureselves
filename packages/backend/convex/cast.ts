@@ -51,12 +51,17 @@ export function buildConstellation(
 ): Array<ConstellationReturn> {
   const hasAvoidance = persona.timelineDivergenceScore >= 4;
   const partnerUnlocked = persona.primaryArc === "love";
+  // Re-paced (see docs/product-narrative.md): the first non-default voice
+  // should land inside the first week for most users, not require a
+  // near-perfect streak. The choice-quality gate stays — it still rewards
+  // behavior, not just calendar time — but the day floor and choice count
+  // are both lower than the original 3-day/2-steady bar.
   const bestFriendUnlocked =
-    persona.streak >= 3 &&
-    (persona.repairCount >= 1 || persona.steadyCount >= 2);
+    persona.streak >= 2 &&
+    (persona.repairCount >= 1 || persona.steadyCount >= 1);
   const mentorUnlocked =
-    persona.streak >= 7 &&
-    persona.towardCount >= 2 &&
+    persona.streak >= 5 &&
+    persona.towardCount >= 1 &&
     persona.timelineDivergenceScore <= 2;
   const employeeUnlocked =
     persona.streak >= 10 &&
@@ -80,6 +85,17 @@ export function buildConstellation(
     persona.releaseCount >= 1 &&
     persona.timelineDivergenceScore >= 2;
 
+  // The Ghost gets an early "quiet" preview state — sensed but not fully
+  // arrived — well before its real trigger condition (streak>=7 &&
+  // divergence>=4, see isUnchosenSelfTriggered) actually fires a
+  // transmission. This gives users a taste of the Unchosen Selves roster
+  // (the app's most distinctive writing) inside the first week instead of
+  // leaving all 10 dark-mirror voices invisible until deep streak/
+  // divergence thresholds. Mirrors how `shadow` already uses "quiet" for
+  // "close but not yet arrived."
+  const ghostGlimpseReady =
+    persona.streak >= 4 && persona.timelineDivergenceScore >= 2;
+
   return [
     {
       castMember: "future_self",
@@ -92,14 +108,14 @@ export function buildConstellation(
       castMember: "future_best_friend",
       label: "Future Best Friend",
       state: bestFriendUnlocked ? "lit" : "locked",
-      unlockHint: "3-day streak and at least 1 repair or 2 steady choices",
+      unlockHint: "2-day streak and at least 1 repair or steady choice",
       emotionalRegister: "Warm, irreverent, nostalgic",
     },
     {
       castMember: "future_mentor",
       label: "Future Mentor",
       state: mentorUnlocked ? "lit" : "locked",
-      unlockHint: "7-day streak, 2 toward choices, and a stable line",
+      unlockHint: "5-day streak, 1 toward choice, and a stable line",
       emotionalRegister: "Proud, measured, slightly formal",
     },
     {
@@ -191,7 +207,7 @@ export function buildConstellation(
     {
       castMember: "the_ghost",
       label: "The Ghost",
-      state: "locked",
+      state: ghostGlimpseReady ? "quiet" : "locked",
       unlockHint: "When the person you were stopped arriving",
       emotionalRegister: "Faint, absent, almost invisible",
     },

@@ -19,25 +19,12 @@ import { useMutation } from "convex/react";
 
 const bgAudio = require("@/assets/audio/spacious-hum.mp3");
 import { api } from "@/convex/_generated/api";
-import type {
-  Arc,
-  Distinguishing,
-  FirstVoiceCastMember,
-  HairStyle,
-  OnboardingDraft,
-  SkinTone,
-} from "@/lib/futureself";
+import type { OnboardingDraft } from "@/lib/futureself";
 import {
   arcLabels,
   arcValues,
-  distinguishingLabels,
-  distinguishingValues,
   firstVoiceCastMembers,
   firstVoiceLabels,
-  hairStyleLabels,
-  hairStyleValues,
-  skinToneLabels,
-  skinToneValues,
 } from "@/lib/futureself";
 
 const initialDraft: OnboardingDraft = {
@@ -61,6 +48,12 @@ const initialDraft: OnboardingDraft = {
   distinguishing: "",
 };
 
+// The first-run flow deliberately asks only what the transmissions need to
+// feel grounded on day one: identity, scene, direction, and the one thing
+// being avoided. Appearance, age, what's draining, and the hope under the
+// practical answers are all deferred to the post-first-transmission
+// refinement surfaces (Settings + the profile sheet), so a new user reaches
+// their first transmission in ~30 seconds instead of a minute of form.
 const chapterNudges = {
   currentChapter: [
     "I'm rebuilding after a change.",
@@ -76,11 +69,6 @@ const chapterNudges = {
     "The conversation I know would change the room.",
     "The first public step because it makes the dream real.",
     "Admitting what I actually want before I know how to get it.",
-  ],
-  afraidWontHappen: [
-    "A life that feels spacious instead of constantly defended.",
-    "Being chosen without having to perform for it.",
-    "Building something that makes me proud and free.",
   ],
 };
 
@@ -147,11 +135,7 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
       );
     }
     if (chapter === 1) {
-      return Boolean(
-        draft.miraculousYear.trim() &&
-          draft.avoiding.trim() &&
-          draft.afraidWontHappen.trim(),
-      );
+      return Boolean(draft.miraculousYear.trim() && draft.avoiding.trim());
     }
     return true;
   }
@@ -173,13 +157,19 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
     try {
       await completeOnboarding({
         ...draft,
+        // Deferred to the profile sheet so the first transmission arrives fast:
+        // what you almost don't let yourself want, what's draining you, and
+        // appearance are all collected after the ritual has started instead of
+        // blocking the door on day one.
         age: draft.age.trim() || undefined,
+        afraidWontHappen: "",
+        draining: "",
         significantDates: draft.significantDates.filter(Boolean),
-        skinTone: draft.skinTone || undefined,
-        hairStyle: draft.hairStyle || undefined,
-        distinguishing: draft.distinguishing || undefined,
+        skinTone: undefined,
+        hairStyle: undefined,
+        distinguishing: undefined,
       });
-      onCompleted?.();
+      onComplete?.();
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -219,7 +209,7 @@ export function OnboardingFlow({ onCompleted }: OnboardingFlowProps) {
 
         <View style={styles.panelHint}>
           <Text style={styles.panelHintText}>
-            About 60 seconds. Three short steps.
+            About 30 seconds. Three short steps.
           </Text>
         </View>
 
@@ -321,29 +311,13 @@ function renderChapter(
           placeholder="A transition, a rebuild, a quiet beginning, a hard truth..."
           suggestions={chapterNudges.currentChapter}
         />
-        <Animated.View entering={Platform.OS === "web" ? undefined : FadeInUp.delay(3 * 150).duration(500)}>
-          <Text style={styles.optionLabel}>How would someone spot you in a crowd?</Text>
-          <Text style={styles.deferText}>Optional. Helps future-you look more like you.</Text>
-        </Animated.View>
-        <Animated.View entering={Platform.OS === "web" ? undefined : FadeInUp.delay(4 * 150).duration(500)}>
-          <ChipGrid
-            values={skinToneValues}
-            selected={(draft.skinTone || "") as SkinTone | ""}
-            labels={skinToneLabels as Record<string, string>}
-            onSelect={(value) => updateDraft("skinTone", value === draft.skinTone ? "" : value)}
-          />
-          <ChipGrid
-            values={hairStyleValues}
-            selected={(draft.hairStyle || "") as HairStyle | ""}
-            labels={hairStyleLabels as Record<string, string>}
-            onSelect={(value) => updateDraft("hairStyle", value === draft.hairStyle ? "" : value)}
-          />
-          <ChipGrid
-            values={distinguishingValues}
-            selected={(draft.distinguishing || "") as Distinguishing | ""}
-            labels={distinguishingLabels as Record<string, string>}
-            onSelect={(value) => updateDraft("distinguishing", value === draft.distinguishing ? "" : value)}
-          />
+        <Animated.View
+          entering={Platform.OS === "web" ? undefined : FadeInUp.delay(3 * 150).duration(500)}
+        >
+          <Text style={styles.deferText}>
+            Appearance, drains, and deeper hopes are optional — collect them
+            after your first transmission, in your profile.
+          </Text>
         </Animated.View>
       </View>
     );
@@ -366,7 +340,7 @@ function renderChapter(
           multiline
           value={draft.miraculousYear}
           onChangeText={(value) => updateDraft("miraculousYear", value)}
-          placeholder="The sentence your future self would be proud to say."
+          placeholder="The sentence your future would be proud to say."
           suggestions={chapterNudges.miraculousYear}
         />
         <Field
@@ -377,15 +351,6 @@ function renderChapter(
           onChangeText={(value) => updateDraft("avoiding", value)}
           placeholder="Name it gently. No confession booth energy."
           suggestions={chapterNudges.avoiding}
-        />
-        <Field
-          index={3}
-          label="What future do you almost not let yourself want?"
-          multiline
-          value={draft.afraidWontHappen}
-          onChangeText={(value) => updateDraft("afraidWontHappen", value)}
-          placeholder="The hope under the practical answers."
-          suggestions={chapterNudges.afraidWontHappen}
         />
       </View>
     );

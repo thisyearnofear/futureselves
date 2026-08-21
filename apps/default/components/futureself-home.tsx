@@ -33,14 +33,16 @@ import type {
 } from "@/lib/futureself";
 import type { ReminderPreferences } from "@/lib/reminder-preferences";
 import { useSavedSignalPins } from "@/lib/saved-signal-pins";
-import { formatCastMember, inferVoicePresetFromSelectedVoice } from "@/lib/futureself";
+import { buildSignalLink, formatCastMember, inferVoicePresetFromSelectedVoice } from "@/lib/futureself";
 import {
   ChoiceSection,
+  EveningUrgencyBanner,
   FlareOverlay,
   HeroSection,
   MilestoneOverlay,
   ProgressionSection,
   ReceiveSignalSection,
+  SessionArc,
   VoiceUnlockOverlay,
   WeeklyReflectionSection,
   RitualRefinementPrompt,
@@ -415,13 +417,20 @@ export function FutureselfHome({
     const t = state.todayTransmission;
     const teaser = t.text.length > 160 ? `${t.text.slice(0, 157)}...` : t.text;
     const castLabel = formatCastMember(t.castMember);
+    const signalLink = buildSignalLink({
+      type: "transmission",
+      cast: t.castMember,
+      from: persona.name,
+      streak: persona.streak,
+      quote: teaser,
+    });
     const shareText = [
       `"${teaser}"`,
       ``,
       `— ${castLabel}, Day ${persona.streak}`,
       ``,
-      `My future self left me a voice message today.`,
-      `🔮 futureself.app`,
+      `My future self left me a voice message today. Hear from yours:`,
+      signalLink,
     ].join("\n");
 
     if (Platform.OS !== "web" && shareCardRef.current) {
@@ -472,7 +481,12 @@ export function FutureselfHome({
   }, [state.todayTransmission, persona, shareStatus]);
 
   const handleShareMilestone = useCallback(async () => {
-    const shareText = `I've kept my Future Selves ritual going for ${currentStreak} days straight. 🔮\n\nfutureself.app`;
+    const signalLink = buildSignalLink({
+      type: "milestone",
+      from: persona?.name,
+      streak: currentStreak,
+    });
+    const shareText = `I've kept my Future Selves ritual going for ${currentStreak} days straight. 🔮\n\n${signalLink}`;
     if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title: "Future Selves Streak", text: shareText });
@@ -485,10 +499,16 @@ export function FutureselfHome({
       const { Share: RNShare } = await import("react-native");
       try { await RNShare.share({ message: shareText }); } catch { /* cancelled */ }
     }
-  }, [currentStreak]);
+  }, [currentStreak, persona?.name]);
 
-  const handleShareVoiceUnlock = useCallback(async (voiceLabel: string) => {
-    const shareText = `A new voice just arrived on my Future Selves line: ${voiceLabel}. ✨\n\nfutureself.app`;
+  const handleShareVoiceUnlock = useCallback(async (voiceLabel: string, voiceCastMember?: string) => {
+    const signalLink = buildSignalLink({
+      type: "unlock",
+      cast: voiceCastMember,
+      from: persona?.name,
+      streak: persona?.streak,
+    });
+    const shareText = `A new voice just arrived on my Future Selves line: ${voiceLabel}. ✨\n\n${signalLink}`;
     if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.share) {
       try { await navigator.share({ title: "Future Selves — New Voice", text: shareText }); } catch { /* cancelled */ }
     } else if (Platform.OS === "web") {
@@ -497,7 +517,7 @@ export function FutureselfHome({
       const { Share: RNShare } = await import("react-native");
       try { await RNShare.share({ message: shareText }); } catch { /* cancelled */ }
     }
-  }, []);
+  }, [persona?.name, persona?.streak]);
 
   async function handleSaveSettings(preferences: {
     timeline: PersonaState["timeline"];
@@ -556,6 +576,7 @@ export function FutureselfHome({
 
   async function handleSaveProfile(values: {
     age?: string;
+    afraidWontHappen?: string;
     draining: string;
     significantDates: Array<string>;
     skinTone?: string;
@@ -574,7 +595,7 @@ export function FutureselfHome({
         primaryArc: persona.primaryArc,
         miraculousYear: persona.miraculousYear,
         avoiding: persona.avoiding,
-        afraidWontHappen: persona.afraidWontHappen,
+        afraidWontHappen: values.afraidWontHappen ?? persona.afraidWontHappen,
         draining: values.draining,
         timeline: persona.timeline,
         archetype: persona.archetype,
@@ -926,6 +947,7 @@ export function FutureselfHome({
       >
         <HeroSection
           divergenceLabel={persona ? getDivergenceLabel(persona.timelineDivergenceScore) : "steady"}
+          divergenceScore={persona?.timelineDivergenceScore ?? 0}
           forcedCastMember={forcedCastMember}
           hasTransmissionToday={hasTransmissionToday}
           isDebugMode={isDebugMode}
@@ -935,6 +957,14 @@ export function FutureselfHome({
           persona={persona}
           shouldShowSystemDepth={shouldShowSystemDepth}
         />
+
+        <SessionArc
+          hasCheckIn={Boolean(state.todayCheckIn)}
+          hasChoice={Boolean(choiceOutcome)}
+          hasTransmission={hasTransmissionToday}
+        />
+
+        {!hasTransmissionToday ? <EveningUrgencyBanner /> : null}
 
         {state.todayTransmission ? (
           <TransmissionSection
@@ -983,6 +1013,7 @@ export function FutureselfHome({
             choiceCopy={choiceCopy}
             choiceHints={choiceHints}
             choiceOutcome={choiceOutcome}
+            divergenceScore={persona?.timelineDivergenceScore ?? 0}
             onChoice={handleChoice}
             onSelectThread={setSelectedThreadId}
             openThreads={state.openThreads}
@@ -1000,7 +1031,7 @@ export function FutureselfHome({
 
         {shouldShowProfilePrompt ? (
           <RitualRefinementPrompt
-            body="A few extra details make later transmissions feel more grounded. Add what’s draining you, plus one date worth remembering."
+            body="A few extra details make later transmissions feel more grounded. Add what's draining you, the future you almost don't let yourself want, plus one date worth remembering."
             buttonLabel="Complete your profile"
             onOpenSettings={() => setShowProfileSheet(true)}
             title="Ready to deepen the line?"
@@ -1095,7 +1126,7 @@ export function FutureselfHome({
       <VoiceUnlockOverlay
         voice={newlyUnlockedVoice}
         onDismiss={() => setNewlyUnlockedVoice(null)}
-        onShare={handleShareVoiceUnlock}
+        onShare={(voiceLabel) => handleShareVoiceUnlock(voiceLabel, newlyUnlockedVoice?.castMember)}
       />
       <FlareOverlay flareColor={flareColor} visible={showFlare} />
       <FutureselfSettingsSheet
@@ -1161,6 +1192,7 @@ function getNextUnlock(
     label: candidate.label,
     requirement,
     emotionalRegister: candidate.emotionalRegister,
+    castMember: candidate.castMember,
   };
 }
 

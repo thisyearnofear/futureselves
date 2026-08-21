@@ -16,12 +16,15 @@ import Animated, { FadeInUp, SlideInRight, ZoomIn } from "react-native-reanimate
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
 import type { PersonaState, Choice } from "@/lib/futureself";
+import { getLocalDateKey } from "@/lib/futureself";
 import {
   CHOICE_CONFIG,
   MAX_CHAIN,
   getConsequenceChain,
   getStreakRisk,
 } from "@/lib/ritual-logic";
+
+const MAX_STREAK_FREEZES = 2;
 
 interface RitualStateProps {
   persona: PersonaState;
@@ -41,6 +44,12 @@ export function RitualState({ persona, recentChoices = [] }: RitualStateProps) {
   const chainConfig = chain.type
     ? CHOICE_CONFIG.find((c) => c.key === chain.type)
     : null;
+  const freezeConsumedToday =
+    persona.streakFrozenDateKey === getLocalDateKey();
+  const freezeRemaining = Math.max(
+    0,
+    Math.min(MAX_STREAK_FREEZES, persona.streakFreezeCount ?? 0),
+  );
 
   return (
     <Animated.View
@@ -93,6 +102,55 @@ export function RitualState({ persona, recentChoices = [] }: RitualStateProps) {
               {persona.streak} day{persona.streak !== 1 ? "s" : ""}
             </Text>
             <Text style={styles.riskMessage}>{risk.message}</Text>
+          </View>
+        </Animated.View>
+      ) : null}
+
+      {/* Streak freeze shield — the line's safety net, surfaced so the
+          mechanic is legible ("why is my streak still alive?") instead of
+          invisible. When a freeze was consumed today, that's the headline. */}
+      {freezeRemaining > 0 || freezeConsumedToday ? (
+        <Animated.View
+          entering={FadeInUp.duration(300)}
+          style={[
+            styles.freezeCard,
+            freezeConsumedToday && styles.freezeCardConsumed,
+          ]}
+        >
+          <View
+            style={[
+              styles.freezeIcon,
+              freezeConsumedToday && styles.freezeIconConsumed,
+            ]}
+          >
+            <Ionicons
+              name={freezeConsumedToday ? "shield-checkmark" : "shield-half-outline"}
+              size={16}
+              color={freezeConsumedToday ? "#F7D38B" : "#AEB6D4"}
+            />
+          </View>
+          <View style={styles.freezeCopy}>
+            <Text style={styles.freezeTitle}>
+              {freezeConsumedToday
+                ? "A freeze caught your line today."
+                : "Freeze shield"}
+            </Text>
+            <Text style={styles.freezeMessage}>
+              {freezeConsumedToday
+                ? `Your streak held through a missed day. ${freezeRemaining} freeze${freezeRemaining === 1 ? "" : "s"} left.`
+                : `${freezeRemaining} freeze${freezeRemaining === 1 ? "" : "s"} left — one missed day won't break the line.`}
+            </Text>
+          </View>
+          <View style={styles.freezeDots}>
+            {Array.from({ length: MAX_STREAK_FREEZES }, (_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.freezeDot,
+                  index < freezeRemaining && styles.freezeDotActive,
+                ]}
+              />
+            ))}
           </View>
         </Animated.View>
       ) : null}
@@ -201,6 +259,60 @@ export function RitualState({ persona, recentChoices = [] }: RitualStateProps) {
 const styles = StyleSheet.create({
   container: {
     gap: 12,
+  },
+  // ─── Freeze shield ───
+  freezeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 20,
+    backgroundColor: "rgba(190,199,222,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(190,199,222,0.16)",
+  },
+  freezeCardConsumed: {
+    backgroundColor: "rgba(247,211,139,0.08)",
+    borderColor: "rgba(247,211,139,0.3)",
+  },
+  freezeIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(190,199,222,0.1)",
+  },
+  freezeIconConsumed: {
+    backgroundColor: "rgba(247,211,139,0.15)",
+  },
+  freezeCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  freezeTitle: {
+    color: "#F8F0DE",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  freezeMessage: {
+    color: "#AEB6D4",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600",
+  },
+  freezeDots: {
+    flexDirection: "row",
+    gap: 5,
+  },
+  freezeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  freezeDotActive: {
+    backgroundColor: "#F7D38B",
   },
   // ─── Streak risk ───
   riskCard: {

@@ -36,6 +36,8 @@ export function toPersonaReturn(persona: {
   peopleMentioned: Array<string>;
   significantDates: Array<string>;
   streak: number;
+  streakFreezeCount?: number;
+  streakFrozenDateKey?: string;
   lastCheckInDateKey?: string;
   lastTransmissionDateKey?: string;
   timelineDivergenceScore: number;
@@ -74,6 +76,8 @@ export function toPersonaReturn(persona: {
     peopleMentioned: persona.peopleMentioned,
     significantDates: persona.significantDates,
     streak: persona.streak,
+    streakFreezeCount: persona.streakFreezeCount ?? 1,
+    streakFrozenDateKey: persona.streakFrozenDateKey,
     lastCheckInDateKey: persona.lastCheckInDateKey,
     lastTransmissionDateKey: persona.lastTransmissionDateKey,
     timelineDivergenceScore: persona.timelineDivergenceScore,

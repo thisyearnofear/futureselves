@@ -57,6 +57,8 @@ export function buildOnboardingPayload({
     releaseCount?: number;
     repairCount?: number;
     unchosenVoices?: Array<CastMember>;
+    streakFreezeCount?: number;
+    streakFrozenDateKey?: string;
     createdAt: number;
   } | null;
   userId: Id<"users">;
@@ -102,6 +104,11 @@ export function buildOnboardingPayload({
     peopleMentioned: [],
     significantDates: args.significantDates,
     streak: existing?.streak ?? 0,
+    // Fresh personas start with one streak freeze token so a single missed
+    // day early on doesn't kill the line before the mechanic is understood.
+    // More are earned at streak milestones (see game.progression.ts).
+    streakFreezeCount: existing?.streakFreezeCount ?? 1,
+    streakFrozenDateKey: existing?.streakFrozenDateKey,
     lastCheckInDateKey: existing?.lastCheckInDateKey,
     lastTransmissionDateKey: existing?.lastTransmissionDateKey,
     timelineDivergenceScore: existing?.timelineDivergenceScore ?? 0,

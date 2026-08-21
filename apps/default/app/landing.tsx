@@ -12,7 +12,6 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArchitectureDiagram } from "@/components/architecture-diagram";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -32,7 +31,6 @@ const CTA_ENTER = undefined;
 const STEPS_ENTER: any[] = [undefined, undefined, undefined];
 const FEATURES_ENTER: any[] = Array.from({ length: 6 }, () => undefined);
 const TESTIMONIALS_ENTER: any[] = Array.from({ length: 3 }, () => undefined);
-const ARCH_ENTER = undefined;
 const FINAL_CTA_ENTER = undefined;
 
 /**
@@ -97,12 +95,17 @@ const FEATURES = [
   {
     icon: "shield-checkmark-outline" as const,
     glyph: "✜",
-    title: "Sovereign",
-    body: "Stays on your device",
+    title: "Awakened",
+    body: "Keep every earned voice fully lit",
     accent: "#F7D38B",
   },
 ];
 
+// NOTE: these are placeholder testimonials ("Day 3"/"Day 14"/"Day 21" as
+// authors, no real names) — they read as fabricated user quotes if shipped
+// publicly as-is. Flagging rather than silently deleting: replace with real
+// user quotes before this page goes live for the Shipaton submission, or
+// remove the section if none exist yet. See docs/product-narrative.md.
 const TESTIMONIALS = [
   {
     quote: "The first time I heard my future self say my name, I cried.",
@@ -270,15 +273,6 @@ export default function LandingPage() {
             ))}
           </View>
 
-          {/* ── Architecture: Cloud vs On-Device ── */}
-          <Animated.View
-            entering={ARCH_ENTER}
-            style={s.archSection}
-          >
-            <Text style={s.archLabel}>Cloud vs on-device</Text>
-            <ArchitectureDiagram />
-          </Animated.View>
-
           {/* ── Final CTA ── */}
           <Animated.View
             entering={FINAL_CTA_ENTER}
@@ -305,13 +299,8 @@ export default function LandingPage() {
               A daily narrative ritual. Built with love and AI.
             </Text>
             <View style={s.footerPrivacyRow}>
-              <View style={s.networkIndicator}>
-                <View style={[s.networkDot, { backgroundColor: "#4ADE80" }]} />
-                <Text style={s.networkLabel}>Network: live</Text>
-              </View>
               <Text style={s.footerPrivacyText}>
-                This is a demo with sample data. The installed app runs entirely
-                on your device.{" "}
+                This is a demo with sample data.{" "}
                 <Text
                   style={s.footerPrivacyLink}
                   onPress={() => {
@@ -583,21 +572,6 @@ const s = StyleSheet.create({
     borderColor: "rgba(247,211,139,0.22)",
     boxShadow: "0 24px 70px rgba(0,0,0,0.38)",
   },
-  archSection: {
-    width: "100%",
-    maxWidth: 720,
-    alignItems: "center",
-    gap: 16,
-    paddingVertical: 32,
-  },
-  archLabel: {
-    color: "#8B8FA3",
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    opacity: 0.6,
-  },
   finalCtaTitle: {
     color: "#F8F0DE",
     fontSize: 26,
@@ -642,27 +616,6 @@ const s = StyleSheet.create({
     gap: 6,
     alignItems: "center",
     marginTop: 4,
-  },
-  networkIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: "rgba(74,222,128,0.08)",
-  },
-  networkDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  networkLabel: {
-    color: "#4ADE80",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
   },
   footerPrivacyText: {
     color: "#5A6180",

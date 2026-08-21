@@ -139,6 +139,13 @@ export default function RootLayout() {
                             headerBackButtonDisplayMode: "minimal",
                         }}
                     />
+                    <Stack.Screen
+                        name="signal"
+                        options={{
+                            title: "Signal",
+                            headerShown: false,
+                        }}
+                    />
                 </Stack>
             </QVACPrewarmProvider>
         </ConvexAuthProvider>

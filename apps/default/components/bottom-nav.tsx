@@ -44,7 +44,20 @@ const TABS: Array<TabConfig> = [
     iconActive: "library",
     href: "/archive",
   },
-];
+] /*
+ * Football Path was the Tether Developers Cup hackathon vehicle (submitted,
+ * complete). The flagship product for the public release is the ritual
+ * itself, so the Football tab is hidden by default to keep the nav focused
+ * on one clear job. Set EXPO_PUBLIC_SHOW_FOOTBALL=true to bring the
+ * experiment back. The routes (/football, /football-drill, /challenge)
+ * remain registered, so existing deep links still resolve without crashing.
+ */;
+
+const SHOW_FOOTBALL = process.env.EXPO_PUBLIC_SHOW_FOOTBALL === "true";
+
+const VISIBLE_TABS: Array<TabConfig> = SHOW_FOOTBALL
+  ? TABS
+  : TABS.filter((tab) => tab.href !== "/football");
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -53,7 +66,7 @@ export function BottomNav() {
   return (
     <View style={styles.container}>
       <View style={styles.tabBar}>
-        {TABS.map((tab) => {
+        {VISIBLE_TABS.map((tab) => {
           const isActive =
             (tab.href === "/" && (pathname === "/" || pathname === "")) ||
             (tab.href !== "/" && pathname.startsWith(tab.href));

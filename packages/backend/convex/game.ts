@@ -36,8 +36,11 @@ import {
 } from "./game.transmission";
 import { buildOnboardingPayload } from "./game.onboarding";
 import {
+  applyStreakFreeze,
   getCheckInProgressionUpdate,
   getChoiceProgressionUpdate,
+  getFreezeMilestoneGrant,
+  MAX_STREAK_FREEZES,
 } from "./game.progression";
 import { detectVoicemailMilestone } from "./voicemail.milestones";
 
@@ -158,7 +161,7 @@ export const saveCheckIn = authMutation({
           )
           .unique()
       : null;
-    const progression = getCheckInProgressionUpdate({
+    const rawProgression = getCheckInProgressionUpdate({
       streak: persona.streak as unknown as number,
       lastCheckInDateKey: persona.lastCheckInDateKey as unknown as string | undefined,
       lastTransmissionDateKey: persona.lastTransmissionDateKey as unknown as string | undefined,
@@ -166,6 +169,27 @@ export const saveCheckIn = authMutation({
       dateKey: args.dateKey,
       previousChoiceExists: Boolean(previousChoice),
     });
+    // Streak freeze: a missed day consumes a token instead of resetting the
+    // line (see game.progression.ts). Milestone crossings *also* grant tokens
+    // (first crossing of day 7 / 30), so the shield is earned, not default.
+    const freeze = applyStreakFreeze({
+      rawStreak: rawProgression.streak,
+      priorStreak: persona.streak as unknown as number,
+      // Default matches toPersonaReturn (existing personas get 1 token), so
+      // the shield is never silently missing for documents created before
+      // this field existed.
+      freezeCount: (persona.streakFreezeCount as unknown as number | undefined) ?? 1,
+      frozenDateKey: persona.streakFrozenDateKey as unknown as string | undefined,
+      dateKey: args.dateKey,
+    });
+    const freezeMilestoneGrant = getFreezeMilestoneGrant(
+      persona.streak as unknown as number,
+      freeze.streak,
+    );
+    const progression = {
+      ...rawProgression,
+      streak: freeze.streak,
+    };
     // Detect newly unlocked cast members before updating persona
     const personaWithDefaults = {
       ...persona,
@@ -177,10 +201,19 @@ export const saveCheckIn = authMutation({
     };
     const previousConstellation = buildConstellation(personaWithDefaults);
 
+    const nextFreezeCount = Math.max(
+      0,
+      Math.min(
+        MAX_STREAK_FREEZES,
+        freeze.freezeRemaining + freezeMilestoneGrant,
+      ),
+    );
     await ctx.db.patch(persona._id, {
       streak: progression.streak,
       lastCheckInDateKey: args.dateKey,
       timelineDivergenceScore: progression.timelineDivergenceScore,
+      streakFreezeCount: nextFreezeCount,
+      streakFrozenDateKey: freeze.freezeConsumed ? args.dateKey : undefined,
       updatedAt: now,
     });
 
@@ -204,7 +237,8 @@ export const saveCheckIn = authMutation({
       });
     }
 
-    // Check for voicemail milestone
+    // Check for voicemail milestone (uses the post-freeze streak so a
+    // shield-held line still reaches its rewards)
     const previousStreak = persona.streak as unknown as number;
     const voicemailMilestone = detectVoicemailMilestone(previousStreak, progression.streak);
     if (voicemailMilestone) {

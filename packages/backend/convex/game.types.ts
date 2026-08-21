@@ -39,6 +39,11 @@ export const personaReturnValidator = v.object({
   peopleMentioned: v.array(v.string()),
   significantDates: v.array(v.string()),
   streak: v.number(),
+  // Streak freeze tokens remaining (always present; defaults to 1 for
+  // existing personas). `streakFrozenDateKey` is the date of the most recent
+  // freeze consumption, so the client can report "a freeze caught the line."
+  streakFreezeCount: v.number(),
+  streakFrozenDateKey: v.optional(v.string()),
   lastCheckInDateKey: v.optional(v.string()),
   lastTransmissionDateKey: v.optional(v.string()),
   timelineDivergenceScore: v.number(),

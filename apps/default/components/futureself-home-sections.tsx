@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { Fragment, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -102,6 +102,98 @@ export function HoldToCommitButton({
   );
 }
 
+// ─── Session Arc (today's three beats) ───────────────────────────────────────
+
+const ARC_BEATS: Array<{ key: string; label: string; icon: IconName }> = [
+  { key: "pull", label: "The word", icon: "key" },
+  { key: "voice", label: "The voice", icon: "radio-outline" },
+  { key: "answer", label: "The answer", icon: "git-branch-outline" },
+];
+
+interface SessionArcProps {
+  hasCheckIn: boolean;
+  hasTransmission: boolean;
+  hasChoice: boolean;
+}
+
+/**
+ * Makes the daily ritual legible as a three-beat arc (word → voice → answer)
+ * instead of a stack of sections. Completed beats stay lit; the next one
+ * glows so there is always exactly one obvious next action.
+ */
+export function SessionArc({ hasCheckIn, hasTransmission, hasChoice }: SessionArcProps) {
+  const done = [hasCheckIn, hasTransmission, hasChoice];
+
+  return (
+    <Animated.View entering={FadeInUp.duration(240)} style={styles.arcCard}>
+      <Text style={styles.arcEyebrow}>Today&apos;s line</Text>
+      <View style={styles.arcRow}>
+        {ARC_BEATS.map((beat, index) => {
+          const isDone = done[index]!;
+          const isNext = !isDone && (index === 0 || done[index - 1]!);
+          return (
+            <Fragment key={beat.key}>
+              {index > 0 ? (
+                <View
+                  style={[
+                    styles.arcLine,
+                    isDone && done[index - 1] && styles.arcLineDone,
+                  ]}
+                />
+              ) : null}
+              <View style={styles.arcNodeWrap}>
+                <View
+                  style={[
+                    styles.arcNode,
+                    isDone && styles.arcNodeDone,
+                    isNext && styles.arcNodeNext,
+                  ]}
+                >
+                  {isDone ? (
+                    <Ionicons name="checkmark" size={14} color="#101320" />
+                  ) : isNext ? (
+                    <Ionicons name={beat.icon} size={16} color="#F7D38B" />
+                  ) : (
+                    <Ionicons name={beat.icon} size={16} color="#6F7591" />
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.arcLabel,
+                    (isDone || isNext) && styles.arcLabelActive,
+                  ]}
+                >
+                  {beat.label}
+                </Text>
+              </View>
+            </Fragment>
+          );
+        })}
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─── Evening urgency (streak health) ───────────────────────────────────────
+
+/**
+ * A gentle loss-aversion nudge after 6pm when today's beat is still open:
+ * "one word before midnight" makes the cost of missing explicit at the exact
+ * moment the user is most likely to abandon the day.
+ */
+export function EveningUrgencyBanner() {
+  const hour = new Date().getHours();
+  if (hour < 18) return null;
+  return (
+    <View style={styles.urgencyBanner}>
+      <Ionicons name="time-outline" size={15} color="#F7D38B" />
+      <Text style={styles.urgencyText}>
+        Your line is holding — one word before midnight keeps it.
+      </Text>
+    </View>
+  );
+}
+
 interface ActionNudge {
   label: string;
   choice: Choice;
@@ -112,6 +204,8 @@ interface NextUnlock {
   label: string;
   requirement: string;
   emotionalRegister: string;
+  /** Populated for Unchosen Selves (the_* cast) so they get the dark treatment. */
+  castMember?: string;
 }
 
 interface HeroSectionProps {
@@ -121,9 +215,21 @@ interface HeroSectionProps {
   isDebugMode: boolean;
   forcedCastMember: CastMember | null;
   divergenceLabel: string;
+  /** 0-6 divergence score; drives the hero's line-state tint. */
+  divergenceScore: number;
   onDebugTap: () => void;
   onOpenSettings: () => void;
   onOpenVoicemail: () => void;
+}
+
+/** Divergence band colors — steady gold → drift amber → flicker bronze → shadow violet. */
+const HERO_BAND_COLORS = ["#F7D38B", "#F7D38B", "#E8C87A", "#B8860B", "#B8860B", "#7850A0", "#5A3A7A"];
+
+export function getDivergenceBand(score: number): number {
+  if (score >= 5) return 3;
+  if (score >= 3) return 2;
+  if (score >= 1) return 1;
+  return 0;
 }
 
 export function HeroSection({
@@ -133,15 +239,26 @@ export function HeroSection({
   isDebugMode,
   forcedCastMember,
   divergenceLabel,
+  divergenceScore,
   onDebugTap,
   onOpenSettings,
   onOpenVoicemail,
 }: HeroSectionProps) {
+  const bandColor = HERO_BAND_COLORS[Math.min(divergenceScore, HERO_BAND_COLORS.length - 1)]!;
+  const band = getDivergenceBand(divergenceScore);
+
   return (
     <Animated.View
       entering={Platform.OS === "web" ? undefined : FadeInUp.duration(260)}
-      style={styles.hero}
+      style={[styles.hero, band > 0 && { borderColor: `${bandColor}55` }]}
     >
+      {/* The hero's top edge is the timeline itself — it tints with the band. */}
+      <View
+        style={[
+          styles.heroBandTint,
+          { backgroundColor: band > 0 ? bandColor : "rgba(247,211,138,0.5)" },
+        ]}
+      />
       <View style={styles.heroTopStack}>
         <View style={styles.heroTopStackLeft}>
           <Pressable disabled={!isDebugMode} onPress={onDebugTap}>
@@ -578,6 +695,11 @@ export function ReceiveSignalSection({
           />
         </View>
       )}
+      {!hasSpeechInput && word.trim() ? (
+        <Text style={styles.wordEcho}>
+          Future-you heard: &ldquo;{word.trim()}&rdquo;.
+        </Text>
+      ) : null}
       <NudgeRow
         label="Suggested words"
         options={wordNudges}
@@ -636,6 +758,8 @@ interface ChoiceSectionProps {
   selectedThreadId: Id<"narrativeThreads"> | null;
   selectedChoice: Choice | null;
   choiceOutcome: ChoiceOutcome | null;
+  /** 0-6 divergence score before the move, for the line-delta readout. */
+  divergenceScore: number;
   shouldShowStoryDepth: boolean;
   shouldShowSystemDepth: boolean;
   choiceCopy: Record<Choice, string>;
@@ -651,6 +775,7 @@ export function ChoiceSection({
   selectedThreadId,
   selectedChoice,
   choiceOutcome,
+  divergenceScore,
   shouldShowStoryDepth,
   shouldShowSystemDepth,
   choiceCopy,
@@ -660,6 +785,7 @@ export function ChoiceSection({
   onChoice,
 }: ChoiceSectionProps) {
   const [hoveredChoice, setHoveredChoice] = useState<Choice | null>(null);
+  const band = getDivergenceBand(divergenceScore);
 
   return (
     <Animated.View entering={SlideInDown.delay(300).duration(400)} style={styles.choiceCard}>
@@ -668,10 +794,22 @@ export function ChoiceSection({
           <Ionicons name="git-branch-outline" size={20} color="#F7D38B" />
         </View>
         <View style={styles.choiceHeaderCopy}>
-          <Text style={styles.sectionTitle}>What moves tomorrow?</Text>
-          <Text style={styles.sectionCopy}>{transmission.actionPrompt}</Text>
+          {/* The choice is a reply to the voice, not a menu — surface the ask. */}
+          <Text style={styles.sectionTitle}>How do you answer?</Text>
+          <Text style={[styles.sectionCopy, styles.choicePrompt]}>
+            &ldquo;{transmission.actionPrompt}&rdquo;
+          </Text>
         </View>
       </View>
+
+      {band >= 2 ? (
+        <View style={styles.driftPill}>
+          <Ionicons name="moon" size={12} color="#B08CF0" />
+          <Text style={styles.driftPillText}>
+            Something is pressing closer to the line&hellip;
+          </Text>
+        </View>
+      ) : null}
 
       {openThreads.length > 0 && (hoveredChoice === "repair" || hoveredChoice === "release") ? (
         <View style={styles.threadTargetSection}>
@@ -781,6 +919,9 @@ export function ChoiceSection({
           ) : null}
           <Text style={styles.choiceOutcomeMeta}>{choiceOutcome.stabilityImpact}</Text>
           <Text style={styles.choiceOutcomeMeta}>{choiceOutcome.voiceShift}</Text>
+          {selectedChoice ? (
+            <ChoiceLineDelta choice={selectedChoice} score={divergenceScore} />
+          ) : null}
         </Animated.View>
       ) : null}
 
@@ -803,6 +944,58 @@ export function ChoiceSection({
         </>
       ) : null}
     </Animated.View>
+  );
+}
+
+// The divergence effect of each move, shown as a felt consequence after picking.
+const CHOICE_DELTA: Record<Choice, { delta: number; note: string }> = {
+  toward: { delta: -2, note: "The timeline settles ahead of you." },
+  steady: { delta: 0, note: "The line holds where it is." },
+  release: { delta: -1, note: "The field softens, grows stranger." },
+  repair: { delta: -1, note: "A thread resolves." },
+};
+
+const LINE_BAND_COLORS = [
+  "#F7D38B", // 0
+  "#F7D38B", // 1
+  "#E8C87A", // 2
+  "#D4A017", // 3
+  "#B8860B", // 4
+  "#7850A0", // 5
+  "#5A3A7A", // 6
+];
+
+/**
+ * The "world reacts" moment: after a choice, show the line's before/after
+ * state as seven segments so the divergence system is felt, not just read.
+ */
+function ChoiceLineDelta({ choice, score }: { choice: Choice; score: number }) {
+  const { delta, note } = CHOICE_DELTA[choice];
+  const next = Math.max(0, Math.min(6, score + delta));
+
+  return (
+    <View style={styles.lineDeltaRow}>
+      <View style={styles.lineDeltaSegments}>
+        {Array.from({ length: 7 }, (_, index) => {
+          const isSettled = index < next;
+          const isFading = !isSettled && index < score;
+          const color = LINE_BAND_COLORS[index] ?? "#F7D38B";
+          return (
+            <View
+              key={index}
+              style={[
+                styles.lineDeltaSegment,
+                isSettled && { backgroundColor: color },
+                isFading && { backgroundColor: `${color}55`, borderColor: `${color}66` },
+              ]}
+            />
+          );
+        })}
+      </View>
+      <Text style={styles.lineDeltaText}>
+        {delta < 0 ? `Divergence ${delta}` : "Divergence 0"} · {note}
+      </Text>
+    </View>
   );
 }
 
@@ -1009,6 +1202,8 @@ export function ProgressionSection({
 }: ProgressionSectionProps & { divergenceScore?: number }) {
   if (!shouldShowStoryDepth) return null;
 
+  const isDarkVoice = Boolean(nextUnlock?.castMember?.startsWith("the_"));
+
   return (
     <View style={styles.unlockCard}>
       <View style={styles.unlockHeader}>
@@ -1039,18 +1234,58 @@ export function ProgressionSection({
 
       {/* Next unlock */}
       {nextUnlock ? (
-        <Animated.View entering={FadeInUp.delay(200).duration(300)} style={styles.nextUnlockCard}>
-          <View style={styles.nextUnlockHeader}>
-            <View style={styles.nextUnlockBadge}>
-              <Ionicons name="sparkles" size={15} color="#101320" />
+        <View style={styles.nextUnlockWrap}>
+          <Animated.View
+            entering={FadeInUp.delay(200).duration(300)}
+            style={[
+              styles.nextUnlockCard,
+              isDarkVoice && styles.nextUnlockCardDark,
+            ]}
+          >
+            <View style={styles.nextUnlockHeader}>
+              <View
+                style={[
+                  styles.nextUnlockBadge,
+                  isDarkVoice && styles.nextUnlockBadgeDark,
+                ]}
+              >
+                <Ionicons
+                  name={isDarkVoice ? "moon" : "sparkles"}
+                  size={15}
+                  color={isDarkVoice ? "#CBB6F2" : "#101320"}
+                />
+              </View>
+              <View style={styles.nextUnlockCopy}>
+                {isDarkVoice ? (
+                  <Text style={styles.darkVoiceTag}>An Unchosen Self</Text>
+                ) : null}
+                <Text style={styles.nextUnlockTitle}>
+                  {isDarkVoice
+                    ? `Approaching: ${nextUnlock.label}`
+                    : `Nearing: ${nextUnlock.label}`}
+                </Text>
+                <Text style={styles.nextUnlockText}>{nextUnlock.requirement}</Text>
+              </View>
             </View>
-            <View style={styles.nextUnlockCopy}>
-              <Text style={styles.nextUnlockTitle}>Nearing: {nextUnlock.label}</Text>
-              <Text style={styles.nextUnlockText}>{nextUnlock.requirement}</Text>
-            </View>
-          </View>
-          <Text style={styles.nextUnlockMood}>{nextUnlock.emotionalRegister}</Text>
-        </Animated.View>
+            <Text
+              style={[
+                styles.nextUnlockMood,
+                isDarkVoice && styles.nextUnlockMoodDark,
+              ]}
+            >
+              {nextUnlock.emotionalRegister}
+            </Text>
+          </Animated.View>
+          {isDarkVoice ? (
+            <Animated.Text
+              entering={FadeIn.delay(300).duration(300)}
+              style={styles.darkVoiceTease}
+            >
+              A version of you on a road you didn&apos;t take. It hasn&apos;t arrived —
+              but it&apos;s drawing closer.
+            </Animated.Text>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );

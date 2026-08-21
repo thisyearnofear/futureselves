@@ -22,6 +22,7 @@ import { useLocalVoicemail } from "@/hooks/use-local-voicemail";
 import { AvatarReveal } from "@/components/avatar-reveal";
 import { BottomNav } from "@/components/bottom-nav";
 import { presentAwakenedPaywall } from "@/lib/revenuecat";
+import { buildSignalLink } from "@/lib/futureself";
 import { styles } from "./voicemail-experience.styles";
 
 export function VoicemailExperience() {
@@ -125,10 +126,14 @@ function LockedState({
                 <Ionicons name="sparkles" size={16} color="#fff" />
               )}
               <Text style={[styles.buttonText, { color: "#fff" }]}>
-                Or become Awakened now
+                Or wake this voice now
               </Text>
             </LinearGradient>
           </Pressable>
+
+          <Text style={styles.awakenedSubtext}>
+            Awakened voices don't wait for a milestone — they're always on the line.
+          </Text>
 
           <View style={styles.previewList}>
             <Text style={styles.previewTitle}>What you'll experience</Text>
@@ -217,12 +222,12 @@ function UnlockedExperience({
             <Ionicons name="mail-outline" size={16} color="#F7D38B" />
             <Text style={styles.creditsText}>
               {isPremium
-                ? "Unlimited voicemails"
+                ? "Fully awakened — voicemails whenever you need one"
                 : `${credits} voicemail${credits !== 1 ? "s" : ""} available`}
             </Text>
             {isPremium && (
               <View style={styles.premiumBadge}>
-                <Text style={styles.premiumBadgeText}>PREMIUM</Text>
+                <Text style={styles.premiumBadgeText}>AWAKENED</Text>
               </View>
             )}
           </View>
@@ -421,7 +426,12 @@ function VoicemailResult({ result, onReset, isPremium }: { result: LocalVoicemai
   };
 
   const handleShare = async () => {
-    const message = `"${result.transcript}"\n\n— A voicemail from my future self\nfutureself.app`;
+    const signalLink = buildSignalLink({
+      type: "transmission",
+      cast: "future_self",
+      quote: result.transcript,
+    });
+    const message = `"${result.transcript}"\n\n— A voicemail from my future self\n${signalLink}`;
     try {
       await Share.share({ message });
     } catch (e) {
@@ -504,7 +514,7 @@ function VoicemailResult({ result, onReset, isPremium }: { result: LocalVoicemai
                   styles.tierBadgeText,
                   result.generationTier === "premium" && styles.tierBadgeTextPremium,
                 ]}>
-                  {result.generationTier === "premium" ? "Premium" : "Free tier"}
+                  {result.generationTier === "premium" ? "Awakened" : "Free line"}
                 </Text>
               </View>
             </View>

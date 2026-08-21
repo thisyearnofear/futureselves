@@ -13,8 +13,10 @@ vi.mock("./ai", () => ({
 
 import { buildOnboardingPayload } from "./game.onboarding";
 import {
+  applyStreakFreeze,
   getCheckInProgressionUpdate,
   getChoiceProgressionUpdate,
+  getFreezeMilestoneGrant,
 } from "./game.progression";
 import { buildEmptyState, buildGenerationContext, buildStateReturn } from "./game.state";
 import {
@@ -89,6 +91,8 @@ function createPersonaReturn() {
     peopleMentioned: persona.peopleMentioned,
     significantDates: persona.significantDates,
     streak: persona.streak,
+    streakFreezeCount: persona.streakFreezeCount ?? 1,
+    streakFrozenDateKey: persona.streakFrozenDateKey,
     lastCheckInDateKey: persona.lastCheckInDateKey,
     lastTransmissionDateKey: persona.lastTransmissionDateKey,
     timelineDivergenceScore: persona.timelineDivergenceScore,
@@ -133,6 +137,8 @@ describe("game.onboarding", () => {
     expect(payload.unchosenVoices).toContain("the_ceiling");
     expect(payload.themes.length).toBeGreaterThan(0);
     expect(payload.goals.length).toBeGreaterThan(0);
+    // Fresh personas start with one streak freeze token.
+    expect(payload.streakFreezeCount).toBe(1);
     expect(payload.createdAt).toBe(12345);
     expect(payload.updatedAt).toBe(12345);
   });
@@ -202,6 +208,112 @@ describe("game.progression", () => {
 
     expect(result.streak).toBe(1);
     expect(result.timelineDivergenceScore).toBe(3);
+  });
+
+  describe("applyStreakFreeze", () => {
+    it("holds the streak when a freeze token is available on a missed day", () => {
+      const result = applyStreakFreeze({
+        rawStreak: 1, // getCheckInProgressionUpdate would have reset it
+        priorStreak: 6,
+        freezeCount: 2,
+        frozenDateKey: undefined,
+        dateKey: "2026-05-01",
+      });
+
+      expect(result.streak).toBe(7);
+      expect(result.freezeConsumed).toBe(true);
+      expect(result.freezeRemaining).toBe(1);
+    });
+
+    it("does not freeze when no tokens remain", () => {
+      const result = applyStreakFreeze({
+        rawStreak: 1,
+        priorStreak: 6,
+        freezeCount: 0,
+        frozenDateKey: undefined,
+        dateKey: "2026-05-01",
+      });
+
+      expect(result.streak).toBe(1);
+      expect(result.freezeConsumed).toBe(false);
+      expect(result.freezeRemaining).toBe(0);
+    });
+
+    it("one token covers exactly one missed day — a second consecutive miss needs another", () => {
+      const first = applyStreakFreeze({
+        rawStreak: 1,
+        priorStreak: 6,
+        freezeCount: 1,
+        frozenDateKey: undefined,
+        dateKey: "2026-05-01",
+      });
+      const second = applyStreakFreeze({
+        rawStreak: 1,
+        priorStreak: 7,
+        freezeCount: first.freezeRemaining,
+        frozenDateKey: "2026-05-01",
+        dateKey: "2026-05-02",
+      });
+
+      expect(first.freezeConsumed).toBe(true);
+      expect(second.freezeConsumed).toBe(false);
+      expect(second.streak).toBe(1);
+      expect(second.freezeRemaining).toBe(0);
+    });
+
+    it("does not consume a token on a consecutive check-in", () => {
+      const result = applyStreakFreeze({
+        rawStreak: 7, // consecutive day — no reset
+        priorStreak: 6,
+        freezeCount: 1,
+        frozenDateKey: undefined,
+        dateKey: "2026-05-01",
+      });
+
+      expect(result.streak).toBe(7);
+      expect(result.freezeConsumed).toBe(false);
+      expect(result.freezeRemaining).toBe(1);
+    });
+
+    it("does not burn a token when nothing was lost (streak already at 1)", () => {
+      const result = applyStreakFreeze({
+        rawStreak: 1, // 1 -> 1 is not a real reset
+        priorStreak: 1,
+        freezeCount: 2,
+        frozenDateKey: undefined,
+        dateKey: "2026-05-01",
+      });
+
+      expect(result.streak).toBe(1);
+      expect(result.freezeConsumed).toBe(false);
+      expect(result.freezeRemaining).toBe(2);
+    });
+
+    it("clamps the token count to the configured maximum", () => {
+      const result = applyStreakFreeze({
+        rawStreak: 1,
+        priorStreak: 3,
+        freezeCount: 99,
+        frozenDateKey: undefined,
+        dateKey: "2026-05-01",
+      });
+
+      expect(result.freezeRemaining).toBe(1); // 2 - 1 consumed
+    });
+  });
+
+  describe("getFreezeMilestoneGrant", () => {
+    it("grants one token on the first crossing of day 7", () => {
+      expect(getFreezeMilestoneGrant(6, 7)).toBe(1);
+    });
+
+    it("grants one token on the first crossing of day 30", () => {
+      expect(getFreezeMilestoneGrant(29, 30)).toBe(1);
+    });
+
+    it("does not grant on a non-milestone day", () => {
+      expect(getFreezeMilestoneGrant(7, 8)).toBe(0);
+    });
   });
 
   it("updates choice counts and divergence while replacing an existing choice", () => {

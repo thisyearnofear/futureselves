@@ -64,6 +64,17 @@ export default defineSchema({
     releaseCount: v.optional(v.number()),
     repairCount: v.optional(v.number()),
     unchosenVoices: v.optional(v.array(castMemberValidator)),
+    // Streak freeze tokens. A freeze token is consumed automatically when a
+    // day is missed, keeping the streak alive without user action (passive,
+    // like a shield). Fresh personas start with 1; more are granted at streak
+    // milestones (see game.progression.ts) so long streaks don't die to a
+    // single bad night, and so freezes feel earned rather than default.
+    streakFreezeCount: v.optional(v.number()),
+    // The dateKey of the most recent check-in that consumed a freeze token.
+    // Used to (a) report "a freeze caught your line" to the UI, and (b) keep
+    // one freeze = one missed day (a second consecutive missed day requires a
+    // second token). Cleared on any normal consecutive check-in.
+    streakFrozenDateKey: v.optional(v.string()),
     // Deprecated field — present in some existing documents, safe to ignore
     activeUnchosenSelves: v.optional(v.array(castMemberValidator)),
     skinTone: v.optional(v.string()),

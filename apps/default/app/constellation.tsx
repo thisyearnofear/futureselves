@@ -63,6 +63,12 @@ export default function ConstellationPage() {
             <Text style={s.headerCopy}>
               Each voice is a node in your timeline. Your daily choices shape which ones draw close.
             </Text>
+            {litStars.length <= 1 ? (
+              <Text style={s.sparseNote}>
+                The map is sparse on purpose — it charts where your line can
+                still go.
+              </Text>
+            ) : null}
           </Animated.View>
 
           {/* Timeline morph — scrub between unlocked voices to see how the line shifts */}
@@ -152,12 +158,22 @@ function VoiceCard({ star }: { star: ConstellationStar }) {
 
 function LockedVoiceCard({ star }: { star: ConstellationStar }) {
   const isQuiet = star.state === "quiet";
+  // Unchosen Selves (the_* cast) are the dark-mirror roster — they get a
+  // distinct violet treatment so the mechanic is legible as a category of
+  // its own, not just "another locked voice."
+  const isUnchosen = star.castMember.startsWith("the_");
+  const orbColor = isUnchosen ? "rgba(176,140,240,0.55)" : "rgba(247,211,139,0.4)";
   return (
-    <View style={[s.voiceCard, s.voiceCardLocked]}>
-      <View style={s.lockedOrb}>
-        <Ionicons name={isQuiet ? "moon" : "lock-closed"} size={20} color="rgba(247,211,139,0.4)" />
+    <View style={[s.voiceCard, s.voiceCardLocked, isUnchosen && s.voiceCardDark]}>
+      <View style={[s.lockedOrb, isUnchosen && s.lockedOrbDark]}>
+        <Ionicons
+          name={isQuiet ? "moon" : "lock-closed"}
+          size={20}
+          color={orbColor}
+        />
       </View>
-      <Text style={s.voiceNameLocked}>{star.label}</Text>
+      {isUnchosen ? <Text style={s.darkEyebrow}>Unchosen self</Text> : null}
+      <Text style={[s.voiceNameLocked, isUnchosen && s.voiceNameDark]}>{star.label}</Text>
       <Text style={s.voiceHint}>{star.unlockHint}</Text>
     </View>
   );
@@ -220,6 +236,15 @@ const s = StyleSheet.create({
     color: "#AEB6D4",
     fontSize: 14,
     lineHeight: 20,
+    textAlign: "center",
+    maxWidth: 300,
+  },
+  sparseNote: {
+    color: "#6F7591",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "700",
+    fontStyle: "italic",
     textAlign: "center",
     maxWidth: 300,
   },
@@ -292,6 +317,10 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.03)",
     borderColor: "rgba(255,255,255,0.06)",
   },
+  voiceCardDark: {
+    backgroundColor: "rgba(93,63,148,0.1)",
+    borderColor: "rgba(176,140,240,0.18)",
+  },
   lockedOrb: {
     width: 56,
     height: 56,
@@ -301,6 +330,21 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(14,17,34,0.6)",
     borderWidth: 1,
     borderColor: "rgba(247,211,139,0.1)",
+  },
+  lockedOrbDark: {
+    borderColor: "rgba(176,140,240,0.28)",
+    backgroundColor: "rgba(14,17,34,0.72)",
+  },
+  darkEyebrow: {
+    color: "#B08CF0",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    textAlign: "center",
+  },
+  voiceNameDark: {
+    color: "#C9B6F0",
   },
   voiceName: {
     color: "#F8F0DE",

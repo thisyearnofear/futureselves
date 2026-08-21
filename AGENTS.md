@@ -31,8 +31,8 @@ Providers are tried in order. If one is rate limited (HTTP 429), the system auto
 - `apps/default/components/` - Client UI (see `apps/default/components/` for the full list; key ones below)
 - `apps/default/components/constellation-map.tsx` - Visual star map of voice constellation with animated glows and divergence warping
 - `apps/default/components/divergence-gauge.tsx` - Visual arc gauge for the timeline divergence score
-- `apps/default/components/ritual-state.tsx` - Game-state visualization: streak risk, choice patterns, consequence chains
-- `apps/default/components/bottom-nav.tsx` - Bottom tab navigation (Today / Football / Voices / Archive)
+- `apps/default/components/ritual-state.tsx` - Game-state visualization: streak risk, streak-freeze shield, choice patterns, consequence chains
+- `apps/default/components/bottom-nav.tsx` - Bottom tab navigation (Today / Voices / Archive). The Football tab is hidden by default for the public release — set `EXPO_PUBLIC_SHOW_FOOTBALL=true` to restore it; the routes stay registered so deep links (`futureself://football*`, `/challenge`) still resolve.
 - `packages/backend/convex/game.ts` - Game actions including transmission generation
 - `packages/backend/convex/melius.ts` - Melius MCP client for agentic workflows
 - `packages/backend/convex/voicemail.ts` - 'The Last Voicemail' critique-driven pipeline
@@ -61,6 +61,8 @@ RevenueCat powers in-app purchases for the "Awakened" premium tier. Full plan in
 ## Football Path (Tether Developers Cup — QVAC track, submitted)
 
 The Football Path is a goal-achievement feature built for the Tether Developers Cup hackathon (QVAC track). All AI runs on-device via the QVAC SDK — no cloud AI APIs. The 3-minute Cup submission script lives at `demo/CUP_DEMO.md` — use that, not `demo/DEMO.md`, when recording for the Cup deadline.
+
+> **Product status:** The Cup is submitted and this is now a legacy experiment. In the flagship app the Football tab is hidden by default (`EXPO_PUBLIC_SHOW_FOOTBALL=true` restores it) so the public release has one clear job; all routes and code remain intact and deep-linkable.
 
 ### Architecture
 

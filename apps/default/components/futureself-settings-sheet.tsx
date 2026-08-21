@@ -413,15 +413,15 @@ export function FutureselfSettingsSheet({
                 title="Awakened"
                 copy={
                   isAwakened
-                    ? "Your voice is fully awakened. Unlimited cinematic voicemails, no streak required."
-                    : "Unlock unlimited cinematic voicemails without waiting for a streak milestone."
+                    ? "Your line stays fully awake. Every voice you've earned is always on, no milestone required."
+                    : "Right now, your voices go quiet between milestones. Awakened keeps the whole line lit, all the time."
                 }
               >
                 {isAwakened ? (
                   <View style={styles.infoCard}>
                     <Ionicons name="sparkles" size={18} color="#F7D38B" />
                     <Text style={styles.infoText}>
-                      Thank you for supporting Future Selves. Manage your subscription through
+                      The line is yours to keep. Manage your subscription through
                       your device's App Store or Play Store account settings.
                     </Text>
                   </View>

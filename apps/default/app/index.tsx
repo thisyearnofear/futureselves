@@ -39,7 +39,12 @@ function GameShell() {
     const state = useQuery(api.game.getState, { dateKey });
     const generateTransmission = useAction(api.game.generateDailyTransmission);
     const reminderPreferences = useReminderPreferences();
-    useDailyReminder(reminderPreferences.preferences, reminderPreferences.isLoaded);
+    // The latest cliffhanger becomes the reminder's copy — the serialized
+    // story is the strongest reason to come back, stronger than a generic nudge.
+    const latestCliffhanger = state?.recentTransmissions?.[0]?.cliffhanger;
+    useDailyReminder(reminderPreferences.preferences, reminderPreferences.isLoaded, {
+      cliffhanger: latestCliffhanger,
+    });
 
     const handleOnboardingComplete = useCallback(async () => {
         try {

@@ -22,6 +22,7 @@ import {
 
 interface ProfileRefinementValues {
   age?: string;
+  afraidWontHappen?: string;
   draining: string;
   significantDates: Array<string>;
   skinTone?: string;
@@ -45,6 +46,7 @@ export function FutureselfProfileSheet({
   onSave,
 }: FutureselfProfileSheetProps) {
   const [age, setAge] = useState("");
+  const [afraidWontHappen, setAfraidWontHappen] = useState("");
   const [draining, setDraining] = useState("");
   const [significantDate, setSignificantDate] = useState("");
   const [skinTone, setSkinTone] = useState("");
@@ -54,6 +56,7 @@ export function FutureselfProfileSheet({
   useEffect(() => {
     if (!visible || !persona) return;
     setAge(persona.age ?? "");
+    setAfraidWontHappen(persona.afraidWontHappen);
     setDraining(persona.draining);
     setSignificantDate(persona.significantDates[0] ?? "");
     setSkinTone(persona.skinTone ?? "");
@@ -66,6 +69,7 @@ export function FutureselfProfileSheet({
   async function handleSave() {
     await onSave({
       age: age.trim() || undefined,
+      afraidWontHappen: afraidWontHappen.trim() || undefined,
       draining: draining.trim(),
       significantDates: significantDate.trim() ? [significantDate.trim()] : [],
       skinTone: skinTone || undefined,
@@ -131,6 +135,13 @@ export function FutureselfProfileSheet({
                 onSelect={(v) => setDistinguishing(v === distinguishing ? "" : v)}
               />
             </View>
+            <Field
+              label="What future do you almost not let yourself want?"
+              multiline
+              onChangeText={setAfraidWontHappen}
+              placeholder="The hope under the practical answers."
+              value={afraidWontHappen}
+            />
             <Field
               label="What has been draining you lately?"
               multiline

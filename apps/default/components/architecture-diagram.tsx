@@ -5,8 +5,15 @@ import { StyleSheet, Text, View } from "react-native";
  * Renders as a styled component rather than an image so it looks
  * crisp at any screen size on both web and native.
  *
- * Per `docs/privacy-posture.md` and `docs/edge-ai-qvac.md` §12 #6,
- * this diagram must be visible on the public marketing site.
+ * Status (August 2026): no longer rendered on the public landing page
+ * (apps/default/app/landing.tsx) — the "no bytes leave the device" claim
+ * was accurate for the QVAC submission build only, and is no longer true
+ * given RevenueCat's always-on billing sync (see docs/shipaton-2026.md)
+ * and Convex's always-on auth/state sync. The original requirement to
+ * show this publicly (docs/edge-ai-qvac.md §12 #6) was specific to the
+ * completed Tether Developers Cup submission. Kept here in case it's
+ * useful for internal/technical documentation of the local-AI mode,
+ * which still exists and still works (EXPO_PUBLIC_AI_PROVIDER=local).
  */
 export function ArchitectureDiagram() {
   return (
