@@ -123,10 +123,36 @@ interface SessionArcProps {
  */
 export function SessionArc({ hasCheckIn, hasTransmission, hasChoice }: SessionArcProps) {
   const done = [hasCheckIn, hasTransmission, hasChoice];
+  const allDone = done.every(Boolean);
+
+  // Celebration glow when the full arc is complete — a quiet "you did the
+  // thing" beat that fades in after the last beat fills.
+  const glowOpacity = useSharedValue(0);
+  useEffect(() => {
+    if (allDone) {
+ glowOpacity.value = withSequence(
+ withTiming(0, { duration: 100 }),
+ withTiming(0.6, { duration: 600, easing: Easing.out(Easing.quad) }),
+ withTiming(0.35, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
+ );
+ } else {
+ glowOpacity.value = withTiming(0, { duration: 300 });
+ }
+  }, [allDone, glowOpacity]);
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glowOpacity.value }));
 
   return (
     <Animated.View entering={FadeInUp.duration(240)} style={styles.arcCard}>
-      <Text style={styles.arcEyebrow}>Today&apos;s line</Text>
+      {/* Completion glow — a warm halo behind the row when all beats are done */}
+      {allDone ? (
+ <Animated.View
+ pointerEvents="none"
+ style={[styles.arcCompletionGlow, glowStyle]}
+ />
+ ) : null}
+      <Text style={[styles.arcEyebrow, allDone && styles.arcEyebrowDone]}>
+ {allDone ? "The line is complete" : "Today&apos;s line"}
+      </Text>
       <View style={styles.arcRow}>
         {ARC_BEATS.map((beat, index) => {
           const isDone = done[index]!;
@@ -150,9 +176,13 @@ export function SessionArc({ hasCheckIn, hasTransmission, hasChoice }: SessionAr
                   ]}
                 >
                   {isDone ? (
-                    <Ionicons name="checkmark" size={14} color="#101320" />
+                    <Animated.View entering={ZoomIn.duration(300).springify().damping(12)}>
+                      <Ionicons name="checkmark" size={14} color="#101320" />
+                    </Animated.View>
                   ) : isNext ? (
-                    <Ionicons name={beat.icon} size={16} color="#F7D38B" />
+                    <Animated.View entering={FadeIn.duration(300)}>
+                      <Ionicons name={beat.icon} size={16} color="#F7D38B" />
+                    </Animated.View>
                   ) : (
                     <Ionicons name={beat.icon} size={16} color="#6F7591" />
                   )}
@@ -696,9 +726,11 @@ export function ReceiveSignalSection({
         </View>
       )}
       {!hasSpeechInput && word.trim() ? (
-        <Text style={styles.wordEcho}>
-          Future-you heard: &ldquo;{word.trim()}&rdquo;.
-        </Text>
+        <Animated.View entering={FadeIn.delay(100).duration(400)} style={styles.wordEchoWrap}>
+          <Text style={styles.wordEcho}>
+            Future-you heard: &ldquo;{word.trim()}&rdquo;.
+          </Text>
+        </Animated.View>
       ) : null}
       <NudgeRow
         label="Suggested words"
@@ -1033,41 +1065,52 @@ function VisualChoiceCard({
   }, [isHovered, glowValue]);
   const glowStyle = useAnimatedStyle(() => ({ opacity: glowValue.value }));
 
+  // Celebratory spring bounce when the hero card is selected
+  const bounceValue = useSharedValue(0);
+  useEffect(() => {
+    if (isSelected) {
+      bounceValue.value = withSequence(withTiming(1.04, { duration: 120 }), withTiming(1, { duration: 180 }));
+    }
+  }, [isSelected, bounceValue]);
+  const bounceStyle = useAnimatedStyle(() => ({ transform: [{ scale: bounceValue.value || 1 }] }));
+
   if (isHero) {
     return (
-      <Pressable
-        onPressIn={() => onHover(choice)}
-        onPressOut={() => onHover(null)}
-        onPress={() => {
-          if (Platform.OS !== "web") void Haptics.selectionAsync();
-          onChoice(choice);
-        }}
-        style={({ pressed }) => [
-          styles.choiceButtonHero,
-          isSelected && styles.choiceButtonHeroActive,
-          { borderColor: isSelected ? color : "rgba(247,211,139,0.35)" },
-          pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
-        ]}
-      >
-        <Animated.View style={[StyleSheet.absoluteFill, glowStyle, { backgroundColor: color, borderRadius: 20 }]} pointerEvents="none" />
-        <View style={styles.choiceIconWrap}>
-          <Ionicons name={icon as any} size={28} color={isSelected ? "#101320" : color} />
-        </View>
-        <Text style={[styles.choiceTextHero, isSelected && { color: "#101320" }]}>
-          {label}
-        </Text>
-        <Text style={[styles.choiceHintHero, isSelected && { color: "#101320", opacity: 0.7 }]}>
-          {hint}
-        </Text>
-        {isHovered ? (
-          <View style={styles.divergencePreview}>
-            <Ionicons name="trending-down" size={10} color={isSelected ? "#101320" : color} />
-            <Text style={[styles.divergencePreviewText, isSelected && { color: "#101320" }]}>
-              {divergenceImpact}
-            </Text>
+      <Animated.View style={bounceStyle}>
+        <Pressable
+          onPressIn={() => onHover(choice)}
+          onPressOut={() => onHover(null)}
+          onPress={() => {
+            if (Platform.OS !== "web") void Haptics.selectionAsync();
+            onChoice(choice);
+          }}
+          style={({ pressed }) => [
+            styles.choiceButtonHero,
+            isSelected && styles.choiceButtonHeroActive,
+            { borderColor: isSelected ? color : "rgba(247,211,139,0.35)" },
+            pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+          ]}
+        >
+          <Animated.View style={[StyleSheet.absoluteFill, glowStyle, { backgroundColor: color, borderRadius: 20 }]} pointerEvents="none" />
+          <View style={styles.choiceIconWrap}>
+            <Ionicons name={icon as any} size={28} color={isSelected ? "#101320" : color} />
           </View>
-        ) : null}
-      </Pressable>
+          <Text style={[styles.choiceTextHero, isSelected && { color: "#101320" }]}>
+            {label}
+          </Text>
+          <Text style={[styles.choiceHintHero, isSelected && { color: "#101320", opacity: 0.7 }]}>
+            {hint}
+          </Text>
+          {isHovered ? (
+            <View style={styles.divergencePreview}>
+              <Ionicons name="trending-down" size={10} color={isSelected ? "#101320" : color} />
+              <Text style={[styles.divergencePreviewText, isSelected && { color: "#101320" }]}>
+                {divergenceImpact}
+              </Text>
+            </View>
+          ) : null}
+        </Pressable>
+      </Animated.View>
     );
   }
 

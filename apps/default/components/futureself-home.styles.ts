@@ -1541,6 +1541,16 @@ export const styles = StyleSheet.create({
   arcLabelActive: {
     color: "#F7D38B",
   },
+  arcEyebrowDone: {
+    color: "#F7D38B",
+    opacity: 0.85,
+  },
+  arcCompletionGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 22,
+    backgroundColor: "#F7D38B",
+    opacity: 0,
+  },
   // ─── Evening urgency (streak health) ───
   urgencyBanner: {
     flexDirection: "row",
@@ -1562,6 +1572,10 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
   },
   // ─── Word echo ───
+  wordEchoWrap: {
+    alignItems: "center",
+    paddingVertical: 4,
+  },
   wordEcho: {
     color: "#B08CF0",
     fontSize: 12,
