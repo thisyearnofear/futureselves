@@ -133,7 +133,6 @@ export function buildPrompt(
   const continuityInstruction = buildContinuityInstruction(context);
   const voiceDistinctionInstruction = getVoiceDistinctionInstruction(castMember);
   const threadsBlock = buildThreadsBlock(context.openThreads);
-  const patternsBlock = buildPatternsBlock(context);
 
   return `Create today's futureself transmission as JSON only.
 
@@ -167,8 +166,6 @@ ${accountabilityBlock}
 
 ${threadsBlock}
 
-${patternsBlock}
-
 Continuity priorities:
 ${continuityInstruction}
 
@@ -182,7 +179,11 @@ CRITICAL BEHAVIORAL REQUIREMENTS:
 - Use the player's ACTUAL context to generate the action. Reference their specific avoiding, draining, currentChapter, or afraidWontHappen. Do not give generic advice that could apply to anyone.
 - The check-in word is an emotional data point. If they said "exhausted," the transmission should register that weight. If they said "hopeful," notice the shift. Don't just repeat the word — respond to what it reveals.
 - The cliffhanger MUST reference what happens tomorrow based on whether they follow through. Create accountability: "If you do X tonight, tomorrow I can tell you Y" or "If you don't, tomorrow's signal will feel the gap."
-- 80-120 words. Speak as if leaving a voice message. Conversational, direct, intimate.
+- 40-60 words. Speak as if leaving a voice message. Conversational, direct, intimate.
+  Economy is the point: one word in, one short voice out. Do not narrate the system —
+  no meta-commentary about streaks, divergence score, or the player's dominant pattern.
+- The Ghost and The Flatlined may break below 40 words. Sparse is their register, not
+  an under-delivery. Five careful words from The Ghost land harder than a full paragraph.
 - Must feel like a specific person who knows you, not a fortune cookie.
 - Avoid therapy clichés, vague uplift, or generic self-help cadence.
 
@@ -369,56 +370,6 @@ function buildThreadsBlock(
     "- If relevant to today's word or choice, reference a thread by name. This makes the transmission feel like a continuing story, not a standalone message.",
   );
   return lines.join("\n");
-}
-
-function buildPatternsBlock(context: GenerationContext): string {
-  const parts: string[] = [];
-
-  const { towardCount, steadyCount, releaseCount, repairCount, streak, timelineDivergenceScore } =
-    context.persona;
-
-  const total = (towardCount ?? 0) + (steadyCount ?? 0) + (releaseCount ?? 0) + (repairCount ?? 0);
-  if (total >= 3) {
-    const dominant = getDominantChoice(
-      towardCount ?? 0,
-      steadyCount ?? 0,
-      releaseCount ?? 0,
-      repairCount ?? 0,
-    );
-    const dominantLabels: Record<string, string> = {
-      toward: "They keep reaching forward — more toward than any other direction.",
-      steady: "They keep holding ground — steady is their default when uncertain.",
-      release: "They keep letting go — release is how they process difficulty.",
-      repair: "They keep returning to fix things — repair is their instinct when things fray.",
-    };
-    parts.push(`Choice pattern: ${dominantLabels[dominant]}`);
-  }
-
-  if (streak && streak >= 3) {
-    parts.push(
-      `Streak: ${streak} consecutive days. The ritual is becoming part of their rhythm. Notice this without making it about the streak itself.`,
-    );
-  }
-
-  if (timelineDivergenceScore && timelineDivergenceScore >= 3) {
-    parts.push(
-      "Timeline divergence is high. Their choices are actively reshaping the future. The transmission should feel the weight of that momentum.",
-    );
-  }
-
-  if (parts.length === 0) return "";
-
-  return ["Behavioral context:"].concat(parts).join("\n");
-}
-
-function getDominantChoice(
-  toward: number,
-  steady: number,
-  release: number,
-  repair: number,
-): string {
-  const counts = { toward, steady, release, repair };
-  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
 }
 
 function reactionMemoryLead(

@@ -345,14 +345,6 @@ export function HeroSection({
         </View>
       ) : null}
 
-      {shouldShowSystemDepth ? (
-        <View style={styles.heroPromiseRow}>
-          <MiniPromise icon="mic" label="spoken" />
-          <MiniPromise icon="book" label="serial" />
-          <MiniPromise icon="sparkles" label="personal" />
-        </View>
-      ) : null}
-
       {shouldShowSystemDepth && persona ? (
         <View style={styles.heroStatsGrid}>
           <HeroStat
@@ -795,7 +787,6 @@ interface ChoiceSectionProps {
   shouldShowStoryDepth: boolean;
   shouldShowSystemDepth: boolean;
   choiceCopy: Record<Choice, string>;
-  choiceHints: Record<Choice, string>;
   actionNudges: Array<ActionNudge>;
   onSelectThread: (id: Id<"narrativeThreads">) => void;
   onChoice: (choice: Choice) => void;
@@ -811,7 +802,6 @@ export function ChoiceSection({
   shouldShowStoryDepth,
   shouldShowSystemDepth,
   choiceCopy,
-  choiceHints,
   actionNudges,
   onSelectThread,
   onChoice,
@@ -886,10 +876,8 @@ export function ChoiceSection({
         <VisualChoiceCard
           choice="toward"
           label={choiceCopy.toward}
-          hint={choiceHints.toward}
           icon="arrow-forward-circle"
           color="#F7D38B"
-          divergenceImpact="settles the line"
           isSelected={selectedChoice === "toward"}
           isHovered={hoveredChoice === "toward"}
           onHover={setHoveredChoice}
@@ -902,10 +890,8 @@ export function ChoiceSection({
           <VisualChoiceCard
             choice="steady"
             label={choiceCopy.steady}
-            hint={choiceHints.steady}
             icon="pause-circle"
             color="#AEB6D4"
-            divergenceImpact="holds steady"
             isSelected={selectedChoice === "steady"}
             isHovered={hoveredChoice === "steady"}
             onHover={setHoveredChoice}
@@ -914,10 +900,8 @@ export function ChoiceSection({
           <VisualChoiceCard
             choice="release"
             label={choiceCopy.release}
-            hint={choiceHints.release}
             icon="close-circle"
             color="#FF9A9A"
-            divergenceImpact="softens, invites strangeness"
             isSelected={selectedChoice === "release"}
             isHovered={hoveredChoice === "release"}
             onHover={setHoveredChoice}
@@ -926,10 +910,8 @@ export function ChoiceSection({
           <VisualChoiceCard
             choice="repair"
             label={choiceCopy.repair}
-            hint={choiceHints.repair}
             icon="build-circle"
             color="#A9F7B5"
-            divergenceImpact="settles slightly"
             isSelected={selectedChoice === "repair"}
             isHovered={hoveredChoice === "repair"}
             onHover={setHoveredChoice}
@@ -1034,10 +1016,8 @@ function ChoiceLineDelta({ choice, score }: { choice: Choice; score: number }) {
 interface VisualChoiceCardProps {
   choice: Choice;
   label: string;
-  hint: string;
   icon: string;
   color: string;
-  divergenceImpact: string;
   isSelected: boolean;
   isHovered: boolean;
   onHover: (choice: Choice | null) => void;
@@ -1048,10 +1028,8 @@ interface VisualChoiceCardProps {
 function VisualChoiceCard({
   choice,
   label,
-  hint,
   icon,
   color,
-  divergenceImpact,
   isSelected,
   isHovered,
   onHover,
@@ -1098,17 +1076,6 @@ function VisualChoiceCard({
           <Text style={[styles.choiceTextHero, isSelected && { color: "#101320" }]}>
             {label}
           </Text>
-          <Text style={[styles.choiceHintHero, isSelected && { color: "#101320", opacity: 0.7 }]}>
-            {hint}
-          </Text>
-          {isHovered ? (
-            <View style={styles.divergencePreview}>
-              <Ionicons name="trending-down" size={10} color={isSelected ? "#101320" : color} />
-              <Text style={[styles.divergencePreviewText, isSelected && { color: "#101320" }]}>
-                {divergenceImpact}
-              </Text>
-            </View>
-          ) : null}
         </Pressable>
       </Animated.View>
     );
@@ -1133,9 +1100,6 @@ function VisualChoiceCard({
       <Text style={[styles.choiceTextSecondary, isSelected && { color }]}>
         {label}
       </Text>
-      {isHovered ? (
-        <Text style={styles.choiceHintSmall}>{divergenceImpact}</Text>
-      ) : null}
     </Pressable>
   );
 }
@@ -1536,20 +1500,6 @@ export function FlareOverlay({ visible, flareColor }: FlareOverlayProps) {
     >
       <View style={[styles.flareGlow, { borderColor: flareColor }]} />
     </Animated.View>
-  );
-}
-
-interface MiniPromiseProps {
-  icon: IconName;
-  label: string;
-}
-
-function MiniPromise({ icon, label }: MiniPromiseProps) {
-  return (
-    <View style={styles.miniPromise}>
-      <Ionicons name={icon} size={15} color="#F7D38B" />
-      <Text style={styles.miniPromiseText}>{label}</Text>
-    </View>
   );
 }
 
