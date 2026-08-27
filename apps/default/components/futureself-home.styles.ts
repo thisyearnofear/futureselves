@@ -160,12 +160,6 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 320,
   },
-  heroPromiseRow: {
-    flexDirection: "row",
-    gap: 9,
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
   demoLockPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -182,22 +176,6 @@ export const styles = StyleSheet.create({
     color: "#F7D38B",
     fontSize: 12,
     fontWeight: "800",
-  },
-  miniPromise: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    borderRadius: 999,
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-    backgroundColor: "rgba(255,255,255,0.07)",
-  },
-  miniPromiseText: {
-    color: "#F8F0DE",
-    fontSize: 12,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    letterSpacing: 0.7,
   },
   heroStatsGrid: {
     flexDirection: "row",
@@ -550,29 +528,6 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(247,211,139,0.1)",
     marginBottom: 6,
   },
-  divergencePreview: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
-  divergencePreviewText: {
-    color: "#F7D38B",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
-  choiceHintSmall: {
-    color: "#6F7591",
-    fontSize: 9,
-    fontWeight: "600",
-    marginTop: 2,
-    textAlign: "center",
-  },
   constellationWrap: {
     alignItems: "center",
     paddingVertical: 8,
@@ -717,18 +672,6 @@ export const styles = StyleSheet.create({
   },
   choiceTextActive: {
     color: "#F7D38B",
-  },
-  choiceHint: {
-    color: "#6F7591",
-    fontSize: 11,
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  choiceHintHero: {
-    color: "#C8A84B",
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 4,
   },
   choiceSecondaryRow: {
     flexDirection: "row",

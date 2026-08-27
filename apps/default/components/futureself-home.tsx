@@ -81,13 +81,6 @@ const choiceCopy: Record<Choice, string> = {
   repair: "Repair a thread",
 };
 
-const choiceHints: Record<Choice, string> = {
-  toward: "The brave move. Shifts the timeline fastest.",
-  steady: "Protect continuity. No risk, no change.",
-  release: "Let something go. Makes room for the unknown.",
-  repair: "Resolve an open thread. Brings the future closer.",
-};
-
 const choiceColors: Record<Choice, string> = {
   toward: "#F7D38B",
   steady: "#AEB6D4",
@@ -229,9 +222,6 @@ export function FutureselfHome({
 
   const persona = state.persona;
   const { pinnedSignalIds, togglePinnedSignal } = useSavedSignalPins();
-  const litVoices = state.constellation.filter(
-    (star) => star.state === "lit" || star.state === "dim",
-  );
   const nextUnlock = useMemo(
     () => (persona ? getNextUnlock(persona, state.constellation) : null),
     [persona, state.constellation],
@@ -1011,7 +1001,6 @@ export function FutureselfHome({
           <ChoiceSection
             actionNudges={actionNudges}
             choiceCopy={choiceCopy}
-            choiceHints={choiceHints}
             choiceOutcome={choiceOutcome}
             divergenceScore={persona?.timelineDivergenceScore ?? 0}
             onChoice={handleChoice}
@@ -1109,11 +1098,6 @@ export function FutureselfHome({
           />
         ) : null}
 
-        {shouldShowSystemDepth && litVoices.length > 1 ? (
-          <Text style={styles.footnote}>
-            {litVoices.length} voices are close enough to hear you right now.
-          </Text>
-        ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 

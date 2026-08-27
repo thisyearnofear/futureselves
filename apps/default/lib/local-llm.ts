@@ -57,16 +57,6 @@ export interface LocalLLMOptions {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getDominantChoice(
-  toward: number,
-  steady: number,
-  release: number,
-  repair: number,
-): string {
-  const counts = { toward, steady, release, repair };
-  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]![0];
-}
-
 function getVoiceDirection(castMember: CastMember): string {
   switch (castMember) {
     case "future_partner":
@@ -139,17 +129,6 @@ function buildLocalPrompt(
     ? ["Open narrative threads:", ...openThreads.map((t) => `- "${t.title}" (seeded by ${t.castMember}: "${t.seed}")`), "- If relevant, reference a thread by name."].join("\n")
     : "";
 
-  const total = persona.towardCount + persona.steadyCount + persona.releaseCount + persona.repairCount;
-  const dominantLabels: Record<string, string> = {
-    toward: "They keep reaching forward.",
-    steady: "They keep holding ground.",
-    release: "They keep letting go.",
-    repair: "They keep returning to fix things.",
-  };
-  const patternBlock = total >= 3
-    ? `Behavioral context:\nChoice pattern: ${dominantLabels[getDominantChoice(persona.towardCount, persona.steadyCount, persona.releaseCount, persona.repairCount)]}`
-    : "";
-
   const accountabilityBlock = buildAccountabilityLocal(recentChoices[0], recentTransmissions[0], recentResponses[0]?.reaction, recentResponses[0]?.replyNote);
 
   return `Create today's futureself transmission as JSON only.
@@ -178,12 +157,13 @@ ${accountabilityBlock}
 
 ${threadsBlock}
 
-${patternBlock}
-
 CRITICAL:
 - actionPrompt MUST be a specific, time-bound, observable behavior.
 - Use the player's ACTUAL context.
-- 80-120 words. Feel like a voicemail from a specific person who knows you, not an essay.
+- 40-60 words. Feel like a voicemail from a specific person who knows you, not an essay.
+  Economy is the point: one word in, one short voice out. Do not narrate the system — no
+  meta-commentary about streaks or the player's dominant pattern.
+- The Ghost and The Flatlined may break below 40 words. Sparse is their register.
 - Speak as if leaving a voice message. Conversational, direct, intimate.
 
 Return exactly:
