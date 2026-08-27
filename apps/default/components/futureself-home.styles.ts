@@ -1534,23 +1534,6 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  driftPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    alignSelf: "center",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: "rgba(176,140,240,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(176,140,240,0.24)",
-  },
-  driftPillText: {
-    color: "#CBB6F2",
-    fontSize: 12,
-    fontWeight: "800",
-  },
   lineDeltaRow: {
     gap: 8,
     alignItems: "center",

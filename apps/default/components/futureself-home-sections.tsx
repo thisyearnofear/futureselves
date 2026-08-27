@@ -807,7 +807,6 @@ export function ChoiceSection({
   onChoice,
 }: ChoiceSectionProps) {
   const [hoveredChoice, setHoveredChoice] = useState<Choice | null>(null);
-  const band = getDivergenceBand(divergenceScore);
 
   return (
     <Animated.View entering={SlideInDown.delay(300).duration(400)} style={styles.choiceCard}>
@@ -823,15 +822,6 @@ export function ChoiceSection({
           </Text>
         </View>
       </View>
-
-      {band >= 2 ? (
-        <View style={styles.driftPill}>
-          <Ionicons name="moon" size={12} color="#B08CF0" />
-          <Text style={styles.driftPillText}>
-            Something is pressing closer to the line&hellip;
-          </Text>
-        </View>
-      ) : null}
 
       {openThreads.length > 0 && (hoveredChoice === "repair" || hoveredChoice === "release") ? (
         <View style={styles.threadTargetSection}>
@@ -928,10 +918,6 @@ export function ChoiceSection({
             <Text style={styles.choiceOutcomeTitle}>{choiceOutcome.summary}</Text>
           </View>
           <Text style={styles.choiceOutcomeBody}>{choiceOutcome.detail}</Text>
-          {choiceOutcome.threadImpact ? (
-            <Text style={styles.choiceOutcomeMeta}>{choiceOutcome.threadImpact}</Text>
-          ) : null}
-          <Text style={styles.choiceOutcomeMeta}>{choiceOutcome.stabilityImpact}</Text>
           <Text style={styles.choiceOutcomeMeta}>{choiceOutcome.voiceShift}</Text>
           {selectedChoice ? (
             <ChoiceLineDelta choice={selectedChoice} score={divergenceScore} />
