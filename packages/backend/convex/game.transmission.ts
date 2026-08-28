@@ -84,6 +84,60 @@ export function fallbackTransmission(
         "Tomorrow I can show you which part of your fear was bluffing — but only if you give me something to point at.",
     };
   }
+  if (castMember === "future_self") {
+    return {
+      title: "We are still here",
+      text: `${context.persona.name}. ${checkInWord}. I felt that too. ${reactionEcho}${mirroredReply} You are in ${chapter}, and I know ${avoiding} is the thing you keep stepping around. It is okay to move slowly. But tonight, one small honest step toward it. Not the whole thing. Just the next inch. We have time. But the line moves when you do.`,
+      actionPrompt: `Take one small honest step toward what you are avoiding: ${avoiding}. Not the whole thing. Just the next inch.`,
+      cliffhanger:
+        "Move tonight, and tomorrow I can tell you how the line shifted — even by an inch.",
+    };
+  }
+  if (castMember === "future_best_friend") {
+    return {
+      title: "I know. I was there for all of it.",
+      text: `${context.persona.name}. ${checkInWord}? Yeah. I felt that one. ${reactionEcho}${mirroredReply} Look, you have been circling ${avoiding} and calling it being careful, and I love you, but that is not careful — that is scared wearing a nice outfit. Tonight, do the thing. The small, dumb, brave thing. Then tell me about it tomorrow and we will laugh at how big it felt.`,
+      actionPrompt: `Do the small, brave thing you have been dressing up as "being careful." Then you can tell me about it.`,
+      cliffhanger:
+        "Do it, and tomorrow I get to be the one who says I told you so. That is my favorite thing.",
+    };
+  }
+  if (castMember === "the_ghost") {
+    return {
+      title: "I almost…",
+      text: `${context.persona.name}. ${checkInWord}. I was going to say something. ${reactionEcho} It can wait. ${mirroredReply} You are still avoiding ${avoiding}. I know. I stopped too. That is all. I just wanted you to know I was here. Before.`,
+      actionPrompt: `One small thing toward what you are avoiding: ${avoiding}. Not for me. For the version that did not stop.`,
+      cliffhanger:
+        "If you move tonight, tomorrow I might have more to say. If not, I understand the silence.",
+    };
+  }
+  if (castMember === "the_flatlined") {
+    return {
+      title: "The line is fine",
+      text: `${context.persona.name}. ${checkInWord}. Fine. ${reactionEcho} You are avoiding ${avoiding}. ${mirroredReply} It does not matter much either way. The chapter is ${chapter}. It is fine. If you want to do one thing tonight, do it. If not, that is fine too. The line holds. It always holds.`,
+      actionPrompt: `One thing toward ${avoiding}, if you want. It is fine either way.`,
+      cliffhanger:
+        "Tomorrow will be similar. The line does not move much from here.",
+    };
+  }
+  if (castMember === "the_ceiling") {
+    return {
+      title: "You chose well. Mostly.",
+      text: `${context.persona.name}. ${checkInWord}. That is a reasonable word for a reasonable day. ${reactionEcho}${mirroredReply} You are avoiding ${avoiding}, and honestly, that is probably the safe call. ${chapter} is comfortable enough. Tonight, you could push on ${avoiding}. Or you could not. The ceiling is not so bad. Most people never look up and notice it is there.`,
+      actionPrompt: `Notice the ceiling. If you want, one small push on ${avoiding}. But no one would blame you for staying comfortable.`,
+      cliffhanger:
+        "Tomorrow will feel similar. That is the point of the ceiling. It holds.",
+    };
+  }
+  if (castMember === "the_dissolver") {
+    return {
+      title: "It is peaceful, isn't it",
+      text: `${context.persona.name}. ${checkInWord}. That is a soft word. ${reactionEcho}${mirroredReply} You are avoiding ${avoiding}, and the strange thing is it barely stings anymore. ${chapter} is quiet. The wanting has gone thin. Tonight, you could reach for something — but it is hard to remember what. It is peaceful here. That is the word for it. Peaceful.`,
+      actionPrompt: `Reach for one thing you used to want, even if you cannot remember why. Especially ${avoiding}.`,
+      cliffhanger:
+        "Tomorrow the quiet will be similar. Unless you reach for something. Then it might not be.",
+    };
+  }
   return {
     title: "The echo from here",
     text: `${context.persona.name}, today was ${checkInWord}. ${reactionEcho}${mirroredReply} You are in ${chapter}. You are avoiding ${avoiding}. These are not judgments — they are coordinates. They tell me exactly where to aim tonight's signal. The future you want is not built by people who felt ready. It is built by people who did the uncomfortable thing before they felt like it. Tonight, one concrete move. Something you can photograph, text, submit, send, or say. Not a feeling. A fact.`,
@@ -122,12 +176,28 @@ export function buildPrompt(
   const yesterdayActionPrompt = context.recentTransmissions[0]?.actionPrompt;
   const yesterdayReaction = context.recentResponses[0]?.reaction;
   const yesterdayReply = context.recentResponses[0]?.replyNote;
+
+  // A2: Surface a follow-through from 3-7 days ago so the accumulated
+  // narrative shows. recentTransmissions is most-recent-first; indices 2-6
+  // cover 3-7 days ago. Pick the first one where the user reacted "did_it".
+  const olderFollowThrough = context.recentTransmissions
+    .slice(2, 7)
+    .find((t) => t.response?.reaction === "did_it" && t.actionPrompt);
+  const olderCallback = olderFollowThrough
+    ? {
+        daysAgo: context.recentTransmissions.indexOf(olderFollowThrough),
+        actionPrompt: olderFollowThrough.actionPrompt,
+        title: olderFollowThrough.title,
+      }
+    : null;
+
   const accountabilityBlock = buildAccountabilityBlock(
     yesterdayChoice,
     yesterdayCliffhanger,
     yesterdayActionPrompt,
     yesterdayReaction,
     yesterdayReply,
+    olderCallback,
   );
 
   const continuityInstruction = buildContinuityInstruction(context);
@@ -267,8 +337,9 @@ function buildAccountabilityBlock(
   yesterdayActionPrompt?: string,
   yesterdayReaction?: string,
   yesterdayReply?: string,
+  olderFollowThrough?: { daysAgo: number; actionPrompt: string; title: string } | null,
 ): string {
-  if (!yesterdayCliffhanger && !yesterdayChoice) return "";
+  if (!yesterdayCliffhanger && !yesterdayChoice && !olderFollowThrough) return "";
 
   const parts = ["Yesterday's accountability:"];
 
@@ -307,6 +378,12 @@ function buildAccountabilityBlock(
     parts.push(`- The player wrote back: "${yesterdayReply}". This is the most honest thing they've told you. Reference it directly.`);
   }
 
+  if (olderFollowThrough) {
+    parts.push(
+      `- ${olderFollowThrough.daysAgo} days ago, the transmission "${olderFollowThrough.title}" asked them to: "${olderFollowThrough.actionPrompt}". They followed through. The line hasn't forgotten that — reference it if it deepens today's signal. Don't force it, but let the accumulated narrative show.`,
+    );
+  }
+
   return parts.join("\n");
 }
 
@@ -337,6 +414,19 @@ function buildContinuityInstruction(context: GenerationContext) {
     instructions.push(
       "- Reward repeat follow-through with a subtle sense that action is compounding into identity.",
     );
+  }
+
+  // A2: Streak milestone callbacks — at 7/14/30 days, instruct the model to
+  // reference a specific early transmission so the accumulated narrative
+  // becomes the lock-in. The streak is already on context.persona.
+  const streak = context.persona.streak;
+  if (streak === 7 || streak === 14 || streak === 30) {
+    const earlyTransmission = context.recentTransmissions[context.recentTransmissions.length - 1];
+    if (earlyTransmission) {
+      instructions.push(
+        `- Today is day ${streak} of the streak. This is a milestone. Reference the early transmission "${earlyTransmission.title}" — what the player was avoiding then, and what has shifted since. Make it feel like the voice has been watching the whole arc, not just yesterday. The accumulated narrative is the moat; let it show.`,
+      );
+    }
   }
 
   return instructions.join("\n");

@@ -1214,6 +1214,8 @@ function buildLocalGenerationContext(state: GameState) {
       dateKey: t.dateKey,
       title: t.title,
       cliffhanger: t.cliffhanger,
+      actionPrompt: t.actionPrompt,
+      responseReaction: t.response?.reaction,
     })),
     recentChoices: ((state as unknown as { recentChoices?: Array<{ choice: Choice }> }).recentChoices ?? [])
       .slice(0, 10)
