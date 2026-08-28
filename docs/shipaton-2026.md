@@ -85,15 +85,15 @@ Per the official rules, every submission needs:
 - [ ] Text description of features/functionality
 - [ ] Demo video, ≤2 min essential footage, uploaded to YouTube/Vimeo, publicly visible, no unlicensed third-party music
 - [ ] URL to the fully published app (App Store / Google Play / Samsung Galaxy Store)
-- [ ] 1024×1024 app icon (check current icon meets this — `assets/images/futureself-icon.png`, verify dimensions)
+- [x] 1024×1024 app icon — `assets/images/futureself-icon.png` confirmed at 1024×1024
 - [ ] At least one screenshot at 1179×2556px, no device frame
 - [ ] A free trial in-app, OR a promo code so judges can unlock premium without paying
 
 Not yet done, tracked here rather than duplicated elsewhere:
 - [ ] App Store Connect listing (bundle id `com.futureselves.app` already reserved in `app.json`)
 - [ ] Google Play Console listing (package `com.futureselves.app` already reserved)
-- [ ] Privacy policy URL (required by both stores for an app with accounts + IAP) — `docs/privacy-posture.md` exists but needs to be hosted at a public URL
-- [ ] App icon / screenshot asset audit against the exact pixel dimensions above
+- [ ] Privacy policy URL (required by both stores for an app with accounts + IAP) — `docs/privacy-posture.md` has been rewritten for the current architecture but still needs to be hosted at a public URL
+- [ ] App icon / screenshot asset audit against the exact pixel dimensions above (icon ✅; screenshots still needed)
 - [ ] Demo video script + recording
 - [ ] Decide free trial length vs. promo code strategy for judge access
 

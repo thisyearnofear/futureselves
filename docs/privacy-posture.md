@@ -1,111 +1,112 @@
 # Future Selves — Privacy Posture
 
-**Status:** Public-facing statement (v1, June 2026)
-**Purpose:** This is the single, public, human-readable answer to *"what happens to my data when I use Future Selves?"* It is referenced from the marketing site, the app store listings, the README, and the QVAC submission materials. Keep it short. Keep it honest.
+**Status:** Public-facing statement (v2, August 2026)
+**Purpose:** This is the single, public, human-readable answer to *"what happens to my data when I use Future Selves?"* It is referenced from the marketing site and the app store listings. Keep it short. Keep it honest.
+
+> **v1 (June 2026) is superseded.** The earlier version claimed the app ran "entirely on your device" with "nothing sent to a third party." That was accurate for the QVAC on-device submission build but is no longer true for the public release, which uses cloud AI providers and syncs your data to a backend. This version reflects the actual architecture.
 
 ---
 
 ## The short version
 
-> **Your future self knows your deepest choices. Only you do.**
+> **Your future self knows your deepest choices. We want you to know exactly where they go.**
 >
-> The real Future Selves app — the one you install on your phone — runs entirely on your device. Your onboarding answers, your check-ins, your transmissions, your voice, and the model that produces them all stay on the device. Nothing about your ritual is sent to a third party.
+> Future Selves is a daily ritual: you give one word, a named voice sends a short transmission back, and you make one small choice. The content of your ritual — your onboarding answers, check-ins, transmissions, and choices — is stored in our backend so your future voices can reference what happened yesterday.
 >
-> The demo on this website is not the product. It is a preview of the interface using sample data, so you can feel what the experience is like before installing the app. The app is the real thing.
+> The AI that writes your transmissions runs on cloud servers by default. An on-device mode exists (powered by the QVAC SDK) that keeps all AI inference on your phone, and still works with no network connection. But your ritual data still syncs to our backend in both modes.
+>
+> We do not sell your data. We do not train AI models on your data. This page explains precisely what is stored, what is sent to third parties, and why.
 
 ---
 
-## What stays on your device
+## What data we collect and where it goes
 
-| Data | Where it lives | Who can see it |
-|---|---|---|
-| Onboarding answers (`afraidWontHappen`, `avoiding`, etc.) | On-device encrypted storage (`expo-secure-store`) | Only you |
-| Daily check-in words and notes | On-device | Only you |
-| The AI model that writes your transmissions | On-device (QVAC SDK, local inference) | Only you |
-| The voice that speaks your transmissions | On-device (Chatterbox/Supertonic, ONNX) | Only you |
-| Your transmission history and cast unlocks | On-device | Only you |
-| Avatars (Tier 1) | Generated on-device from text prompts; no photo involved | Only you |
-| Selfies (Tier 2, opt-in) | Processed in memory at generation time, then deleted | Only you, briefly |
-| Crash and error logs | Optional, on-device only. No remote telemetry. | Only you |
-| Football ambition (spoken text + extracted position/level) | On-device (QVAC STT + LLM) | Only you |
-| Football drill measurements (reaction time, juggling count, sprint time) | On-device (sensors) | Only you |
-| Football transmission text and audio | On-device (QVAC LLM + TTS) | Only you |
-| Trajectory interpretation narratives | On-device (QVAC LLM) | Only you |
+| Data | Where it lives | Who processes it | Why |
+|---|---|---|---|
+| Onboarding answers (name, city, current chapter, primary arc, miraculous year, what you're avoiding, what you're afraid won't happen, what's draining you) | Convex (our backend) | Convex + the active AI provider | To personalize your transmissions and maintain narrative continuity |
+| Daily check-in words and notes | Convex | Convex + the active AI provider | The word seeds today's transmission; the note adds context |
+| Transmission text (what the AI writes back to you) | Convex | Convex + the active AI provider | This is the product — your future voice's reply |
+| Transmission audio (text-to-speech) | Convex storage | Convex + ElevenLabs (cloud mode) or on-device TTS (local mode) | So you can hear the voice and replay it |
+| Your choices (toward / steady / release / repair) | Convex | Convex | Choices drive the divergence system and unlock new voices |
+| Your reaction to transmissions (did it / not quite / keep close / landed) | Convex | Convex + the active AI provider | So tomorrow's transmission can reference whether you followed through |
+| Streak, divergence score, unlock progress | Convex | Convex | Game state — the consequence engine |
+| Account email (if you signed in with email/password) | Convex | Convex | Authentication |
+| Purchase status | RevenueCat | RevenueCat | To manage your subscription (Awakened tier) |
+| Device identifiers for notifications | Apple/Google push services | Apple/Google | To send daily reminders if you enable them |
 
-The on-device model cache is encrypted with a key held in your device's secure enclave. A stolen phone is a stolen brick for the purposes of this app.
+### The active AI provider
 
-## What does *not* leave your device
+By default, your transmission prompt (which contains your onboarding answers, today's check-in word, recent transmissions, and recent choices) is sent to a cloud AI provider — Anthropic (Claude), Featherless, or Venice AI — to generate the transmission text. The provider is selected automatically based on availability and rate limits. The prompt is sent via our backend; the provider does not receive your identity, only the prompt content.
 
-- Your onboarding text
-- Your check-ins
-- Your transmissions (text or audio)
-- The AI model's inputs or outputs
-- Any biometric data
-- Any usage analytics tied to your account
-- Your spoken football ambition
-- Your drill measurement data
-- Your football-path transmissions (text or audio)
-
-## What *might* leave your device, and why
-
-- **Nothing required.** The app works with Wi-Fi and cellular fully disabled.
-- **Optional cross-device sync (future):** if you opt in, your encrypted transmission history syncs between your own devices via a peer-to-peer channel. We never see it. This feature does not exist yet; when it does, it will be off by default and clearly labeled.
-- **Optional crash reports (future):** if you opt in, anonymized crash data is sent so we can fix bugs. This is off by default. When it ships, it will be a single opt-in toggle with a list of exactly what fields are sent.
-
-We will never sell, rent, share, or train on your ritual data. We will never have access to it to begin with.
+In **on-device mode** (`EXPO_PUBLIC_AI_PROVIDER=local`), the LLM, TTS, and STT all run locally on your device via the QVAC SDK. No prompt content leaves the device for AI inference. Your ritual data still syncs to Convex for state management and cross-session continuity.
 
 ---
 
-## The marketing site (this website)
+## What stays on your device (in on-device mode)
 
-The web version of Future Selves at `futureselves.vercel.app` is a **demo**, not a product.
+When on-device mode is active:
+
+| Data | Where it lives |
+|---|---|
+| The AI model that writes your transmissions | On-device (QVAC SDK, local inference) |
+| The voice that speaks your transmissions | On-device (Supertonic TTS, ONNX) |
+| Speech-to-text for the check-in | On-device (Parakeet STT) |
+| The prompt sent to the model | Stays on-device — never sent to a cloud LLM |
+| The model's output (transmission text) | Generated on-device, then synced to Convex for storage |
+
+The on-device model cache is encrypted with a key held in your device's secure enclave.
+
+---
+
+## What we do not do
+
+- **We do not sell your data.** Not to advertisers, not to data brokers, not to anyone.
+- **We do not train AI models on your data.** Your transmissions, check-ins, and onboarding answers are never used as training data.
+- **We do not use your ritual content for advertising.**
+- **We do not share your transmissions with other users.** Sharing is opt-in and manual — you choose to share a specific moment via the share button.
+- **We do not collect biometric data.** (The Football Path uses the accelerometer for juggle counting, but that data stays on-device.)
+
+---
+
+## Your choices
+
+- **On-device mode:** If you want all AI inference to stay on your device, set `EXPO_PUBLIC_AI_PROVIDER=local` before building. This keeps prompts and model I/O on-device. Your ritual state still syncs to Convex.
+- **Notifications:** Daily reminders are opt-in. You can enable or disable them in Settings, and choose the time.
+- **Sharing:** Sharing a transmission is a manual action. Nothing is shared automatically.
+- **Account deletion:** You can sign out from Settings. To request full data deletion, contact us via GitHub or email.
+
+---
+
+## The marketing site (web demo)
+
+The web version of Future Selves is a **demo**, not the product.
 
 - It uses a single hard-coded sample persona. There is no real onboarding.
-- It never asks for `afraidWontHappen`, `avoiding`, or any field whose privacy stakes matter.
 - Transmissions shown on the site are pre-generated samples.
 - The only call to action is: **install the real app on iOS or Android.**
 
-We chose this framing because the alternative — "try the real thing in your browser, then move to the device" — would require sending your real onboarding answers to a third-party LLM, which is the exact thing the product exists to avoid. The web demo is honest about what it is.
-
 ---
 
-## Architecture: cloud path vs. on-device path
+## Third-party services
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  CLOUD PATH (the old way)                                       │
-│                                                                 │
-│   [Your phone] ──► 3rd-party LLM ──► 3rd-party voice lab ──►    │
-│                                                                 │
-│   Your onboarding answers, check-ins, and transmissions          │
-│   leave your device on every single ritual.                     │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│  ON-DEVICE PATH (Future Selves, now)                            │
-│                                                                 │
-│   [Your phone]                                                  │
-│      │                                                          │
-│      ├── local LLM (QVAC SDK, ~0.7 GB)                          │
-│      ├── local TTS (Chatterbox/Supertonic, ONNX)                │
-│      └── local STT (Parakeet/Whisper)                           │
-│                                                                 │
-│   No bytes leave the device. The app works with                 │
-│   Wi-Fi and cellular fully disabled.                            │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-The QVAC SDK is open source and made by Tether. The on-device path is verifiable: you can put the phone in airplane mode and the ritual still works.
+| Service | What they receive | Privacy policy |
+|---|---|---|
+| Convex | All ritual data (onboarding, check-ins, transmissions, choices, game state) | https://convex.dev/legal/privacy |
+| Anthropic | Your transmission prompt (in cloud mode) | https://www.anthropic.com/privacy |
+| Featherless | Your transmission prompt (in cloud mode, fallback) | https://featherless.ai/privacy |
+| Venice AI | Your transmission prompt (in cloud mode, fallback) | https://venice.ai/privacy |
+| ElevenLabs | Your transmission text (in cloud mode, for TTS) | https://elevenlabs.io/privacy |
+| RevenueCat | Your purchase status and entitlement | https://www.revenuecat.com/privacy |
+| Apple / Google | Push notification tokens (if you enable reminders) | https://apple.com/legal/privacy / https://policies.google.com/privacy |
+| Replicate | Avatar generation prompts (in cloud mode) | https://replicate.com/privacy |
 
 ---
 
 ## Open-source and verifiable
 
-- The product code is open source at [github.com/thisyearnofear/futureselves](https://github.com/thisyearnofear/futureselves).
+- The product code is open source at [github.com/thisyearnofear/futureselves](https://github.com/thisyearnofear/futureselves). You can audit exactly what data is sent where.
 - The QVAC SDK is open source at [github.com/tetherto/qvac](https://github.com/tetherto/qvac).
 - The local AI models (LLM, TTS, STT) are pulled from the QVAC model registry. Their hashes are pinned in our build.
-
-You can audit any of this.
 
 ---
 

@@ -235,6 +235,106 @@ no migration is needed for existing documents).
 - Distinguishing between "answered today" in a fresh session vs. an older
   one for the SessionArc's third beat (it currently tracks in-session).
 
+## De-verbose pass (PR #1 + #2, August 2026)
+
+The product's hook is constraint — one word in, one short voice out —
+but the execution had become maximalist on every layer. Three PRs cut
+−452 lines of chrome and narration to make the execution match the concept.
+
+### Layer 1: Transmission length (`game.transmission.ts`, `local-llm.ts`)
+
+The LLM prompt instructed 80–120 words per transmission. Cut to 40–60
+words, with a sparse-register carve-out for The Ghost and The Flatlined
+(they may break below 40 — sparse is their character, not an
+under-delivery). Cloud and local paths are at parity.
+
+### Layer 2: Prompt architecture (`game.transmission.ts`, `local-llm.ts`)
+
+Removed `buildPatternsBlock` — the choice-pattern meta-commentary
+("they keep reaching forward / holding ground / letting go") that turned
+transmissions into self-analysis instead of forward narrative. The
+choice data still flows through the accountability block; the model just
+no longer narrates the system back at the user.
+
+### Layer 3: UI narration collapse (`futureself-home-sections.tsx`,
+`futureself-home.styles.ts`, `futureself-home.tsx`, `ritual-state.tsx`)
+
+- Removed the hero promise row ("spoken / serial / personal") — a
+  product explainer that should disappear after onboarding.
+- Removed the "N voices are close enough to hear you right now" footnote.
+- Removed the drift pill ("Something is pressing closer to the line…")
+  — the clearest redundant narrator; the constellation already
+  visualizes divergence.
+- RitualState narrowed: removed the choice-pattern bars (the exact
+  meta-commentary already cut from the prompt) and the freeze-shield
+  explainer card. Kept streak-risk (loss-aversion) and the consequence
+  chain (compound felt-consequence).
+- EveningUrgencyBanner kept — it's time-bound and actionable (one word
+  before midnight), not static narration.
+
+### Layer 4: Choice surface (`futureself-home-sections.tsx`,
+`futureself-home.tsx`)
+
+- Cut per-choice hints ("The brave move. Shifts the timeline fastest.")
+  and divergence-impact previews ("settles the line / holds steady /
+  softens, invites strangeness"). The felt line-delta visual carries
+  the consequence beat without competing text.
+- Outcome card trimmed: dropped `stabilityImpact` (redundant with the
+  line-delta) and `threadImpact` (repeats the action just taken). Kept
+  `summary` + `detail` + `voiceShift` + the line-delta. Backend fields
+  left intact — only the UI render lines were removed.
+
+### What this reinforced (the wedge)
+
+The one-way asymmetry is sharper — a short transmission you can't reply
+to is the product; a 120-word paragraph invites a reply. The voice no
+longer narrates the system. The constellation and line-delta are the
+felt consequence, and the serial accountability is the only thing the
+voice narrates. See the wedge discussion in conversation context (Paul
+Graham / Peter Thiel lens) for the full strategy.
+
+## Moat-deepening pass (PR #3, August 2026)
+
+### Fallback transmission coverage
+
+`fallbackTransmission` (`game.transmission.ts`) and
+`localFallbackTransmission` (`local-llm.ts`) previously had specific
+hand-written fallbacks for only 3 of 18 cast members (future_partner,
+shadow, future_mentor). The other 15 — including all 10 Unchosen Selves
+— fell through to a generic "echo from here" that didn't sound like any
+of them. The fallbacks fire when the LLM is unavailable (rate limited,
+offline, local-mode failure) — exactly when the voice needs to be most
+itself.
+
+Added 7 character-specific fallbacks in both paths: future_self,
+future_best_friend, the_ghost, the_flatlined, the_ceiling,
+the_dissolver. Each uses the 40–60 word budget (Ghost/Flatlined sparse
+carve-out) and references `checkInWord`, `avoiding`, and
+`reactionEcho`/`mirroredReply` like the originals. The remaining 8
+Unchosen Selves still use the generic fallback — same pattern, can
+follow.
+
+### Serial accountability depth (the lock-in mechanism)
+
+`buildAccountabilityBlock` now surfaces a `did_it` follow-through from
+3–7 days ago, not just yesterday — making the accumulated narrative
+visible in the prompt. Streak milestone callbacks at day 7/14/30
+instruct the model to reference an early transmission and trace the arc
+("on day 3, you said the word was 'threshold' — here's what's changed
+since"). This makes day-30 switching cost real: the voice has been
+watching the whole arc, not just yesterday. Mirrored into the local
+path (required extending `LocalLLMOptions.recentTransmissions` to carry
+`actionPrompt` + `responseReaction`).
+
+### Local-path reaction memory parity
+
+`reactionMemoryLead` (4 lines that make the voice acknowledge the user's
+last emotional signal — "You told me you actually did it, and that
+changes how I get to speak to you now") existed only in the cloud path.
+Ported into `local-llm.ts` and wired into the local fallback. On-device
+transmissions now have the same serial emotional continuity as cloud
+transmissions.
+
 ## Open gaps
 
 - App Links / Associated Domains config for `futureself.app` (see above) —
@@ -244,3 +344,8 @@ no migration is needed for existing documents).
   measured (streak-to-day-30 retention, share rate on the glimpse itself).
 - The landing page (`app/landing.tsx`) still pitches the shelved QVAC/
   on-device narrative — see the fix in the earlier pass for detail.
+- Remaining 8 Unchosen Selves still use the generic fallback — same
+  pattern as the 7 now covered, can follow when ready.
+- `daysAgo` value in `olderFollowThrough` is the array index (2–6), not
+  the actual day count (should be index + 1). Cosmetic — the model reads
+  it as "several days ago" either way.
