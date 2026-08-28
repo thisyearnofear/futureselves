@@ -47,7 +47,7 @@ export interface LocalLLMOptions {
       selectedVoiceDescription: string;
     };
     checkIn?: { word: string; note?: string } | null;
-    recentTransmissions: Array<{ dateKey: string; title: string; cliffhanger: string }>;
+    recentTransmissions: Array<{ dateKey: string; title: string; cliffhanger: string; actionPrompt: string; responseReaction?: string }>;
     recentChoices: Array<{ dateKey: string; choice: string; prompt: string }>;
     recentResponses: Array<{ reaction?: string; replyNote?: string }>;
     openThreads: Array<{ title: string; seed: string; castMember: CastMember }>;
@@ -72,13 +72,29 @@ function getVoiceDirection(castMember: CastMember): string {
   }
 }
 
+function reactionMemoryLead(reaction: string): string {
+  switch (reaction) {
+    case "landed":
+      return "You told me the last signal landed, so I am not going to waste that trust.";
+    case "not_quite":
+      return "You told me the last signal did not quite reach you, so I am going to be more exact this time.";
+    case "did_it":
+      return "You told me you actually did it, and that changes how I get to speak to you now.";
+    case "keep_close":
+      return "You told me to keep the last signal close, so I am treating this like a returning thread, not a fresh interruption.";
+    default:
+      return "";
+  }
+}
+
 function buildAccountabilityLocal(
   yesterdayChoice?: { dateKey: string; choice: string; prompt: string },
   yesterdayTransmission?: { dateKey: string; title: string; cliffhanger: string },
   yesterdayReaction?: string,
   yesterdayReply?: string,
+  olderFollowThrough?: { daysAgo: number; actionPrompt: string; title: string } | null,
 ): string {
-  if (!yesterdayTransmission && !yesterdayChoice) return "";
+  if (!yesterdayTransmission && !yesterdayChoice && !olderFollowThrough) return "";
   const parts = ["Yesterday's accountability:"];
   if (yesterdayChoice) {
     const labels: Record<string, string> = {
@@ -106,6 +122,11 @@ function buildAccountabilityLocal(
   if (yesterdayReply) {
     parts.push(`The player wrote back: "${yesterdayReply}". Reference it directly.`);
   }
+  if (olderFollowThrough) {
+    parts.push(
+      `- ${olderFollowThrough.daysAgo} days ago, the transmission "${olderFollowThrough.title}" asked them to: "${olderFollowThrough.actionPrompt}". They followed through. The line hasn't forgotten that — reference it if it deepens today's signal.`,
+    );
+  }
   return parts.join("\n");
 }
 
@@ -129,7 +150,21 @@ function buildLocalPrompt(
     ? ["Open narrative threads:", ...openThreads.map((t) => `- "${t.title}" (seeded by ${t.castMember}: "${t.seed}")`), "- If relevant, reference a thread by name."].join("\n")
     : "";
 
-  const accountabilityBlock = buildAccountabilityLocal(recentChoices[0], recentTransmissions[0], recentResponses[0]?.reaction, recentResponses[0]?.replyNote);
+  // A2: Surface a follow-through from 3-7 days ago (indices 2-6, most-recent-first).
+  const olderFollowThrough = recentTransmissions
+    .slice(2, 7)
+    .find((t) => t.responseReaction === "did_it" && t.actionPrompt);
+  const olderCallback = olderFollowThrough
+    ? { daysAgo: recentTransmissions.indexOf(olderFollowThrough), actionPrompt: olderFollowThrough.actionPrompt, title: olderFollowThrough.title }
+    : null;
+
+  const accountabilityBlock = buildAccountabilityLocal(recentChoices[0], recentTransmissions[0], recentResponses[0]?.reaction, recentResponses[0]?.replyNote, olderCallback);
+
+  // A2: Streak milestone callback at 7/14/30 days.
+  const streak = persona.streak;
+  const milestoneInstruction = (streak === 7 || streak === 14 || streak === 30) && recentTransmissions.length > 0
+    ? `\n- Today is day ${streak}. This is a milestone. Reference the early transmission "${recentTransmissions[recentTransmissions.length - 1].title}" — what the player was avoiding then, and what has shifted since. The accumulated narrative is the moat; let it show.`
+    : "";
 
   return `Create today's futureself transmission as JSON only.
 
@@ -154,7 +189,7 @@ Recent choices:\n${choices || "none"}
 Recent signal responses:\n${responses || "none"}
 
 ${accountabilityBlock}
-
+${milestoneInstruction}
 ${threadsBlock}
 
 CRITICAL:
@@ -185,18 +220,100 @@ function parseLocalTransmission(value: unknown): LocalTransmissionResult | null 
 function localFallbackTransmission(context: LocalLLMOptions["context"], castMember: CastMember): LocalTransmissionResult {
   const word = context.checkIn?.word ?? "between things";
   const avoiding = context.persona.avoiding || "the thing you keep sidestepping";
+  const chapter = context.persona.currentChapter || "this part of your life";
   const name = context.persona.name;
+  const replyNote = context.recentResponses[0]?.replyNote;
+  const latestReaction = context.recentResponses[0]?.reaction;
+  const mirroredReply = replyNote ? `You told me: "${replyNote}". I have not forgotten.` : "";
+  const reactionEcho = latestReaction ? `${reactionMemoryLead(latestReaction)} ` : "";
+
   if (castMember === "future_partner") {
     return {
       title: "I kept thinking about today",
-      text: `${name}, you called today ${word}. I noticed. You're avoiding ${avoiding}. I know because I did the same thing. Tonight, say the true sentence out loud. Not the version that makes you look brave. The version that makes you feel seen.`,
+      text: `${name}, you called today ${word}. I noticed. ${reactionEcho}${mirroredReply} You're avoiding ${avoiding}. I know because I did the same thing. Tonight, say the true sentence out loud. Not the version that makes you look brave. The version that makes you feel seen.`,
       actionPrompt: "Say the one true sentence you've been editing. Out loud. Tonight.",
       cliffhanger: "Do it, and tomorrow I'll tell you what shifts when you stop performing.",
     };
   }
+  if (castMember === "shadow") {
+    return {
+      title: "You know which part you are avoiding",
+      text: `${name}, today was ${word}. Here is what I actually saw: you circling ${avoiding} and calling it patience. ${reactionEcho}${mirroredReply} The gap between where you are and where you could be is not talent or luck. It is the specific thing you refuse to do. Tonight, do the smallest version of it. Not symbolic. Actual.`,
+      actionPrompt: `Do the smallest real version of the thing you are avoiding: ${avoiding}. Not a plan. An action.`,
+      cliffhanger: "Ignore this, and tomorrow's signal will feel the distance between what you said and what you did.",
+    };
+  }
+  if (castMember === "future_mentor") {
+    return {
+      title: "You are closer than your fear admits",
+      text: `${name}, ${word}. That word tells me where your head is today. ${reactionEcho}${mirroredReply} You are in ${chapter}, and the temptation is to wait for clarity before moving. But clarity comes from motion. Tonight, pick the one task you have been postponing — the one that creates the most resistance. Do it badly if you have to. Done badly beats planned perfectly.`,
+      actionPrompt: `Do the one task you have been postponing that creates the most resistance. Do it badly if you need to. Just finish it.`,
+      cliffhanger: "Tomorrow I can show you which part of your fear was bluffing — but only if you give me something to point at.",
+    };
+  }
+  if (castMember === "future_self") {
+    return {
+      title: "We are still here",
+      text: `${name}. ${word}. I felt that too. ${reactionEcho}${mirroredReply} You are in ${chapter}, and I know ${avoiding} is the thing you keep stepping around. It is okay to move slowly. But tonight, one small honest step toward it. Not the whole thing. Just the next inch. We have time. But the line moves when you do.`,
+      actionPrompt: `Take one small honest step toward what you are avoiding: ${avoiding}. Not the whole thing. Just the next inch.`,
+      cliffhanger: "Move tonight, and tomorrow I can tell you how the line shifted — even by an inch.",
+    };
+  }
+  return localFallbackRemaining(castMember, name, word, avoiding, chapter, reactionEcho, mirroredReply);
+}
+
+function localFallbackRemaining(
+  castMember: CastMember,
+  name: string,
+  word: string,
+  avoiding: string,
+  chapter: string,
+  reactionEcho: string,
+  mirroredReply: string,
+): LocalTransmissionResult {
+  if (castMember === "future_best_friend") {
+    return {
+      title: "I know. I was there for all of it.",
+      text: `${name}. ${word}? Yeah. I felt that one. ${reactionEcho}${mirroredReply} Look, you have been circling ${avoiding} and calling it being careful, and I love you, but that is not careful — that is scared wearing a nice outfit. Tonight, do the thing. The small, dumb, brave thing. Then tell me about it tomorrow.`,
+      actionPrompt: `Do the small, brave thing you have been dressing up as "being careful." Then you can tell me about it.`,
+      cliffhanger: "Do it, and tomorrow I get to be the one who says I told you so. That is my favorite thing.",
+    };
+  }
+  if (castMember === "the_ghost") {
+    return {
+      title: "I almost…",
+      text: `${name}. ${word}. I was going to say something. ${reactionEcho} It can wait. ${mirroredReply} You are still avoiding ${avoiding}. I know. I stopped too. That is all. I just wanted you to know I was here. Before.`,
+      actionPrompt: `One small thing toward what you are avoiding: ${avoiding}. Not for me. For the version that did not stop.`,
+      cliffhanger: "If you move tonight, tomorrow I might have more to say. If not, I understand the silence.",
+    };
+  }
+  if (castMember === "the_flatlined") {
+    return {
+      title: "The line is fine",
+      text: `${name}. ${word}. Fine. ${reactionEcho} You are avoiding ${avoiding}. ${mirroredReply} It does not matter much either way. The chapter is ${chapter}. It is fine. If you want to do one thing tonight, do it. If not, that is fine too. The line holds.`,
+      actionPrompt: `One thing toward ${avoiding}, if you want. It is fine either way.`,
+      cliffhanger: "Tomorrow will be similar. The line does not move much from here.",
+    };
+  }
+  if (castMember === "the_ceiling") {
+    return {
+      title: "You chose well. Mostly.",
+      text: `${name}. ${word}. That is a reasonable word for a reasonable day. ${reactionEcho}${mirroredReply} You are avoiding ${avoiding}, and honestly, that is probably the safe call. ${chapter} is comfortable enough. Tonight, you could push on ${avoiding}. Or you could not. The ceiling is not so bad. Most people never look up and notice it is there.`,
+      actionPrompt: `Notice the ceiling. If you want, one small push on ${avoiding}. But no one would blame you for staying comfortable.`,
+      cliffhanger: "Tomorrow will feel similar. That is the point of the ceiling. It holds.",
+    };
+  }
+  if (castMember === "the_dissolver") {
+    return {
+      title: "It is peaceful, isn't it",
+      text: `${name}. ${word}. That is a soft word. ${reactionEcho}${mirroredReply} You are avoiding ${avoiding}, and the strange thing is it barely stings anymore. ${chapter} is quiet. The wanting has gone thin. Tonight, you could reach for something — but it is hard to remember what. It is peaceful here.`,
+      actionPrompt: `Reach for one thing you used to want, even if you cannot remember why. Especially ${avoiding}.`,
+      cliffhanger: "Tomorrow the quiet will be similar. Unless you reach for something. Then it might not be.",
+    };
+  }
   return {
     title: "The echo from here",
-    text: `${name}, today was ${word}. You're avoiding ${avoiding}. These aren't judgments — they're coordinates. The future you want isn't built by people who felt ready. It's built by people who moved before they felt like it. Tonight, one concrete move.`,
+    text: `${name}, today was ${word}. ${reactionEcho}${mirroredReply} You're avoiding ${avoiding}. These aren't judgments — they're coordinates. The future you want isn't built by people who felt ready. It's built by people who moved before they felt like it. Tonight, one concrete move.`,
     actionPrompt: `Make one move related to what you're avoiding: ${avoiding}. Something you can photograph, text, or say.`,
     cliffhanger: "Do it tonight, and tomorrow I'll tell you what changed.",
   };
