@@ -4,7 +4,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,22 +12,34 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useOAuthSignIn } from "@/hooks/use-oauth-sign-in";
-import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { Image } from "expo-image";
 import Animated, {
   FadeIn,
   FadeInDown,
   FadeInUp,
+  SlideInDown,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
   withTiming,
   Easing,
+  interpolate,
+  Extrapolation,
 } from "react-native-reanimated";
 
 const TAGLINE_FULL = "Hear from the future version of your life.";
 
-const sampleAudio = require("@/assets/audio/sample-transmission.mp3");
+// Fallback avatar images for the morphing constellation behind the orb.
+// Uses bundled assets only — no Convex query needed before a persona exists.
+const CONSTELLATION_AVATARS = [
+  require("@/assets/images/avatars/future_self.webp"),
+  require("@/assets/images/avatars/future_partner.webp"),
+  require("@/assets/images/avatars/future_mentor.webp"),
+  require("@/assets/images/avatars/shadow.webp"),
+  require("@/assets/images/avatars/the_ghost.webp"),
+  require("@/assets/images/avatars/alternate_self.webp"),
+] as const;
 
 function useTypewriter(text: string, speed = 38, delay = 600) {
   const [displayed, setDisplayed] = useState("");
@@ -57,50 +68,42 @@ export function AuthScreen() {
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signIn" | "signUp">("signUp");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
+  const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isBusy = isSubmitting || isOAuthLoading;
   const tagline = useTypewriter(TAGLINE_FULL);
 
-  // Sample audio preview
-  const samplePlayer = useAudioPlayer(sampleAudio);
-  const sampleStatus = useAudioPlayerStatus(samplePlayer);
-  const isSamplePlaying = sampleStatus?.playing ?? false;
-
-  function toggleSampleAudio() {
-    if (isSamplePlaying) {
-      samplePlayer.pause();
-    } else {
-      samplePlayer.seekTo(0);
-      samplePlayer.play();
-    }
-  }
-
-  // Pulsing orb animation
+  // ── Orb pulse ──
   const orbScale = useSharedValue(1);
   const orbGlow = useSharedValue(0.12);
-  const ringRotation = useSharedValue(0);
 
   useEffect(() => {
     orbScale.value = withRepeat(
       withSequence(
-        withTiming(1.08, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1.06, { duration: 2800, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 2800, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
       true,
     );
     orbGlow.value = withRepeat(
       withSequence(
-        withTiming(0.28, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.12, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.24, { duration: 2800, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.12, { duration: 2800, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
       true,
     );
-    ringRotation.value = withRepeat(
-      withTiming(360, { duration: 18000, easing: Easing.linear }),
+  }, []);
+
+  // ── Morphing constellation: 6 faint portraits orbiting the orb,
+  // auto-rotating and crossfading. Each portrait sits at a fixed angle and
+  // fades in/out as the morph sweep passes through it. ──
+  const morphProgress = useSharedValue(0);
+  useEffect(() => {
+    morphProgress.value = withRepeat(
+      withTiming(CONSTELLATION_AVATARS.length, { duration: 21000, easing: Easing.linear }),
       -1,
       false,
     );
@@ -111,9 +114,21 @@ export function AuthScreen() {
     backgroundColor: `rgba(247,211,139,${orbGlow.value})`,
   }));
 
-  const ringAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${ringRotation.value}deg` }, { scaleX: 1.18 }],
-  }));
+  async function handleStartPrologue() {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await signIn("anonymous");
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Could not open the prologue.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   async function handlePasswordAuth() {
     if (!email.trim() || !password) {
@@ -133,22 +148,6 @@ export function AuthScreen() {
         caughtError instanceof Error
           ? caughtError.message
           : "Could not authenticate.",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleStartPrologue() {
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      await signIn("anonymous");
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Could not open the prologue.",
       );
     } finally {
       setIsSubmitting(false);
@@ -175,184 +174,117 @@ export function AuthScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.container}
     >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* ── Cinematic Hero ── */}
-        <Animated.View
-          entering={isWeb ? undefined : FadeIn.duration(400)}
-          style={styles.heroCard}
-        >
-          {/* Animated Orb */}
-          <View style={styles.orbContainer}>
-            <View style={styles.orbGlow} />
-            <Animated.View style={[styles.orbitRingOuter, ringAnimatedStyle]} />
-            <Animated.View style={[styles.orbitRingInner, ringAnimatedStyle]} />
-            <Animated.View style={[styles.orb, orbAnimatedStyle]}>
-              <Ionicons name="radio" size={30} color="#F7D38B" />
-            </Animated.View>
-          </View>
-
-          <Animated.Text
-            entering={isWeb ? undefined : FadeInDown.delay(200).duration(600)}
-            style={styles.eyebrow}
-          >
-            future self
-          </Animated.Text>
-
-          {/* Typewriter tagline */}
-          <View style={styles.taglineContainer}>
-            <Text style={styles.title}>
-              {tagline}
-              <Text style={styles.cursor}>|</Text>
-            </Text>
-          </View>
-
-          <Animated.Text
-            entering={isWeb ? undefined : FadeInDown.delay(800).duration(600)}
-            style={styles.subtitle}
-          >
-            A daily narrative ritual. Three short steps to begin. Your choices
-            shape who answers next.
-          </Animated.Text>
-
-          <Animated.View
-            entering={isWeb ? undefined : FadeInDown.delay(1000).duration(500)}
-            style={styles.previewCard}
-          >
-            <Text style={styles.previewEyebrow}>Sample transmission</Text>
-            <Text style={styles.previewVoice}>Future Mentor</Text>
-            <Text style={styles.previewText}>
-              “You do not need a bigger sign. You need one honest move that
-              makes tomorrow easier to believe.”
-            </Text>
-            <Pressable
-              onPress={toggleSampleAudio}
-              style={({ pressed }) => [
-                styles.samplePlayButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Ionicons
-                name={isSamplePlaying ? "pause" : "play"}
-                size={18}
-                color="#101320"
+      <View style={styles.hero}>
+        {/* ── Morphing constellation behind the orb ── */}
+        <View style={styles.constellationContainer} pointerEvents="none">
+          {CONSTELLATION_AVATARS.map((avatarSrc, index) => {
+            const angle = (index / CONSTELLATION_AVATARS.length) * Math.PI * 2;
+            const radius = 130;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            return (
+              <ConstellationPortrait
+                key={index}
+                index={index}
+                src={avatarSrc}
+                x={x}
+                y={y}
+                morphProgress={morphProgress}
+                totalStates={CONSTELLATION_AVATARS.length}
               />
-              <Text style={styles.samplePlayText}>
-                {isSamplePlaying ? "Listening..." : "Hear a sample voice"}
-              </Text>
-            </Pressable>
-          </Animated.View>
+            );
+          })}
+        </View>
 
-          {/* Primary CTA */}
-          <Animated.View
-            entering={isWeb ? undefined : FadeInUp.delay(1200).duration(500)}
-          >
-            <Pressable
-              disabled={isBusy}
-              onPress={handleStartPrologue}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#101320" />
-              ) : (
-                <View style={styles.ctaInner}>
-                  <Ionicons name="play" size={18} color="#101320" />
-                  <Text style={styles.primaryText}>Begin your prologue</Text>
-                </View>
-              )}
-            </Pressable>
-            <Text style={styles.ctaSubtext}>
-              No sign-up required — about a minute to your first transmission
-            </Text>
+        {/* ── Orb ── */}
+        <View style={styles.orbContainer}>
+          <View style={styles.orbGlowStatic} />
+          <Animated.View style={[styles.orb, orbAnimatedStyle]}>
+            <Ionicons name="radio" size={28} color="#F7D38B" />
           </Animated.View>
+        </View>
 
-          {/* Account toggle */}
-          <Pressable
-            disabled={isBusy}
-            onPress={() => setIsAccountPanelOpen((current) => !current)}
-            style={styles.accountToggle}
-          >
-            <Text style={styles.accountToggleText}>
-              {isAccountPanelOpen
-                ? "Hide account options"
-                : "Save or return to your timeline"}
-            </Text>
-            <Ionicons
-              name={isAccountPanelOpen ? "chevron-up" : "chevron-down"}
-              size={16}
-              color="#AEB6D4"
-            />
-          </Pressable>
+        {/* ── Tagline ── */}
+        <Animated.View
+          entering={isWeb ? undefined : FadeInDown.delay(400).duration(800)}
+          style={styles.taglineWrap}
+        >
+          <Text style={styles.eyebrow}>future self</Text>
+          <Text style={styles.title}>
+            {tagline}
+            <Text style={styles.cursor}>|</Text>
+          </Text>
         </Animated.View>
 
-        {isAccountPanelOpen ? (
-          <Animated.View
-            entering={isWeb ? undefined : FadeInDown.duration(300)}
-            style={styles.accountCard}
+        {/* ── Single CTA ── */}
+        <Animated.View
+          entering={isWeb ? undefined : FadeInUp.delay(1200).duration(600)}
+        >
+          <Pressable
+            disabled={isBusy}
+            onPress={handleStartPrologue}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.pressed,
+            ]}
           >
-            <Text style={styles.accountTitle}>Optional account</Text>
-            <Text style={styles.accountCopy}>
-              You can play first. Add an account when you want cross-session
-              persistence and a safer long-running timeline.
+            {isSubmitting ? (
+              <ActivityIndicator color="#101320" />
+            ) : (
+              <View style={styles.ctaInner}>
+                <Ionicons name="play" size={18} color="#101320" />
+                <Text style={styles.primaryText}>Begin</Text>
+              </View>
+            )}
+          </Pressable>
+          <Text style={styles.ctaSubtext}>
+            No sign-up — about a minute to your first transmission
+          </Text>
+        </Animated.View>
+
+        {/* ── Account sheet toggle ── */}
+        <Pressable
+          disabled={isBusy}
+          onPress={() => {
+            setIsAccountSheetOpen(true);
+            setError(null);
+          }}
+          style={styles.accountToggle}
+        >
+          <Text style={styles.accountToggleText}>Have an account?</Text>
+          <Ionicons name="chevron-up" size={14} color="#8F96B4" />
+        </Pressable>
+      </View>
+
+      {/* ── Account bottom sheet ── */}
+      {isAccountSheetOpen ? (
+        <Animated.View
+          entering={isWeb ? undefined : SlideInDown.duration(400).springify().damping(20)}
+          style={styles.sheetOverlay}
+        >
+          <Pressable
+            style={styles.sheetBackdrop}
+            onPress={() => setIsAccountSheetOpen(false)}
+          />
+          <View style={styles.sheetCard}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>
+              {mode === "signUp" ? "Create your account" : "Return to your timeline"}
             </Text>
-
-            <View style={styles.accountModesSummary}>
-              <View style={styles.accountModeCard}>
-                <Text style={styles.accountModeEyebrow}>Quick start</Text>
-                <Text style={styles.accountModeTitle}>Anonymous session</Text>
-                <Text style={styles.accountModeBody}>
-                  Start immediately. Best for trying the ritual first.
-                </Text>
-              </View>
-              <View style={styles.accountModeCard}>
-                <Text style={styles.accountModeEyebrow}>Account-backed</Text>
-                <Text style={styles.accountModeTitle}>Email or Google</Text>
-                <Text style={styles.accountModeBody}>
-                  Better for returning to the same timeline across sessions.
-                </Text>
-              </View>
-            </View>
-
             <View style={styles.modeRow}>
               <Pressable
                 onPress={() => setMode("signUp")}
-                style={[
-                  styles.modeButton,
-                  mode === "signUp" && styles.modeActive,
-                ]}
+                style={[styles.modeButton, mode === "signUp" && styles.modeActive]}
               >
-                <Text
-                  style={[
-                    styles.modeText,
-                    mode === "signUp" && styles.modeTextActive,
-                  ]}
-                >
-                  Create
-                </Text>
+                <Text style={[styles.modeText, mode === "signUp" && styles.modeTextActive]}>Create</Text>
               </Pressable>
               <Pressable
                 onPress={() => setMode("signIn")}
-                style={[
-                  styles.modeButton,
-                  mode === "signIn" && styles.modeActive,
-                ]}
+                style={[styles.modeButton, mode === "signIn" && styles.modeActive]}
               >
-                <Text
-                  style={[
-                    styles.modeText,
-                    mode === "signIn" && styles.modeTextActive,
-                  ]}
-                >
-                  Return
-                </Text>
+                <Text style={[styles.modeText, mode === "signIn" && styles.modeTextActive]}>Return</Text>
               </Pressable>
             </View>
-
             <TextInput
               autoCapitalize="none"
               autoComplete="email"
@@ -371,14 +303,10 @@ export function AuthScreen() {
               style={styles.input}
               value={password}
             />
-
             <Pressable
               disabled={isBusy}
               onPress={handlePasswordAuth}
-              style={({ pressed }) => [
-                styles.accountButton,
-                pressed && styles.pressed,
-              ]}
+              style={({ pressed }) => [styles.accountButton, pressed && styles.pressed]}
             >
               {isBusy ? (
                 <ActivityIndicator color="#101320" />
@@ -388,90 +316,142 @@ export function AuthScreen() {
                 </Text>
               )}
             </Pressable>
-
             <Pressable
               disabled={isBusy}
               onPress={handleGoogle}
-              style={({ pressed }) => [
-                styles.googleButton,
-                pressed && styles.pressed,
-              ]}
+              style={({ pressed }) => [styles.googleButton, pressed && styles.pressed]}
             >
               <Ionicons name="logo-google" size={17} color="#F7F0DF" />
               <Text style={styles.googleText}>Continue with Google</Text>
             </Pressable>
-          </Animated.View>
-        ) : null}
+          </View>
+        </Animated.View>
+      ) : null}
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-      </ScrollView>
+      {error ? (
+        <Animated.Text entering={isWeb ? undefined : FadeIn.duration(200)} style={styles.error}>
+          {error}
+        </Animated.Text>
+      ) : null}
     </KeyboardAvoidingView>
+  );
+}
+
+// ── Constellation portrait: a single faint avatar positioned on the orbit
+// ring, whose opacity derives from the wrapping morph progress. Each portrait
+// lights up as the morph sweep passes through its index, then fades as it
+// moves to the next. ──
+
+interface ConstellationPortraitProps {
+  index: number;
+  src: number;
+  x: number;
+  y: number;
+  morphProgress: ReturnType<typeof useSharedValue<number>>;
+  totalStates: number;
+}
+
+function ConstellationPortrait({
+  index,
+  src,
+  x,
+  y,
+  morphProgress,
+  totalStates,
+}: ConstellationPortraitProps) {
+  const animatedStyle = useAnimatedStyle(() => {
+    const progress = morphProgress.value % totalStates;
+    const distance = Math.abs(progress - index);
+    const wrappedDistance = Math.min(distance, totalStates - distance);
+    const opacity = interpolate(
+      wrappedDistance,
+      [0, 1.5],
+      [0.5, 0],
+      Extrapolation.CLAMP,
+    );
+    const scale = interpolate(
+      wrappedDistance,
+      [0, 1.5],
+      [1.08, 0.85],
+      Extrapolation.CLAMP,
+    );
+    return {
+      opacity,
+      transform: [{ translateX: x }, { translateY: y }, { scale }],
+    };
+  });
+
+  return (
+    <Animated.View style={[styles.constellationPortrait, animatedStyle]}>
+      <Image
+        source={src}
+        style={styles.constellationImage}
+        contentFit="cover"
+        blurRadius={2}
+      />
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  content: {
-    flexGrow: 1,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     padding: 20,
-    paddingBottom: 34,
-    gap: 14,
   },
-  heroCard: {
+  hero: {
     width: "100%",
-    maxWidth: 720,
-    gap: 18,
-    borderRadius: 36,
-    borderCurve: "continuous",
-    backgroundColor: "rgba(14,17,34,0.82)",
-    borderWidth: 1,
-    borderColor: "rgba(247,211,139,0.22)",
-    padding: 28,
-    boxShadow: "0 24px 70px rgba(0,0,0,0.38)",
+    maxWidth: 520,
+    alignItems: "center",
+    gap: 10,
+  },
+  constellationContainer: {
+    position: "absolute",
+    width: 320,
+    height: 320,
+    alignItems: "center",
+    justifyContent: "center",
+    top: -40,
+  },
+  constellationPortrait: {
+    position: "absolute",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: "hidden",
+  },
+  constellationImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   orbContainer: {
-    width: 110,
-    height: 110,
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    marginBottom: 4,
-  },
-  orbitRingOuter: {
-    position: "absolute",
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 1,
-    borderColor: "rgba(247,211,139,0.18)",
-  },
-  orbitRingInner: {
-    position: "absolute",
     width: 80,
     height: 80,
-    borderRadius: 40,
-    borderWidth: 1,
-    borderColor: "rgba(247,211,139,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  orbGlowStatic: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(247,211,139,0.05)",
   },
   orb: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(247,211,139,0.36)",
+    borderColor: "rgba(247,211,139,0.3)",
   },
-  orbGlow: {
-    position: "absolute",
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "rgba(247,211,139,0.06)",
+  taglineWrap: {
+    alignItems: "center",
+    gap: 8,
   },
   eyebrow: {
     color: "#F7D38B",
@@ -481,77 +461,22 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     textAlign: "center",
   },
-  taglineContainer: {
-    minHeight: 74,
-  },
   title: {
     color: "#F7F0DF",
-    fontSize: 34,
+    fontSize: 30,
     fontWeight: "900",
     letterSpacing: -1.2,
-    lineHeight: 40,
+    lineHeight: 36,
     textAlign: "center",
   },
   cursor: {
     color: "#F7D38B",
     fontWeight: "300",
   },
-  subtitle: {
-    color: "#BCC2DA",
-    fontSize: 15,
-    lineHeight: 23,
-    textAlign: "center",
-  },
-  previewCard: {
-    gap: 6,
-    padding: 16,
-    borderRadius: 22,
-    borderCurve: "continuous",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(247,211,139,0.14)",
-  },
-  previewEyebrow: {
-    color: "#8F96B4",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    textAlign: "center",
-  },
-  previewVoice: {
-    color: "#F7D38B",
-    fontSize: 13,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  previewText: {
-    color: "#F7F0DF",
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  samplePlayButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-    backgroundColor: "#F7D38B",
-    alignSelf: "center",
-  },
-  samplePlayText: {
-    color: "#101320",
-    fontSize: 13,
-    fontWeight: "900",
-  },
   primaryButton: {
-    minHeight: 58,
-    borderRadius: 21,
+    minHeight: 56,
+    width: 220,
+    borderRadius: 28,
     borderCurve: "continuous",
     backgroundColor: "#F7D38B",
     alignItems: "center",
@@ -577,68 +502,59 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   accountToggle: {
-    minHeight: 42,
+    minHeight: 36,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 4,
+    marginTop: 6,
   },
   accountToggleText: {
-    color: "#AEB6D4",
-    fontSize: 14,
-    fontWeight: "800",
+    color: "#8F96B4",
+    fontSize: 13,
+    fontWeight: "700",
   },
-  accountCard: {
-    width: "100%",
-    maxWidth: 720,
-    gap: 12,
-    padding: 18,
-    borderRadius: 28,
+  sheetOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: "100%",
+    justifyContent: "flex-end",
+  },
+  sheetBackdrop: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  sheetCard: {
+    backgroundColor: "#11162B",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     borderCurve: "continuous",
-    backgroundColor: "rgba(14,17,34,0.66)",
+    padding: 24,
+    paddingBottom: 40,
+    gap: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(247,211,139,0.14)",
   },
-  accountTitle: {
-    color: "#F7F0DF",
-    fontSize: 19,
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignSelf: "center",
+    marginBottom: 4,
+  },
+  sheetTitle: {
+    color: "#F8F0DE",
+    fontSize: 18,
     fontWeight: "900",
     letterSpacing: -0.3,
-  },
-  accountCopy: {
-    color: "#9CA4C3",
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  accountModesSummary: {
-    gap: 10,
-  },
-  accountModeCard: {
-    gap: 5,
-    padding: 12,
-    borderRadius: 18,
-    borderCurve: "continuous",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  accountModeEyebrow: {
-    color: "#F7D38B",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.9,
-    textTransform: "uppercase",
-  },
-  accountModeTitle: {
-    color: "#F8F0DE",
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  accountModeBody: {
-    color: "#BFC6DE",
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: "700",
+    textAlign: "center",
   },
   modeRow: {
     flexDirection: "row",
@@ -664,7 +580,7 @@ const styles = StyleSheet.create({
     color: "#F7D38B",
   },
   input: {
-    minHeight: 52,
+    minHeight: 50,
     borderRadius: 18,
     borderCurve: "continuous",
     backgroundColor: "rgba(255,255,255,0.07)",
@@ -675,7 +591,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   accountButton: {
-    minHeight: 52,
+    minHeight: 50,
     borderRadius: 18,
     borderCurve: "continuous",
     backgroundColor: "#F7D38B",
@@ -705,13 +621,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   error: {
-    width: "100%",
-    maxWidth: 720,
     color: "#FF9A9A",
     fontSize: 13,
     lineHeight: 18,
-    paddingHorizontal: 4,
     textAlign: "center",
+    paddingHorizontal: 4,
   },
   pressed: {
     opacity: 0.78,
