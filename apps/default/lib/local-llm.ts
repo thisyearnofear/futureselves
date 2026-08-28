@@ -155,7 +155,7 @@ function buildLocalPrompt(
     .slice(2, 7)
     .find((t) => t.responseReaction === "did_it" && t.actionPrompt);
   const olderCallback = olderFollowThrough
-    ? { daysAgo: recentTransmissions.indexOf(olderFollowThrough), actionPrompt: olderFollowThrough.actionPrompt, title: olderFollowThrough.title }
+    ? { daysAgo: recentTransmissions.indexOf(olderFollowThrough) + 1, actionPrompt: olderFollowThrough.actionPrompt, title: olderFollowThrough.title }
     : null;
 
   const accountabilityBlock = buildAccountabilityLocal(recentChoices[0], recentTransmissions[0], recentResponses[0]?.reaction, recentResponses[0]?.replyNote, olderCallback);

@@ -185,7 +185,7 @@ export function buildPrompt(
     .find((t) => t.response?.reaction === "did_it" && t.actionPrompt);
   const olderCallback = olderFollowThrough
     ? {
-        daysAgo: context.recentTransmissions.indexOf(olderFollowThrough),
+        daysAgo: context.recentTransmissions.indexOf(olderFollowThrough) + 1,
         actionPrompt: olderFollowThrough.actionPrompt,
         title: olderFollowThrough.title,
       }
