@@ -9,8 +9,8 @@
   "packageManager": "npm@11.12.1",
   "scripts": {
     "dev": "turbo run dev",
-    "dev:backend": "turbo run dev --filter=@bloom/backend",
-    "dev:mobile": "turbo run dev --filter=@bloom/mobile",
+    "dev:backend": "turbo run dev --filter=@futureselves/backend",
+    "dev:mobile": "turbo run dev --filter=@futureselves/mobile",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
