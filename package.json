@@ -6,6 +6,7 @@
     "apps/*",
     "packages/*"
   ],
+  "packageManager": "npm@11.12.1",
   "scripts": {
     "dev": "turbo run dev",
     "dev:backend": "turbo run dev --filter=@bloom/backend",
