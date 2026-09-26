@@ -132,7 +132,6 @@ tools/transmission/
 ├── PROBLEM_AND_SOLUTION.md      # 500-word problem & solution statement
 ├── BOB_USAGE.md                 # 500-word IBM Bob usage statement
 ├── cover.png                    # cover image for the submission
-├── deploy.sh                    # one-shot GitHub Pages deploy of demo/
 ├── schema/
 │   └── findings.schema.json     # JSON schema for the findings document
 ├── fixtures/
@@ -144,7 +143,8 @@ tools/transmission/
 │   └── render.ts                # findings JSON → single-file HTML
 ├── bin/
 │   └── transmission.mjs         # convenience wrapper
-├── demo/                        # GitHub Pages site (landing + live viewer + slides)
+├── demo/                        # static landing + live viewer + slides; served by the
+│                                # existing Vercel deployment (autodeploys on push to main)
 ├── dist/                        # rendered output (gitignored)
 ├── bob_sessions/                # Bob IDE task session screenshots (submission deliverable)
 └── slides/                      # slide deck (HTML source + PNGs) + VIDEO_SCRIPT.md
