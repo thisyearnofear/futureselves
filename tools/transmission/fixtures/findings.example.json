@@ -1,0 +1,126 @@
+{
+  "dateKey": "2026-09-26",
+  "repository": "futureselves",
+  "headline": "Three drift hot spots, one auth gap, and a quiet test gap that will hurt you in six months.",
+  "narrative": "Future Selves is in better shape than most consumer apps that have lived through three hackathons, but the audit inventory in docs/remote-apis.md is starting to drift — the RevenueCat row was added on Aug 16 and the doc hasn't been refreshed since. Several backend mutations look auth-protected via wrappers, but at least one helper exposes user-scoped data without re-checking identity inside the handler.\n\nThe pattern across the codebase is *trust the wrapper*: every Convex mutation is built on authMutation, which is great, but the helper itself uses ctx.user._id — and there is no test asserting that anonymous requests to the mutation surface get rejected. If the wrapper ever changes (and three hackathons have already touched it), the absence of a regression test means the failure mode is silent.\n\nThe cheapest single move that moves the needle: add a convex/auth.test.ts that asserts every exported mutation rejects an unauthenticated caller. Two hours of work, prevents a category of bug that compounds over time.",
+  "transmission": {
+    "persona": "The Maintainer",
+    "script": "Hey. It's you, six months from now. I need to tell you about three things.\n\nFirst — the audit doc lied to you. docs/remote-apis.md still says 'last audited 2026-08-16' and you shipped a RevenueCat webhook handler after that. The webhook secret check is fine, but the row in the table says nothing about how the entitlement maps back onto personas. Future-you is going to get a question in standup about whether the streak-earned tier is safe from a lapsed subscription, and you won't remember that you actually wrote premiumSource on the persona just for that case. It's there. Trust me.\n\nSecond — every backend mutation goes through authMutation, which is a beautiful pattern. But you don't have a single test that says 'an anonymous caller to api.foo.bar gets rejected.' The wrapper is load-bearing and you don't have a regression test for it. If anyone refactors authMutation next quarter, you won't notice until a real user notices.\n\nThird — your drillSession.rawData field is v.array(v.object(...)) with no bound. You're storing accelerometer samples for one juggling drill. The doc says nothing about retention. In six months you'll have a 200MB persona in production and you'll wonder why Convex is unhappy.\n\nDo this week: write the auth regression test. Delete nothing. Sleep better."
+  },
+  "findings": [
+    {
+      "id": "DOC-001",
+      "severity": "high",
+      "category": "docs",
+      "title": "docs/remote-apis.md is stale on RevenueCat mapping details",
+      "detail": "The inventory was 'last audited 2026-08-16 (added RevenueCat)' but the persona field premiumSource and the streak-vs-purchase precedence rule are not surfaced in the per-API detail. Future readers won't know why a lapsed subscription never revokes streak-earned premium.",
+      "file": "docs/remote-apis.md",
+      "line": 124,
+      "fix": "Add a 'Entitlement mapping' subsection under the RevenueCat row that documents premiumSource and the precedence rule, and bump the 'last audited' date."
+    },
+    {
+      "id": "TEST-001",
+      "severity": "high",
+      "category": "tests",
+      "title": "No regression test that authMutation actually rejects anonymous callers",
+      "detail": "All 25+ mutations go through authMutation (or authQuery). The pattern is load-bearing for the entire multi-user safety story, but packages/backend/convex/ has no auth.test.ts. If the wrapper is ever refactored, the failure mode is silent — anonymous writes start succeeding without anyone noticing.",
+      "file": "packages/backend/convex/auth.ts",
+      "fix": "Add convex/auth.test.ts: for every exported authMutation/authQuery, assert that an anonymous caller receives the expected rejection. Two hours of work, prevents a category of bug that compounds."
+    },
+    {
+      "id": "SCHEMA-001",
+      "severity": "medium",
+      "category": "schema",
+      "title": "drillSessions.rawData is an unbounded array of sensor samples",
+      "detail": "drillSessions.rawData is typed v.array(v.object({timestamp: v.number(), value: v.number()})). A single juggling session can produce hundreds of samples; sustained daily use will push individual documents toward the 1MB Convex limit and slow every read of the trajectory.",
+      "file": "packages/backend/convex/schema.ts",
+      "line": 235,
+      "fix": "Move raw sensor samples to a separate drillSamples table with a foreign key back to drillSessions. Keep drillSessions.resultValue as the canonical summary; rawData becomes opt-in debug storage with its own retention."
+    },
+    {
+      "id": "DEAD-001",
+      "severity": "medium",
+      "category": "dead-code",
+      "title": "personas.activeUnchosenSelves is marked deprecated but still defined",
+      "detail": "Schema comment says 'Deprecated field — present in some existing documents, safe to ignore'. No migration removes it; new documents will silently include the empty array. Adds schema noise and confuses readers of dataModel types.",
+      "file": "packages/backend/convex/schema.ts",
+      "line": 96,
+      "fix": "Run a one-shot migration that strips activeUnchosenSelves from every personas document, then remove the field from schema.ts. Confirm no read path references it (grep before deleting)."
+    },
+    {
+      "id": "DOC-002",
+      "severity": "medium",
+      "category": "docs",
+      "title": "CLAUDE.md and AGENTS.md both contain the Convex guidelines banner verbatim",
+      "detail": "Both files contain the same <!-- convex-ai-start --> block. If the guidelines change, two files must be updated in sync — a real but low-likelihood drift risk. Worth a one-line decision: pick one source of truth and reference it from the other.",
+      "file": "packages/backend/convex/_generated/ai/guidelines.md",
+      "fix": "Decide whether CLAUDE.md or AGENTS.md owns the Convex-guidelines banner; in the other, replace the banner with 'see <file> for Convex guidelines.'"
+    },
+    {
+      "id": "API-001",
+      "severity": "medium",
+      "category": "remote-api",
+      "title": "No fallback for RevenueCat webhook delivery failure",
+      "detail": "The webhook is the source of truth, but Convex receives inbound webhooks at /revenuecat/webhook with no retry handling on the server side — RevenueCat does retry, but a misconfigured secret will silently reject every attempt and there's no alerting.",
+      "file": "packages/backend/convex/revenuecat.ts",
+      "line": 32,
+      "fix": "Log every webhook rejection with a structured event and emit to an alerting sink (or a dedicated Convex table that surfaces in the ritual dashboard). The client-side syncEntitlementFromClient already covers UX, but ops needs the visibility."
+    },
+    {
+      "id": "TEST-002",
+      "severity": "medium",
+      "category": "tests",
+      "title": "voicemail.ts (premium tier orchestrator) has no test coverage",
+      "detail": "packages/backend/convex/voicemail.ts orchestrates the multi-step premium voicemail pipeline (intake → agent → critique → voice/image/video). It is the single largest untested backend module and is gated behind tier === 'premium' — exactly the kind of code where a regression costs the most user trust.",
+      "file": "packages/backend/convex/voicemail.ts",
+      "fix": "Add voicemail.test.ts covering at least: (a) non-premium user receives a denial, (b) Melius project id is generated and stored, (c) critique string is preserved across the pipeline."
+    },
+    {
+      "id": "TEST-003",
+      "severity": "low",
+      "category": "tests",
+      "title": "football.ts has no test coverage",
+      "detail": "All 8 functions in football.ts (getActiveAmbition, saveAmbition, startDrillSession, completeDrillSession, getDrillHistory, getTrajectories, recomputeTrajectory, updateTrajectoryNarrative) are uncovered. The recomputeTrajectory function is a pure-function computation that would be trivial to unit-test.",
+      "file": "packages/backend/convex/football.ts",
+      "fix": "Start with recomputeTrajectory — pure math, no I/O, high payoff. Then move to getActiveAmbition and the upsert paths in saveAmbition."
+    },
+    {
+      "id": "DOC-003",
+      "severity": "low",
+      "category": "docs",
+      "title": "AGENTS.md references files that have moved since 2026-08-16",
+      "detail": "AGENTS.md points at apps/default/hooks/use-network-kill.ts, use-transmission-audio.ts, etc. with descriptive one-liners. A spot-check confirms several still exist and the descriptions still match, but the doc has no 'last verified against source' date.",
+      "file": "AGENTS.md",
+      "fix": "Add a 'Last verified: YYYY-MM-DD' timestamp at the bottom of AGENTS.md so future readers know how stale the descriptions might be."
+    },
+    {
+      "id": "INFO-001",
+      "severity": "info",
+      "category": "schema",
+      "title": "personas.premiumSource has no writer that uses 'streak' value",
+      "detail": "The premiumSource validator accepts 'streak' but AGENTS.md notes that streak-earned tier is 'reserved for a future standing streak-earned tier grant (not currently written by any code path)'. Dead enum value today; intentional placeholder for a future feature.",
+      "file": "packages/backend/convex/schema.ts",
+      "line": 87,
+      "fix": "Either remove the 'streak' literal from the validator until the feature ships, or add a // TODO with the planned code path so the intent is captured in source."
+    }
+  ],
+  "stats": {
+    "filesScanned": 47,
+    "findingsTotal": 10,
+    "bySeverity": { "critical": 0, "high": 2, "medium": 5, "low": 2, "info": 1 },
+    "byCategory": {
+      "remote-api": 1,
+      "backend": 0,
+      "docs": 3,
+      "tests": 3,
+      "security": 0,
+      "schema": 2,
+      "dead-code": 1
+    }
+  },
+  "bobcoinUsage": {
+    "subagentCount": 5,
+    "estimatedTokensIn": 142000,
+    "estimatedTokensOut": 18500
+  }
+}

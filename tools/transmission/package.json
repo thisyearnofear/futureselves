@@ -1,0 +1,24 @@
+{
+  "name": "transmission",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Daily code-health ritual powered by IBM Bob 2.0. CLI + viewer that renders Bob's audit output as a 'transmission from your codebase's future self.'",
+  "type": "module",
+  "bin": {
+    "transmission": "./bin/transmission.mjs"
+  },
+  "scripts": {
+    "start": "node --import tsx src/cli.ts",
+    "dev": "node --import tsx src/cli.ts",
+    "render:fixture": "node --import tsx src/cli.ts render fixtures/findings.example.json --out dist/transmission-fixture.html"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "@types/node": "^22.10.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

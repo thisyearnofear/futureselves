@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>transmission — slide deck</title>
+<style>
+:root {
+  --bg-0: #07061a; --bg-1: #0c0a2e;
+  --fg-0: #f5f3ff; --fg-1: #cbd5e1; --fg-2: #94a3b8; --fg-3: #64748b;
+  --accent: #a78bfa; --accent-2: #7c3aed; --accent-3: #f0abfc;
+  --border: rgba(167,139,250,0.2); --card: rgba(255,255,255,0.04);
+  --red: #ff4d6d; --orange: #ff8c42; --yellow: #ffd166; --blue: #7dd3fc;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, var(--bg-0), var(--bg-1) 55%, var(--bg-0));
+  color: var(--fg-0);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.slide {
+  width: 1280px; height: 720px;
+  position: relative; overflow: hidden;
+  padding: 64px 72px;
+  display: flex; flex-direction: column; justify-content: center;
+  border-bottom: 4px solid rgba(167,139,250,0.25);
+  page-break-after: always;
+}
+.slide::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(900px 600px at 85% -10%, rgba(124,58,237,0.22), transparent 55%),
+    radial-gradient(700px 500px at -5% 100%, rgba(56,189,248,0.10), transparent 60%);
+}
+.stars { position:absolute; inset:0; pointer-events:none; opacity:.5;
+  background-image:
+    radial-gradient(1px 1px at 12% 24%, rgba(255,255,255,.5), transparent),
+    radial-gradient(1px 1px at 78% 18%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1px 1px at 38% 70%, rgba(255,255,255,.35), transparent),
+    radial-gradient(1.5px 1.5px at 55% 35%, rgba(255,255,255,.45), transparent),
+    radial-gradient(1px 1px at 88% 80%, rgba(255,255,255,.4), transparent);
+}
+.kicker { font-size: 15px; letter-spacing: .22em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 20px; }
+h1.title { font-size: 64px; font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
+h2.title { font-size: 46px; font-weight: 750; letter-spacing: -.015em; line-height: 1.1; margin-bottom: 8px; }
+.sub { font-size: 22px; color: var(--fg-1); margin-top: 18px; max-width: 60ch; line-height: 1.5; }
+.muted { color: var(--fg-2); }
+.grad { background: linear-gradient(120deg, var(--accent-3), var(--accent), var(--blue)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pageno { position: absolute; bottom: 28px; right: 40px; font-size: 13px; color: var(--fg-3); letter-spacing: .1em; }
+.brand { position: absolute; top: 30px; left: 72px; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--fg-2); letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+.brand .mark { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--accent-2), var(--accent-3)); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; color:#fff; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 30px; }
+.card { border: 1px solid var(--border); background: var(--card); border-radius: 16px; padding: 22px 24px; }
+.card h3 { font-size: 18px; margin-bottom: 10px; color: var(--fg-0); }
+.card p, .card li { font-size: 15.5px; color: var(--fg-1); line-height: 1.55; }
+.card ul { margin-left: 18px; }
+.pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-right:6px; }
+.pill.c { background: rgba(255,77,109,.16); color: var(--red); }
+.pill.h { background: rgba(255,140,66,.16); color: var(--orange); }
+.pill.m { background: rgba(255,209,102,.16); color: var(--yellow); }
+.pill.b { background: rgba(125,211,252,.16); color: var(--blue); }
+.big-num { font-size: 92px; font-weight: 800; line-height: 1; background: linear-gradient(135deg, var(--accent-3), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.grid5 { display:grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 30px; }
+.grid5 .card { padding: 18px 16px; text-align: left; }
+.grid5 .card .ico { font-size: 26px; margin-bottom: 10px; }
+.grid5 .card h4 { font-size: 15px; margin-bottom: 6px; color: var(--fg-0); }
+.grid5 .card p { font-size: 13px; color: var(--fg-2); line-height: 1.45; }
+.flow { display:flex; align-items:center; gap:14px; margin-top:34px; flex-wrap:wrap; }
+.flow .step { border:1px solid var(--border); background:var(--card); border-radius:12px; padding:14px 18px; font-size:15px; color:var(--fg-1); }
+.flow .arrow { color: var(--accent); font-size: 20px; }
+.foot { position:absolute; bottom:28px; left:72px; font-size:13px; color:var(--fg-3); }
+code { font-family: "SF Mono", ui-monospace, Menlo, monospace; background: rgba(0,0,0,.4); padding: 2px 7px; border-radius: 6px; font-size: .92em; color: var(--accent-3); }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1 — Title -->
+<section class="slide">
+  <div class="stars"></div>
+  <div class="kicker">IBM Bob 2.0 Hackathon · lablab.ai</div>
+  <h1 class="title">transmission<span class="grad">.</span></h1>
+  <p class="sub">A daily code-health ritual. <span class="grad" style="font-weight:700">IBM Bob 2.0</span> reads your whole repo and delivers a voicemail from your codebase's future self — the things that will bite you in six months if you don't fix them today.</p>
+  <p class="muted" style="margin-top:26px; font-size:16px;">Built live on the <strong style="color:var(--fg-1)">Future Selves</strong> codebase · github.com/thisyearnofear/futureselves</p>
+  <div class="pageno">01 / 06</div>
+</section>
+
+<!-- SLIDE 2 — Problem -->
+<section class="slide">
+  <div class="stars"></div>
+  <div class="brand"><span class="mark">T</span> transmission</div>
+  <div class="kicker">The problem</div>
+  <h2 class="title">Codebases drift. Silently.</h2>
+  <p class="sub">The gap between what your repo <em>says</em> it does and what it <em>actually</em> does widens every week — and nobody notices until it costs real hours.</p>
+  <div class="cols">
+    <div class="card"><h3>📖 Docs lie</h3><p>References to files that moved, env vars that were renamed, "last audited" dates that are months stale.</p></div>
+    <div class="card"><h3>🔓 Auth is load-bearing, untested</h3><p>One wrapper guards every mutation, but there's no regression test proving anonymous callers get rejected.</p></div>
+    <div class="card"><h3>🪦 Dead code misleads</h3><p>Deprecated fields and unused exports stay in the schema, confusing the next developer who reads it.</p></div>
+    <div class="card"><h3>⚠️ It compounds</h3><p>None of it fails loudly. It surfaces later as incidents, failed audits, and 3-week onboardings.</p></div>
+  </div>
+  <div class="foot">Existing tools are one-shot linters: static report, lost context, read once.</div>
+  <div class="pageno">02 / 06</div>
+</section>
+
+<!-- SLIDE 3 — Solution -->
+<section class="slide">
+  <div class="stars"></div>
+  <div class="brand"><span class="mark">T</span> transmission</div>
+  <div class="kicker">The solution</div>
+  <h2 class="title">A daily ritual, not a one-shot audit.</h2>
+  <div class="flow">
+    <div class="step">👩‍💻 <code>transmission analyze &lt;repo&gt;</code></div>
+    <div class="arrow">→</div>
+    <div class="step">🤖 Bob runs the audit skill</div>
+    <div class="arrow">→</div>
+    <div class="step">📦 findings.json</div>
+    <div class="arrow">→</div>
+    <div class="step">✨ single-file HTML transmission</div>
+  </div>
+  <div class="cols" style="margin-top:34px">
+    <div class="card"><h3>Readable in 60 seconds</h3><p>A persona ("The Maintainer") narrates the top risks in the voice of your codebase six months out. Severity-ordered, concrete, fixable.</p></div>
+    <div class="card"><h3>Actionable in 10 minutes</h3><p>Every finding ships with a file, a line, and a suggested fix. Zero-dependency output works offline, in Slack, or on a PR.</p></div>
+  </div>
+  <p class="muted" style="margin-top:24px; font-size:16px;">Framing borrowed from <strong style="color:var(--fg-1)">Future Selves</strong> — daily voicemails from your future self — applied to code health.</p>
+  <div class="pageno">03 / 06</div>
+</section>
+
+<!-- SLIDE 4 — How Bob powers it -->
+<section class="slide">
+  <div class="stars"></div>
+  <div class="brand"><span class="mark">T</span> transmission</div>
+  <div class="kicker">Application of IBM Bob 2.0</div>
+  <h2 class="title">Bob is the orchestrator — five subagents, one pass.</h2>
+  <p class="sub" style="font-size:18px">The audit is a reusable <strong style="color:var(--fg-0)">Bob skill</strong> using Agent mode, parallel subagents, and document understanding. Bob reads the team's stated beliefs (<code>AGENTS.md</code>, <code>docs/remote-apis.md</code>) and checks them against the source.</p>
+  <div class="grid5">
+    <div class="card"><div class="ico">🌐</div><h4>Remote APIs</h4><p>Call sites, gating, fallbacks, PII — vs the inventory doc.</p></div>
+    <div class="card"><div class="ico">⚙️</div><h4>Backend health</h4><p>Auth, validators, indexes, dead exports, schema drift.</p></div>
+    <div class="card"><div class="ico">📖</div><h4>Doc drift</h4><p>Every factual claim verified against current source.</p></div>
+    <div class="card"><div class="ico">🧪</div><h4>Test gaps</h4><p>High-value functions with zero coverage.</p></div>
+    <div class="card"><div class="ico">🔒</div><h4>Security</h4><p>.gitignore, hardcoded secrets, risky TODOs.</p></div>
+  </div>
+  <p class="muted" style="margin-top:26px; font-size:16px">→ dedupe, cap at 30, sort by severity → structured JSON → rendered transmission. Stays within the 40-Bobcoin budget.</p>
+  <div class="pageno">04 / 06</div>
+</section>
+
+<!-- SLIDE 5 — Live demo on Future Selves -->
+<section class="slide">
+  <div class="stars"></div>
+  <div class="brand"><span class="mark">T</span> transmission</div>
+  <div class="kicker">Dogfooded on a real codebase</div>
+  <h2 class="title">Real findings on Future Selves.</h2>
+  <div style="display:flex; gap:34px; align-items:flex-start; margin-top:26px">
+    <div style="flex:0 0 210px; text-align:center">
+      <div class="big-num">523</div>
+      <div class="muted" style="font-size:15px">files scanned in one pass</div>
+      <div style="margin-top:18px">
+        <span class="pill h">2 high</span>
+        <span class="pill m">1 medium</span>
+        <span class="pill b">1 info</span>
+      </div>
+    </div>
+    <div style="flex:1">
+      <div class="card" style="margin-bottom:12px"><span class="pill h">high</span> <strong><code>docs/remote-apis.md</code> stale — 19 source files changed since "last audited 2026-08-16"</strong>. The inventory's per-API claims may no longer match the code.</div>
+      <div class="card" style="margin-bottom:12px"><span class="pill h">high</span> <strong>16 of 32 backend modules have no test referencing them</strong> — mutations that can regress silently.</div>
+      <div class="card" style="margin-bottom:12px"><span class="pill m">med</span> <strong>Deprecated schema field <code>activeUnchosenSelves</code> never migrated</strong> — dead weight in the data model.</div>
+      <div class="card"><span class="pill b">info</span> <strong>Local-only credential correctly git-ignored</strong> — the scanner flags it as safe, not a false alarm. Secret values are never echoed.</div>
+    </div>
+  </div>
+  <div class="foot">Findings are real, produced live against the repo — baseline pass shown; the Bob skill pass goes deeper.</div>
+  <div class="pageno">05 / 06</div>
+</section>
+
+<!-- SLIDE 6 — Business value / close -->
+<section class="slide">
+  <div class="stars"></div>
+  <div class="brand"><span class="mark">T</span> transmission</div>
+  <div class="kicker">Business value</div>
+  <h2 class="title">Catch it daily. Or pay for it later.</h2>
+  <div class="cols" style="margin-top:26px">
+    <div class="card"><h3>🚀 Faster onboarding</h3><p>New hires read today's transmission instead of week-old docs. The mental model stays current.</p></div>
+    <div class="card"><h3>🛡️ Fewer incidents</h3><p>Auth gaps, unbounded fields, and secret leaks surface before production does.</p></div>
+    <div class="card"><h3>🔁 A habit, not a chore</h3><p>The ritual + persona + streak loop makes code health sticky — the same mechanic that drives Future Selves retention.</p></div>
+    <div class="card"><h3>⚡ Cheap to run</h3><p>Five parallel subagents, one synthesis pass, well under the Bobcoin budget. Zero-dependency viewer, no infra.</p></div>
+  </div>
+  <p class="sub" style="margin-top:30px; font-size:20px"><span class="grad" style="font-weight:800">transmission</span> — your codebase, talking back. Powered by IBM Bob 2.0.</p>
+  <div class="foot">github.com/thisyearnofear/futureselves · tools/transmission</div>
+  <div class="pageno">06 / 06</div>
+</section>
+
+</body>
+</html>

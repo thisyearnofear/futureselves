@@ -20,6 +20,9 @@ web-build/
 # Turbo
 .turbo/
 
+# transmission tool build output
+tools/transmission/dist/
+
 # Native
 *.orig.*
 *.jks

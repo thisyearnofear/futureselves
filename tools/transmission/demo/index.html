@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>transmission — daily code-health ritual powered by IBM Bob 2.0</title>
+<style>
+:root {
+  --bg-0: #07061a; --bg-1: #0c0a2e;
+  --fg-0: #f5f3ff; --fg-1: #cbd5e1; --fg-2: #94a3b8; --fg-3: #64748b;
+  --accent: #a78bfa; --accent-2: #7c3aed; --accent-3: #f0abfc;
+  --border: rgba(167,139,250,0.2); --card: rgba(255,255,255,0.04);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, var(--bg-0), var(--bg-1) 55%, var(--bg-0));
+  color: var(--fg-0);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  min-height: 100vh;
+}
+body::before {
+  content:""; position:fixed; inset:0; pointer-events:none;
+  background-image:
+    radial-gradient(1px 1px at 12% 24%, rgba(255,255,255,.5), transparent),
+    radial-gradient(1px 1px at 78% 18%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1px 1px at 38% 70%, rgba(255,255,255,.35), transparent),
+    radial-gradient(1.5px 1.5px at 55% 35%, rgba(255,255,255,.45), transparent),
+    radial-gradient(1px 1px at 88% 80%, rgba(255,255,255,.4), transparent);
+  opacity:.5;
+}
+.wrap { position:relative; max-width: 900px; margin: 0 auto; padding: 56px 24px 80px; }
+.badge { display:inline-flex; align-items:center; gap:8px; padding:5px 12px; border-radius:999px;
+  background:rgba(167,139,250,.14); border:1px solid rgba(167,139,250,.32);
+  font-size:12px; text-transform:uppercase; letter-spacing:.12em; color:var(--accent); font-weight:700; }
+h1 { font-size: 52px; font-weight: 800; letter-spacing:-.02em; margin: 18px 0 12px; }
+.grad { background: linear-gradient(120deg, var(--accent-3), var(--accent)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.lede { font-size: 19px; color: var(--fg-1); line-height:1.6; max-width: 64ch; }
+.cta { display:flex; gap:12px; margin-top: 26px; flex-wrap:wrap; }
+.btn { display:inline-block; padding: 12px 20px; border-radius: 12px; font-size: 15px; font-weight:600;
+  text-decoration:none; border:1px solid var(--border); }
+.btn.primary { background: linear-gradient(135deg, var(--accent-2), var(--accent-3)); color:#fff; border:none;
+  box-shadow: 0 0 30px rgba(124,58,237,.35); }
+.btn.ghost { color: var(--fg-1); background: var(--card); }
+.btn:hover { filter: brightness(1.08); }
+.section { margin-top: 44px; }
+.section h2 { font-size: 15px; text-transform:uppercase; letter-spacing:.14em; color: var(--fg-2); margin-bottom: 16px; }
+.frame { border:1px solid var(--border); border-radius: 16px; overflow:hidden; background: var(--card); }
+.frame iframe { display:block; width:100%; height: 900px; border:0; }
+.frame .bar { display:flex; align-items:center; justify-content:space-between; padding: 10px 16px;
+  border-bottom:1px solid var(--border); font-size:13px; color:var(--fg-2); }
+.frame .bar a { color: var(--accent); text-decoration:none; }
+.cards { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; }
+@media (max-width: 760px){ .cards { grid-template-columns: 1fr; } }
+.card { border:1px solid var(--border); background:var(--card); border-radius:14px; padding:18px; }
+.card h3 { font-size:15px; margin-bottom:8px; }
+.card p { font-size:13.5px; color:var(--fg-1); line-height:1.55; }
+.foot { margin-top: 48px; padding-top: 20px; border-top:1px solid var(--border); font-size:13px; color:var(--fg-3); }
+.foot a { color: var(--fg-2); text-decoration:none; }
+code { font-family:"SF Mono", ui-monospace, Menlo, monospace; background:rgba(0,0,0,.4); padding:2px 7px; border-radius:6px; font-size:.9em; color:var(--accent-3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="badge">◉ IBM Bob 2.0 Hackathon · lablab.ai</span>
+  <h1>transmission<span class="grad">.</span></h1>
+  <p class="lede">A daily code-health ritual. <strong>IBM Bob 2.0</strong> reads your whole repo with five parallel subagents and delivers a voicemail from your codebase's future self — the things that will bite you in six months if you don't fix them today.</p>
+  <div class="cta">
+    <a class="btn primary" href="example.html">Open today's transmission →</a>
+    <a class="btn ghost" href="https://github.com/thisyearnofear/futureselves/tree/main/tools/transmission">Source &amp; docs</a>
+  </div>
+
+  <div class="section">
+    <h2>Live output — Future Selves, audited by Bob</h2>
+    <div class="frame">
+      <div class="bar"><span>transmission · futureselves · <span id="d"></span></span><a href="example.html">open full-screen ↗</a></div>
+      <iframe src="example.html" title="transmission example"></iframe>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>How it works</h2>
+    <div class="cards">
+      <div class="card"><h3>1 · Point it at a repo</h3><p><code>transmission analyze &lt;repo&gt;</code> installs the audit skill and hands the repo to Bob.</p></div>
+      <div class="card"><h3>2 · Bob runs five subagents</h3><p>Remote APIs · backend health · doc drift · test gaps · security — in parallel, with document understanding.</p></div>
+      <div class="card"><h3>3 · Get your transmission</h3><p>Findings become one self-contained HTML file: a persona narrates the risks, every finding has a fix.</p></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Slide deck</h2>
+    <div class="cards">
+      <div class="card"><h3><a href="slides/slide-01.png" style="color:var(--accent);text-decoration:none">01 · Title</a></h3><p>transmission — a daily code-health ritual.</p></div>
+      <div class="card"><h3><a href="slides/slide-02.png" style="color:var(--accent);text-decoration:none">02 · Problem</a></h3><p>Codebases drift silently.</p></div>
+      <div class="card"><h3><a href="slides/slide-03.png" style="color:var(--accent);text-decoration:none">03 · Solution</a></h3><p>A ritual, not a one-shot audit.</p></div>
+      <div class="card"><h3><a href="slides/slide-04.png" style="color:var(--accent);text-decoration:none">04 · Bob</a></h3><p>Five subagents, one pass.</p></div>
+      <div class="card"><h3><a href="slides/slide-05.png" style="color:var(--accent);text-decoration:none">05 · Demo</a></h3><p>Real findings on Future Selves.</p></div>
+      <div class="card"><h3><a href="slides/slide-06.png" style="color:var(--accent);text-decoration:none">06 · Value</a></h3><p>Catch it daily or pay later.</p></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    Built for the <a href="https://lablab.ai/ai-hackathons/ibm-bob-2-hackathon">IBM Bob 2.0 Hackathon</a> · demo target: <a href="https://github.com/thisyearnofear/futureselves">Future Selves</a> · MIT
+  </div>
+</div>
+<script>document.getElementById('d').textContent = new Date().toISOString().slice(0,10);</script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CodebaseTransmission",
+  "type": "object",
+  "required": ["dateKey", "repository", "headline", "narrative", "transmission", "findings", "stats"],
+  "properties": {
+    "dateKey": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "repository": { "type": "string", "minLength": 1 },
+    "headline": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "narrative": { "type": "string", "minLength": 1 },
+    "transmission": {
+      "type": "object",
+      "required": ["persona", "script"],
+      "properties": {
+        "persona": { "type": "string", "minLength": 1 },
+        "script": { "type": "string", "minLength": 1 }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "category", "title", "detail", "fix"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Z]+-\\d{3}$" },
+          "severity": { "enum": ["critical", "high", "medium", "low", "info"] },
+          "category": { "enum": ["remote-api", "backend", "docs", "tests", "security", "schema", "dead-code"] },
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "detail": { "type": "string", "minLength": 1 },
+          "file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 0 },
+          "fix": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "required": ["filesScanned", "findingsTotal", "bySeverity", "byCategory"],
+      "properties": {
+        "filesScanned": { "type": "integer", "minimum": 0 },
+        "findingsTotal": { "type": "integer", "minimum": 0 },
+        "bySeverity": {
+          "type": "object",
+          "properties": {
+            "critical": { "type": "integer", "minimum": 0 },
+            "high": { "type": "integer", "minimum": 0 },
+            "medium": { "type": "integer", "minimum": 0 },
+            "low": { "type": "integer", "minimum": 0 },
+            "info": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "byCategory": {
+          "type": "object",
+          "properties": {
+            "remote-api": { "type": "integer", "minimum": 0 },
+            "backend": { "type": "integer", "minimum": 0 },
+            "docs": { "type": "integer", "minimum": 0 },
+            "tests": { "type": "integer", "minimum": 0 },
+            "security": { "type": "integer", "minimum": 0 },
+            "schema": { "type": "integer", "minimum": 0 },
+            "dead-code": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "bobcoinUsage": {
+      "type": "object",
+      "properties": {
+        "subagentCount": { "type": "integer", "minimum": 0 },
+        "estimatedTokensIn": { "type": "integer", "minimum": 0 },
+        "estimatedTokensOut": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
