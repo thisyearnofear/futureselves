@@ -143,11 +143,13 @@ tools/transmission/
 │   └── render.ts                # findings JSON → single-file HTML
 ├── bin/
 │   └── transmission.mjs         # convenience wrapper
-├── demo/                        # static landing + live viewer + slides; served by the
-│                                # existing Vercel deployment (autodeploys on push to main)
 ├── dist/                        # rendered output (gitignored)
 ├── bob_sessions/                # Bob IDE task session screenshots (submission deliverable)
 └── slides/                      # slide deck (HTML source + PNGs) + VIDEO_SCRIPT.md
+
+The live demo (landing page + rendered transmission + slides) is served from
+`apps/default/public/transmission/` via the repo's existing Vercel deployment at
+`https://futureselves.vercel.app/transmission/` — no separate deploy step needed.
 ```
 
 ---
