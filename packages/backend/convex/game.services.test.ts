@@ -367,6 +367,7 @@ describe("game.state", () => {
         actionPrompt: "Say the real thing",
         cliffhanger: "Tomorrow opens",
         audioUrl: null,
+        inferenceSource: null,
         status: "ready",
         response: null,
         continuity: null,
@@ -444,6 +445,7 @@ describe("game.transmission", () => {
             actionPrompt: "Move",
             cliffhanger: "A door stayed open",
             audioUrl: null,
+            inferenceSource: null,
             status: "ready",
             response: null,
             continuity: null,
@@ -476,6 +478,55 @@ describe("game.transmission", () => {
     expect(prompt).toContain("Voice speaking today: future_partner.");
     expect(prompt).toContain("Recent transmissions:");
     expect(prompt).toContain("Recent choices:");
+  });
+
+  it("uses the first-contact block and expanded length on day 1", () => {
+    const persona = createPersonaReturn();
+    const prompt = buildPrompt(
+      {
+        persona,
+        checkIn: {
+          id: "check_1" as Id<"checkIns">,
+          dateKey: "2026-05-01",
+          word: "threshold",
+          note: "be clear",
+          createdAt: 1,
+        },
+        recentTransmissions: [],
+        recentChoices: [],
+        recentResponses: [],
+        openThreads: [],
+        constellation: [],
+        existingTransmissionId: null,
+      },
+      "future_self",
+    );
+
+    expect(prompt).toContain("TODAY IS FIRST CONTACT");
+    expect(prompt).toContain("130-180 words");
+    expect(prompt).toContain("did not state themselves");
+    // The day-14 economy rules must not leak into the day-1 prompt.
+    expect(prompt).not.toContain("40-70 words");
+  });
+
+  it("keeps the sparse-cast register but expands it on first contact", () => {
+    const persona = createPersonaReturn();
+    const prompt = buildPrompt(
+      {
+        persona,
+        checkIn: null,
+        recentTransmissions: [],
+        recentChoices: [],
+        recentResponses: [],
+        openThreads: [],
+        constellation: [],
+        existingTransmissionId: null,
+      },
+      "the_ghost",
+    );
+
+    expect(prompt).toContain("TODAY IS FIRST CONTACT");
+    expect(prompt).toContain("80-120 words");
   });
 
   it("returns a deterministic fallback transmission for future partner", () => {

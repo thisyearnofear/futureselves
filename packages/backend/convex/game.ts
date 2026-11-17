@@ -801,21 +801,35 @@ export const markTransmissionAudioFailed = internalMutation({
   },
 });
 
-export const attachLocalTransmission = internalMutation({
+/**
+ * Public, client-callable attach for client-side generation paths
+ * (QVAC local, Firebase AI Logic hybrid). Must be an `authMutation`
+ * (not `internalMutation`) because the client calls it directly —
+ * internal functions are rejected at the client boundary.
+ * Ownership is enforced against `ctx.user`, same as
+ * `cancelLocalTransmission`.
+ */
+export const attachLocalTransmission = authMutation({
   args: {
     transmissionId: v.id("transmissions"),
     title: v.string(),
     text: v.string(),
     actionPrompt: v.string(),
     cliffhanger: v.string(),
+    inferenceSource: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const transmission = await ctx.db.get(args.transmissionId);
+    if (!transmission || transmission.userId !== ctx.user._id) {
+      return null;
+    }
     await ctx.db.patch(args.transmissionId, {
       title: args.title,
       text: args.text,
       actionPrompt: args.actionPrompt,
       cliffhanger: args.cliffhanger,
+      ...(args.inferenceSource ? { inferenceSource: args.inferenceSource } : {}),
       status: "text_ready",
       updatedAt: Date.now(),
     });

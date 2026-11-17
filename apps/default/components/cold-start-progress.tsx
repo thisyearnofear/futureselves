@@ -7,8 +7,8 @@ import AnimatedReanimated, {
   withTiming,
 } from "react-native-reanimated";
 import { useEffect } from "react";
-import { isLocalMode } from "@/lib/ai";
-import { useQVACPrewarmContext } from "@/lib/qvac-prewarm-context";
+import { isFirebaseMode, isLocalMode } from "@/lib/ai";
+import { useOnDeviceReadinessContext } from "@/lib/ondevice-readiness-context";
 
 const MODEL_LABELS: Record<string, string> = {
   llm: "Language model",
@@ -81,21 +81,31 @@ function ModelRow({ modelKey, status, progress }: ModelRowProps) {
 }
 
 export function ColdStartProgress() {
-  const prewarm = useQVACPrewarmContext();
+  const prewarm = useOnDeviceReadinessContext();
 
   if (Platform.OS === "web") return null;
-  if (!isLocalMode()) return null;
+  if (!isLocalMode() && !isFirebaseMode()) return null;
   if (!prewarm) return null;
   if (prewarm.isReady) return null;
 
   return (
     <AnimatedReanimated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.container}>
       <Text style={styles.title}>Warming up on-device AI…</Text>
-      <Text style={styles.subtitle}>First transmission may take ~25 seconds</Text>
+      <Text style={styles.subtitle}>
+        {isFirebaseMode()
+          ? "First-run model download may take a few minutes"
+          : "First transmission may take ~25 seconds"}
+      </Text>
       <View style={styles.models}>
         <ModelRow modelKey="llm" status={prewarm.llm.status} progress={prewarm.llm.progress?.percentage != null ? prewarm.llm.progress.percentage / 100 : undefined} />
-        <ModelRow modelKey="tts" status={prewarm.tts.status} progress={prewarm.tts.progress?.percentage != null ? prewarm.tts.progress.percentage / 100 : undefined} />
-        <ModelRow modelKey="stt" status={prewarm.stt.status} progress={prewarm.stt.progress?.percentage != null ? prewarm.stt.progress.percentage / 100 : undefined} />
+        {/* In firebase mode TTS/STT are OS-level (always ready) — only the
+            on-device language model has a download state worth showing. */}
+        {!isFirebaseMode() && (
+          <>
+            <ModelRow modelKey="tts" status={prewarm.tts.status} progress={prewarm.tts.progress?.percentage != null ? prewarm.tts.progress.percentage / 100 : undefined} />
+            <ModelRow modelKey="stt" status={prewarm.stt.status} progress={prewarm.stt.progress?.percentage != null ? prewarm.stt.progress.percentage / 100 : undefined} />
+          </>
+        )}
       </View>
     </AnimatedReanimated.View>
   );

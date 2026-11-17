@@ -142,6 +142,7 @@ export async function toTransmissionReturn(
         ? null
         : await ctx.storage.getUrl(transmission.audioStorageId),
     status: transmission.status,
+    inferenceSource: transmission.inferenceSource ?? null,
     response: transmission.response ?? null,
     continuity: transmission.continuity ?? null,
     memory: transmission.memory ?? null,

@@ -124,6 +124,9 @@ export default defineSchema({
     actionPrompt: v.string(),
     cliffhanger: v.string(),
     audioStorageId: v.optional(v.id("_storage")),
+    // Firebase AI Logic reports which lane served generation:
+    // "on_device" | "in_cloud". Optional — cloud/QVAC paths leave it unset.
+    inferenceSource: v.optional(v.string()),
     status: v.union(
       v.literal("generating"),
       v.literal("text_ready"),

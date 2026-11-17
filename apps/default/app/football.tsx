@@ -9,12 +9,12 @@ import { api } from "@/convex/_generated/api";
 import { FootballAmbitionDeclaration } from "@/components/football-ambition-declaration";
 import { FootballHome } from "@/components/football-home";
 import { BottomNav } from "@/components/bottom-nav";
-import { useQVACPrewarmContext } from "@/lib/qvac-prewarm-context";
+import { useOnDeviceReadinessContext } from "@/lib/ondevice-readiness-context";
 import { isLocalMode } from "@/lib/ai";
 
 export default function FootballScreen() {
     const router = useRouter();
-    const prewarm = useQVACPrewarmContext();
+    const prewarm = useOnDeviceReadinessContext();
     const ambition = useQuery(api.football.getActiveAmbition, {});
     const state = useQuery(api.game.getState, {
         dateKey: new Date().toISOString().split("T")[0]!,

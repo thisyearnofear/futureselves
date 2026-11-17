@@ -1,8 +1,9 @@
 /**
  * design-tokens.ts — Shared design system tokens for the entire app.
  *
- * Single source of truth for animation durations, border radii, and
- * easing curves. Import from here instead of hardcoding values.
+ * Single source of truth for animation durations, border radii, easing
+ * curves, type scale, spacing, and the serif display family. Import from
+ * here instead of hardcoding values. Rules live in docs/design.md.
  *
  * Based on Emil Kowalski's design engineering principles:
  * - UI animations under 300ms with custom easing (not built-in CSS easings)
@@ -64,6 +65,68 @@ export const EASE = {
 
 /** The scale to apply on press for any pressable element. */
 export const PRESS_SCALE = 0.97;
+
+// ─── Colors (shared across all surfaces) ─────────────────────────────────────
+
+// ─── Type scale ──────────────────────────────────────────────────────────────
+
+/**
+ * Bundled display family (Instrument Serif, SIL OFL — see assets/fonts/OFL.txt).
+ * Loaded once in app/_layout.tsx via expo-font. Always read TYPE.serif from
+ * here so the family name stays in sync with the loadFonts() call.
+ */
+export const TYPE = {
+  serif: "InstrumentSerif",
+  serifItalic: "InstrumentSerif-Italic",
+  /** Hero statements, milestone words. */
+  display: { fontSize: 40, lineHeight: 46 } as const,
+  /** Section statements, transmission titles. */
+  statement: { fontSize: 32, lineHeight: 38 } as const,
+  /** Quotes, cliffhangers, whisper lines — what a voice says. */
+  quote: { fontSize: 22, lineHeight: 30 } as const,
+  /** Large numerals (streak, timers). Pair with tabular-nums. */
+  number: { fontSize: 34, lineHeight: 40 } as const,
+} as const;
+
+export const FONT_SIZE = {
+  /** Screen-level titles when NOT in the display family. */
+  title: 28,
+  heading: 20,
+  /** Default reading size. */
+  body: 15,
+  caption: 13,
+  /** Uppercase section labels. */
+  eyebrow: 11,
+} as const;
+
+export const LETTER_SPACING = {
+  /** Display serif tightens. */
+  display: -0.5,
+  /** UI titles. */
+  title: -0.8,
+  /** Uppercase eyebrows breathe out. */
+  eyebrow: 2.4,
+} as const;
+
+// ─── Spacing ─────────────────────────────────────────────────────────────────
+
+export const SPACE = {
+  xs: 6,
+  sm: 10,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  /** Between editorial sections (no-box rhythm). */
+  section: 40,
+} as const;
+
+// ─── Hairline + materials ────────────────────────────────────────────────────
+
+/** The one hairline color. Editorial separators only — not card borders. */
+export const HAIRLINE = "rgba(255,255,255,0.06)";
+
+/** Gradient stops for the primary button border (the one special material). */
+export const PRIMARY_GRADIENT = ["#F7D38B", "#E8B85C", "#F7D38B"] as const;
 
 // ─── Colors (shared across all surfaces) ─────────────────────────────────────
 

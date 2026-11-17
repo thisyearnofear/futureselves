@@ -35,7 +35,7 @@ import { api } from "@/convex/_generated/api";
 import { ReactionTimeDrill } from "@/components/drill-reaction-time";
 import { JugglingDrill } from "@/components/drill-juggling";
 import { SprintDrill } from "@/components/drill-sprint";
-import { useQVACPrewarmContext } from "@/lib/qvac-prewarm-context";
+import { useOnDeviceReadinessContext } from "@/lib/ondevice-readiness-context";
 import { interpretTrajectory, type FootballPosition } from "@/lib/football-llm";
 import { isLocalMode } from "@/lib/ai";
 import {
@@ -56,7 +56,7 @@ interface ChallengeParams {
 export default function ChallengeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ drill?: string; target?: string; from?: string }>();
-  const prewarm = useQVACPrewarmContext();
+  const prewarm = useOnDeviceReadinessContext();
   const ambition = useQuery(api.football.getActiveAmbition, {});
 
   const startDrillSession = useMutation(api.football.startDrillSession);

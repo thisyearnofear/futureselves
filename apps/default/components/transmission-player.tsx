@@ -30,9 +30,17 @@ import AnimatedReanimated, {
 import type { CastMember, TransmissionState } from "@/lib/futureself";
 import { formatCastMember } from "@/lib/futureself";
 import { AvatarReveal } from "@/components/avatar-reveal";
-import { isLocalMode } from "@/lib/ai";
+import { isFirebaseMode, isLocalMode } from "@/lib/ai";
 import { useLocalTTS } from "@/lib/qvac";
-import { useTransmissionAudio } from "@/hooks/use-transmission-audio";
+import { useTransmissionAudio, type AudioSynthesizer } from "@/hooks/use-transmission-audio";
+import { useIsAwakened } from "@/lib/revenuecat";
+import {
+  isOSSpeechAvailable,
+  speakWithOS,
+  synthesizeGeminiSpeech,
+  synthesizeGeminiSpeechBytes,
+} from "@/lib/firebase-tts";
+import { useFutureSelfLive } from "@/lib/firebase-live";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -217,6 +225,17 @@ export function TransmissionPlayer({
           <AnimatedReanimated.View style={[styles.liveDot, dotStyle]} />
           <Text style={styles.liveText}>{statusLabel}</Text>
         </View>
+        {transmission.inferenceSource === "on_device" ? (
+          <View style={[styles.livePill, styles.devicePill]}>
+            <Ionicons name="hardware-chip-outline" size={11} color="#9DD6A0" />
+            <Text style={[styles.liveText, styles.devicePillText]}>On your device</Text>
+          </View>
+        ) : transmission.inferenceSource === "in_cloud" && isFirebaseMode() ? (
+          <View style={[styles.livePill, styles.devicePill]}>
+            <Ionicons name="cloud-outline" size={11} color="#A0B4D0" />
+            <Text style={[styles.liveText, styles.cloudPillText]}>Firebase</Text>
+          </View>
+        ) : null}
       </AnimatedReanimated.View>
 
       {isInArrival ? (
@@ -231,7 +250,7 @@ export function TransmissionPlayer({
         />
       ) : (
         <>
-          {transmission.audioUrl || isLocalMode() ? (
+          {transmission.audioUrl || isLocalMode() || isFirebaseMode() ? (
             <AnimatedReanimated.View entering={ZoomIn.duration(500).springify().damping(14)}>
               <AudioPlayer
                 audioUrl={transmission.audioUrl ?? ""}
@@ -688,6 +707,11 @@ interface AudioPlayerProps {
 }
 
 function AudioPlayer({ audioUrl, title, castMember, transmission, onComplete, hasListened }: AudioPlayerProps) {
+  // Firebase mode with no stored audio → client-side TTS (Gemini via AI
+  // Logic for Awakened, OS voice for the free tier).
+  if (isFirebaseMode() && !audioUrl && transmission) {
+    return <FirebaseAudioPlayer transmission={transmission} onComplete={onComplete} />;
+  }
   if (Platform.OS === "web")
     return <WebAudioPlayer audioUrl={audioUrl} title={title} castMember={castMember} onComplete={onComplete} />;
   // In local mode, generate the WAV on-device via QVAC with pre-generation.
@@ -790,6 +814,197 @@ function WebAudioPlayer({ audioUrl, onComplete }: AudioPlayerProps) {
         </View>
       </View>
     </View>
+  );
+}
+
+/**
+ * FirebaseAudioPlayer — client-side speech for the AI Logic build.
+ * Awakened → Gemini TTS through AI Logic → data URI → normal players.
+ * Free tier (or Gemini failure) → OS speech synthesis, zero marginal cost.
+ */
+function FirebaseAudioPlayer({ transmission, onComplete }: { transmission: TransmissionState; onComplete?: () => void }) {
+  const isAwakened = useIsAwakened();
+  const [audioUri, setAudioUri] = useState<string | null>(null);
+  const [ttsFailed, setTtsFailed] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const osHandle = useRef<{ cancel: () => void } | null>(null);
+
+  // Native premium path: Gemini TTS through the provider-agnostic
+  // transmission-audio hook — persona-scoped disk cache + offline replay.
+  const geminiSynth = useMemo<AudioSynthesizer | undefined>(
+    () =>
+      isAwakened && Platform.OS !== "web"
+        ? {
+            synthesize: (text: string) =>
+              synthesizeGeminiSpeechBytes(text, transmission.castMember),
+            isReady: true,
+          }
+        : undefined,
+    [isAwakened, transmission.castMember],
+  );
+  const audio = useTransmissionAudio(
+    transmission,
+    null,
+    isAwakened && Platform.OS !== "web",
+    geminiSynth,
+  );
+
+  // Web premium path: data URI straight into the existing web player
+  // (the file cache is native-only).
+  useEffect(() => {
+    if (!isAwakened || Platform.OS !== "web" || !transmission.text) return;
+    let cancelled = false;
+    void synthesizeGeminiSpeech(transmission.text, transmission.castMember)
+      .then((uri) => {
+        if (cancelled) return;
+        if (uri) setAudioUri(uri);
+        else setTtsFailed(true);
+      })
+      .catch(() => {
+        if (!cancelled) setTtsFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAwakened, transmission.castMember, transmission.text]);
+
+  useEffect(
+    () => () => {
+      osHandle.current?.cancel();
+    },
+    [],
+  );
+
+  const nativeTtsFailed = audio.state === "error";
+  if (isAwakened && !(Platform.OS === "web" ? ttsFailed : nativeTtsFailed)) {
+    if (Platform.OS === "web") {
+      if (!audioUri) {
+        return (
+          <View style={styles.nativePlayerShell}>
+            <View style={styles.playButtonWrap}>
+              <ActivityIndicator size="large" color="#F7D38B" />
+            </View>
+            <Text style={styles.playerStatusText}>Summoning the voice…</Text>
+          </View>
+        );
+      }
+      return (
+        <View>
+          <WebAudioPlayer audioUrl={audioUri} title={transmission.title} onComplete={onComplete} />
+          <LiveTalkButton transmission={transmission} />
+        </View>
+      );
+    }
+    if (audio.state === "generating" || audio.state === "idle") {
+      return (
+        <View style={styles.nativePlayerShell}>
+          <View style={styles.playButtonWrap}>
+            <ActivityIndicator size="large" color="#F7D38B" />
+          </View>
+          <Text style={styles.playerStatusText}>Summoning the voice…</Text>
+        </View>
+      );
+    }
+    if (audio.fileUri) {
+      return (
+        <View>
+          <NativeAudioPlayer
+            audioUrl={audio.fileUri}
+            castMember={transmission.castMember}
+            transmission={transmission}
+            onComplete={onComplete}
+          />
+          <LiveTalkButton transmission={transmission} />
+        </View>
+      );
+    }
+  }
+
+  if (!isOSSpeechAvailable()) return <TextOnlyNotice onRetry={undefined} />;
+
+  const toggleSpeech = () => {
+    if (speaking) {
+      osHandle.current?.cancel();
+      setSpeaking(false);
+      return;
+    }
+    const handle = speakWithOS(transmission.text, {
+      onEnd: () => {
+        setSpeaking(false);
+        onComplete?.();
+      },
+    });
+    if (!handle) return;
+    osHandle.current = handle;
+    setSpeaking(true);
+  };
+
+  return (
+    <View style={styles.nativePlayerShell}>
+      <View style={styles.playButtonWrap}>
+        <Pressable
+          onPress={toggleSpeech}
+          style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
+        >
+          <Ionicons name={speaking ? "stop" : "play"} size={28} color="#101320" />
+        </Pressable>
+      </View>
+      <View style={styles.playerControls}>
+        <Text style={styles.playerStatusText}>
+          {speaking ? "Listening (device voice)…" : "Tap to hear the voice"}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * LiveTalkButton — "Speak back" to the future self via the Gemini Live
+ * API (Awakened tier, web only). A real-time bidirectional voice channel:
+ * the single strongest cloud-inference demo in the submission.
+ */
+function LiveTalkButton({ transmission }: { transmission: TransmissionState }) {
+  const live = useFutureSelfLive(transmission.castMember, transmission.text);
+  const pulse = useSharedValue(1);
+
+  useEffect(() => {
+    if (live.status === "live") {
+      pulse.value = withRepeat(withTiming(1.15, { duration: 600 }), -1, true);
+    } else {
+      pulse.value = withTiming(1, { duration: 200 });
+    }
+  }, [live.status, pulse]);
+
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
+  if (!live.isSupported) return null;
+
+  const active = live.status === "live";
+  const connecting = live.status === "connecting";
+
+  return (
+    <Pressable
+      onPress={() => void (active ? live.stop() : live.start())}
+      disabled={connecting}
+      style={({ pressed }) => [styles.liveTalkRow, pressed && styles.pressed]}
+    >
+      <AnimatedReanimated.View style={pulseStyle}>
+        <Ionicons
+          name={active ? "radio" : "mic-circle-outline"}
+          size={18}
+          color={active ? "#4ADE80" : "#F7D38B"}
+        />
+      </AnimatedReanimated.View>
+      <Text style={styles.liveTalkText}>
+        {connecting
+          ? "Opening the channel…"
+          : active
+            ? "Live — speaking with your future self. Tap to end."
+            : live.status === "error"
+              ? "Voice channel unavailable"
+              : "Speak back — live voice with your future self"}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -1130,6 +1345,18 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
+  devicePill: {
+    marginTop: 6,
+    backgroundColor: "rgba(157,214,160,0.10)",
+  },
+  devicePillText: {
+    color: "#9DD6A0",
+    fontSize: 9,
+  },
+  cloudPillText: {
+    color: "#A0B4D0",
+    fontSize: 9,
+  },
 
   // Arrival sequence
   arrivalShell: {
@@ -1247,6 +1474,25 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
     textAlign: "center",
+  },
+  liveTalkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(247,211,139,0.2)",
+    backgroundColor: "rgba(16,19,32,0.6)",
+  },
+  liveTalkText: {
+    color: "#C8D4E8",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   progressBarBg: {
     height: 6,

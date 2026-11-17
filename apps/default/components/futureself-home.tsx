@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useConvex, useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import {
   Easing,
@@ -19,7 +19,7 @@ import {
 } from "react-native-reanimated";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "expo-router";
-import { api, internal } from "@/convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type {
   CastMember,
@@ -62,8 +62,14 @@ import { TransmissionShareCard } from "@/components/transmission-share-card";
 import { MemoryReadout } from "@/components/memory-readout";
 import { BottomNav } from "@/components/bottom-nav";
 import { styles } from "@/components/futureself-home.styles";
-import { isLocalMode } from "@/lib/ai";
+import { isFirebaseMode, isLocalMode } from "@/lib/ai";
 import { generateLocalTransmission } from "@/lib/local-llm";
+import {
+  generateFirebaseSynthesis,
+  generateFirebaseTransmission,
+} from "@/lib/firebase-ai";
+import { generateAvatarImageBytes } from "@/lib/firebase-image";
+import { useIsAwakened } from "@/lib/revenuecat";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import { QVAC_MODELS } from "@/hooks/use-qvac-prewarm";
 
@@ -142,8 +148,12 @@ export function FutureselfHome({
   const saveTransmissionResponse = useMutation(api.game.saveTransmissionResponse);
   const generateTransmission = useAction(api.game.generateDailyTransmission);
   const generateAvatar = useAction(api.face.generateAvatar);
+  const convexClient = useConvex();
+  const generateAvatarUploadUrl = useMutation(api.face.generateAvatarUploadUrl);
+  const saveClientAvatar = useMutation(api.face.saveClientAvatar);
   const generateSynthesis = useAction(api.synthesis.generateWeeklySynthesis);
   const generateWelcomeVoicemail = useAction(api.voicemail_native.generateNativeVoicemail);
+  const saveSynthesis = useMutation(api.synthesis.saveSynthesis);
 
   // Debug mutations
   const debugReset = useMutation(api.game.debugResetPersona);
@@ -151,28 +161,39 @@ export function FutureselfHome({
 
   // QVAC local-mode hooks (no-op on web, called in handleReceive when local)
   const localMode = useMemo(() => isLocalMode(), []);
+  // Firebase mode: server-side AI actions (Anthropic/ElevenLabs/Replicate)
+  // are gated off — all inference must route through Firebase AI Logic.
+  const firebaseMode = useMemo(() => isFirebaseMode(), []);
+  const noServerAI = localMode || firebaseMode;
+  // Firebase AI Logic mode: the Awakened entitlement picks the inference
+  // lane — free users run PREFER_ON_DEVICE (Nano / cloud-lite fallback),
+  // premium runs PREFER_IN_CLOUD on the quality model.
+  const isAwakened = useIsAwakened();
   // beginTransmissionGenerationLocal is an authMutation, so useMutation (not
   // useAction) is the correct hook. useAction is for authAction; calling a
   // mutation through it would invoke action-timeout/retry semantics on a
   // synchronous DB write.
   const beginLocalTransmission = useMutation(api.game.beginTransmissionGenerationLocal);
-  // attachLocalTransmission is an internalMutation; the client should call it
-  // via internal.*, not api.*. The type system permits the api.* form but the
-  // runtime expects internal.* for internal mutations.
-  const attachLocalText = useMutation(internal.game.attachLocalTransmission);
+  // attachLocalTransmission is a public authMutation (client-generated text
+  // paths — QVAC local and Firebase AI Logic — both attach through it).
+  const attachLocalText = useMutation(api.game.attachLocalTransmission);
   // Cleanup for the local stub row if on-device generation throws between
   // beginLocalTransmission and attachLocalText. Without this, an empty
   // "Tuning the signal" row persists and the chamber shows the stub forever.
   const cancelLocalTransmission = useMutation(api.game.cancelLocalTransmission);
 
   // On-device speech recognition (Parakeet via QVAC). Only active in local mode.
+  const onSpeechResult = useCallback((transcribedText: string) => {
+    // Take the first word if the model transcribed a full sentence.
+    const firstWord = transcribedText.split(/\s+/)[0] ?? transcribedText;
+    setWord(firstWord.toLowerCase());
+  }, []);
+  // One STT hook, backend picked by provider: QVAC Parakeet when a model id
+  // is passed (local mode), otherwise OS-level recognition (firebase mode).
   const speech = useSpeechRecognition({
     sttModelId: localMode ? QVAC_MODELS.stt : null,
-    onResult: (transcribedText) => {
-      // Take the first word if the model transcribed a full sentence.
-      const firstWord = transcribedText.split(/\s+/)[0] ?? transcribedText;
-      setWord(firstWord.toLowerCase());
-    },
+    osBackend: firebaseMode,
+    onResult: onSpeechResult,
   });
 
   const [word, setWord] = useState(state.todayCheckIn?.word ?? "");
@@ -345,7 +366,7 @@ export function FutureselfHome({
   useEffect(() => {
     if (
       !welcomeVoicemailTriggered.current &&
-      !localMode &&
+      !noServerAI &&
       hasTransmissionToday &&
       persona &&
       persona.streak === 1 &&
@@ -357,13 +378,43 @@ export function FutureselfHome({
         console.warn("[Day1Voicemail] Could not generate welcome voicemail:", err);
       });
     }
-  }, [hasTransmissionToday, persona, state.recentTransmissions.length, generateWelcomeVoicemail, localMode]);
+  }, [hasTransmissionToday, persona, state.recentTransmissions.length, generateWelcomeVoicemail, noServerAI]);
 
   // Voice unlock detection + avatar generation.
-  // Avatar generation is gated by !localMode because api.face.generateAvatar calls
-  // Replicate server-side. In local mode we still surface the unlock UI; we just don't
-  // ship the cast member identifier off the device for image synthesis. (When QVAC ships
-  // a local image-gen capability we can swap the call.)
+  // The Replicate action is gated off in local/firebase mode. In firebase
+  // mode avatars are generated client-side through AI Logic image models
+  // (Nano Banana) and persisted via the upload + save mutations — Convex
+  // is persistence only, not inference.
+  const ensureAvatar = useCallback(
+    async (castMember: CastMember) => {
+      if (!firebaseMode) {
+        void generateAvatar({ castMember }).catch(() => {});
+        return;
+      }
+      try {
+        const prompt = await convexClient.query(api.face.getAvatarPrompt, {
+          castMember,
+        });
+        if (!prompt) return;
+        const image = await generateAvatarImageBytes(prompt);
+        if (!image) return;
+        const uploadUrl = await generateAvatarUploadUrl();
+        const upload = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": image.mimeType },
+          body: image.bytes as unknown as BodyInit,
+        });
+        const { storageId } = (await upload.json()) as {
+          storageId: Id<"_storage">;
+        };
+        await saveClientAvatar({ castMember, storageId, prompt });
+      } catch {
+        // avatar generation is best-effort — the static webp remains
+      }
+    },
+    [firebaseMode, generateAvatar, convexClient, generateAvatarUploadUrl, saveClientAvatar],
+  );
+
   useEffect(() => {
     if (!state.constellation.length) return;
     const currentUnlocked = new Set(
@@ -373,11 +424,11 @@ export function FutureselfHome({
     );
     const prevUnlocked = unlockedRef.current;
     if (prevUnlocked.size === 0) {
-      if (!localMode) {
+      if (firebaseMode || !noServerAI) {
         // First mount: generate avatars for any already-unlocked cast members
-        // (e.g., future_self is always lit). The action is idempotent — skips if exists.
+        // (e.g., future_self is always lit). Idempotent — skips if exists.
         for (const castMember of currentUnlocked) {
-          void generateAvatar({ castMember: castMember as CastMember }).catch(() => {});
+          void ensureAvatar(castMember as CastMember);
         }
       }
     } else {
@@ -391,16 +442,16 @@ export function FutureselfHome({
             castMember: voice.castMember,
           });
         }
-        if (!localMode) {
+        if (firebaseMode || !noServerAI) {
           // Fire-and-forget avatar generation for newly unlocked cast members
           for (const castMember of newlyUnlocked) {
-            void generateAvatar({ castMember: castMember as CastMember }).catch(() => {});
+            void ensureAvatar(castMember as CastMember);
           }
         }
       }
     }
     unlockedRef.current = currentUnlocked;
-  }, [state.constellation, hasTransmissionToday, generateAvatar, localMode]);
+  }, [state.constellation, hasTransmissionToday, ensureAvatar, noServerAI, firebaseMode]);
 
   const handleShare = useCallback(async () => {
     if (!state.todayTransmission || !persona) return;
@@ -649,26 +700,36 @@ export function FutureselfHome({
         word: trimmedWord,
         note: note.trim() || undefined,
       });
-      if (isLocalMode() && state.persona) {
-        // Local path: generate text on-device, attach via internal mutation.
+      if ((isLocalMode() || isFirebaseMode()) && state.persona) {
+        // Client-side path: generate text on-device (QVAC) or through
+        // Firebase AI Logic's hybrid lane, attach via public authMutation.
         startedLocalStub = await beginLocalTransmission({
           dateKey,
           castMember: forcedCastMember ?? "future_self",
         });
-        // Generate the LLM text on-device.
-        const generated = await generateLocalTransmission({
-          personaId: state.persona.id,
-          modelId: "LLAMA_3_2_1B_INST_Q4_0",
-          castMember: forcedCastMember ?? "future_self",
-          context: buildLocalGenerationContext(state),
-          localNow: new Date().toLocaleString(),
-        });
+        const generated = isFirebaseMode()
+          ? await generateFirebaseTransmission({
+              personaId: state.persona.id,
+              castMember: forcedCastMember ?? "future_self",
+              context: buildLocalGenerationContext(state),
+              localNow: new Date().toLocaleString(),
+              premium: isAwakened,
+            })
+          : await generateLocalTransmission({
+              personaId: state.persona.id,
+              modelId: "LLAMA_3_2_1B_INST_Q4_0",
+              castMember: forcedCastMember ?? "future_self",
+              context: buildLocalGenerationContext(state),
+              localNow: new Date().toLocaleString(),
+            });
         await attachLocalText({
           transmissionId: startedLocalStub as any,
           title: generated.title,
           text: generated.text,
           actionPrompt: generated.actionPrompt,
           cliffhanger: generated.cliffhanger,
+          inferenceSource:
+            "inferenceSource" in generated ? generated.inferenceSource : undefined,
         });
       } else {
         // Cloud path: existing Convex action.
@@ -777,17 +838,31 @@ export function FutureselfHome({
       setIsGeneratingSynthesis(true);
 
       const last7 = state.recentTransmissions.slice(0, 7);
-      const textLog = last7.map(t => 
+      const textLog = last7.map(t =>
         `Date: ${t.dateKey}\nVoice: ${t.castMember}\nMessage: ${t.text}\nUser's Reaction: ${t.response?.reaction || 'none'}\nUser's Note: ${t.response?.replyNote || 'none'}`
       ).join("\n\n---\n\n");
-      
+
       const weekStartDateKey = last7[last7.length - 1]?.dateKey || dateKey;
 
-      await generateSynthesis({
-        dateKey,
-        weekStartDateKey,
-        transmissionsText: textLog,
-      });
+      if (isFirebaseMode()) {
+        // Firebase path: synthesize client-side through AI Logic (hybrid),
+        // persist via the existing public saveSynthesis mutation.
+        const result = await generateFirebaseSynthesis(textLog, isAwakened);
+        if (!result) {
+          throw new Error("AI failed to generate synthesis.");
+        }
+        await saveSynthesis({
+          weekStartDateKey,
+          summary: result.summary,
+          actionItems: result.actionItems,
+        });
+      } else {
+        await generateSynthesis({
+          dateKey,
+          weekStartDateKey,
+          transmissionsText: textLog,
+        });
+      }
 
       if (Platform.OS !== "web") {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -989,10 +1064,10 @@ export function FutureselfHome({
             word={word}
             wordNudges={wordNudges}
             yesterdayCliffhanger={state.recentTransmissions[0]?.cliffhanger}
-            onSpeakWord={(w) => setWord(w.toLowerCase())}
+            onSpeakWord={speech.isAvailable ? (w) => setWord(w.toLowerCase()) : undefined}
             isSpeaking={speech.isRecording || speech.isTranscribing}
-            onStartSpeak={speech.startRecording}
-            onStopSpeak={speech.stopRecording}
+            onStartSpeak={speech.isAvailable ? speech.startRecording : undefined}
+            onStopSpeak={speech.isAvailable ? speech.stopRecording : undefined}
             speakDuration={speech.durationSeconds}
           />
         )}

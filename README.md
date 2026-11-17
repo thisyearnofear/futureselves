@@ -28,6 +28,9 @@ If you just landed in the repo, use this path:
 5. Unlock new voices as your streak, context, and divergence evolve
 6. **The Last Voicemail**: Capture an emotionally charged situation and receive a critique-driven cinematic voicemail from a future you.
 
+## Virality (Nikita Bier playbook)
+Streaks + unlocked voices + divergence milestones are Wrapped-style shareables waiting to happen; the daily transmission is a built-in notification loop. Run the ladder scorecard (core loop → shares → invites → pays) and a 48-hour test on one share card before adding more surfaces.
+
 ## Repository structure
 
 ```text

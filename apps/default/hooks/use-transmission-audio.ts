@@ -1,12 +1,18 @@
 /**
  * use-transmission-audio.ts
  *
- * Manages the full TTS audio lifecycle for a transmission:
+ * Provider-agnostic TTS audio lifecycle for a transmission:
  * - Pre-generates audio when text arrives (not on play tap)
- * - Uses file-based playback (reads cached WAV from disk)
+ * - Uses file-based playback (writes WAV to the persona audio cache)
  * - Auto-retries on failure (max 3 attempts)
- * - Auto-generates when TTS model becomes ready after cold start
+ * - Auto-generates when the synthesizer becomes ready after cold start
  * - Surfaces a clean state machine for the UI
+ *
+ * Backends:
+ * - `local` (QVAC, dormant) → `useLocalTTS` when a `ttsModelId` is passed.
+ * - `firebase` (Awakened, native) → pass a `synthesizer` returning WAV
+ *   bytes — `synthesizeGeminiSpeechBytes` — so premium voice audio gets
+ *   the same cache + offline replay as QVAC had.
  *
  * State machine: idle → generating → ready → playing ↔ paused
  *                 ↘ error → retrying → generating
@@ -37,10 +43,21 @@ export interface TransmissionAudioController {
   retry: () => Promise<void>;
 }
 
+/**
+ * Pluggable synthesis backend. `synthesize` returns WAV bytes for the
+ * audio cache, or null on failure. `isReady` gates generation (model
+ * cold start, premium flag, etc.).
+ */
+export interface AudioSynthesizer {
+  synthesize: (text: string) => Promise<Uint8Array | null>;
+  isReady: boolean;
+}
+
 export function useTransmissionAudio(
   transmission: TransmissionState,
   ttsModelId: string | null,
   ttsModelReady: boolean,
+  synthesizer?: AudioSynthesizer,
 ): TransmissionAudioController {
   const [state, setState] = useState<AudioState>("idle");
   const [fileUri, setFileUri] = useState<string | null>(null);
@@ -50,9 +67,15 @@ export function useTransmissionAudio(
 
   const { speak, isReady } = useLocalTTS(ttsModelId ?? undefined);
 
+  // Backend selection: explicit synthesizer wins (firebase path);
+  // otherwise QVAC local TTS when a model id was passed.
+  const qvacSynth: AudioSynthesizer | null =
+    isLocalMode() && ttsModelId ? { synthesize: speak, isReady } : null;
+  const backend = synthesizer ?? qvacSynth;
+
   const generate = useCallback(async () => {
     if (Platform.OS === "web") return;
-    if (!isLocalMode()) return;
+    if (!backend) return;
     if (state === "generating" || state === "ready") return;
     if (generateRef.current) return generateRef.current;
 
@@ -72,7 +95,7 @@ export function useTransmissionAudio(
       // cache miss, continue to generation
     }
 
-    if (!isReady || !ttsModelId) {
+    if (!backend.isReady) {
       setState("idle");
       return;
     }
@@ -82,7 +105,7 @@ export function useTransmissionAudio(
 
     const promise = (async () => {
       try {
-        const bytes = await speak(transmission.text);
+        const bytes = await backend.synthesize(transmission.text);
         if (!bytes) {
           throw new Error("TTS returned empty audio");
         }
@@ -102,7 +125,7 @@ export function useTransmissionAudio(
 
     generateRef.current = promise;
     return promise;
-  }, [transmission.id, transmission.text, state, isReady, ttsModelId, speak]);
+  }, [transmission.id, transmission.text, state, backend]);
 
   const retry = useCallback(async () => {
     if (!shouldRetry(retryCount)) return;
@@ -113,7 +136,7 @@ export function useTransmissionAudio(
     await generate();
   }, [retryCount, generate]);
 
-  // Pre-generate when text is ready and model is available
+  // Pre-generate when text is ready and the backend is available
   useEffect(() => {
     if (
       (transmission.status === "text_ready" || transmission.status === "ready") &&
@@ -125,7 +148,7 @@ export function useTransmissionAudio(
     }
   }, [transmission.status, ttsModelReady, state, transmission.audioUrl, generate]);
 
-  // Auto-retry when model becomes ready after cold start
+  // Auto-retry when the backend becomes ready after cold start
   useEffect(() => {
     if (
       ttsModelReady &&

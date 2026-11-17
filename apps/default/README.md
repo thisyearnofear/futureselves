@@ -69,9 +69,9 @@ The app runs transmissions, TTS, STT, and embeddings locally via the [QVAC SDK](
 - `lib/qvac.ts` — QVAC SDK lifecycle wrapper with named hooks (`useQVACModel`, `useLocalTTS`, `useLocalSTT`, `useQVACChat`, `useLocalEmbeddings`). Platform-guarded at the function level. Type-only import of `@qvac/sdk` on web (no bundle impact).
 - `lib/local-llm.ts` — client-side LLM orchestrator: builds the transmission prompt locally, calls QVAC `completion()`, parses JSON, falls back to a built-in script.
 - `lib/audio-cache.ts` — persona-scoped WAV cache (metadata in `expo-secure-store`, bytes on disk).
-- `hooks/use-qvac-prewarm.ts` — loads LLM + TTS + STT in parallel on app start, surfaced via the cold-start progress UI.
+- `hooks/use-ondevice-readiness.ts` — provider-agnostic model readiness (QVAC prewarm on local; expo-ai/AICore Nano download on firebase+Android), surfaced via the cold-start progress UI. `use-qvac-prewarm.ts` is the dormant QVAC backend it delegates to.
 - `hooks/use-network-kill.ts` — proves the app still works when Wi-Fi + cellular are disabled; the submission video uses this.
-- `hooks/use-speech-recognition.ts` — press-to-record STT for spoken check-ins, wired through `useLocalSTT`.
+- `hooks/use-speech-recognition.ts` — press-to-record STT for spoken check-ins; QVAC Parakeet backend when `sttModelId` set, OS-level recognition (`osBackend`) for the firebase build.
 - `hooks/use-related-signals.ts` — local-embedding semantic similarity over past transmissions (the "related signals" surface in the archive).
 - `components/memory-readout.tsx` — dev-overlay chip: *bytes uploaded: 0 · inference: on-device · last model · cache hit*. On during demo recording.
 

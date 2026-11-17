@@ -32,6 +32,22 @@
         "simulator": true
       }
     },
+    "firebase-dev": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_AI_PROVIDER": "firebase",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "futureselves-hybrid-ai.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "futureselves-hybrid-ai",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:351378596053:web:021d4f4b80fb01c1db025c",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "351378596053",
+        "EXPO_PUBLIC_CONVEX_URL": "https://useful-fly-881.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://useful-fly-881.convex.site"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "submission": {
       "distribution": "internal",
       "env": {

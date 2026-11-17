@@ -118,6 +118,8 @@ export interface TransmissionState {
   cliffhanger: string;
   audioUrl: string | null;
   status: "generating" | "text_ready" | "ready" | "failed";
+  /** AI Logic lane that generated this: "on_device" | "in_cloud" | null. */
+  inferenceSource: string | null;
   response: TransmissionResponseState | null;
   continuity: TransmissionContinuityState | null;
   memory: TransmissionMemoryState | null;

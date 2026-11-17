@@ -41,13 +41,19 @@ import {
   logTTSSynthesize,
 } from "@/lib/audit-log";
 
-// Type-only import. The `verbatimModuleSyntax` + `isolatedModules`
-// settings in tsconfig.base mean `import type` is erased at compile
-// time, so this does not contribute to the web bundle at all.
-import type {
-  LoadModelOptions,
-  ModelProgressUpdate,
-} from "@qvac/sdk";
+// Structural stand-ins for the removed `@qvac/sdk` types. The QVAC
+// packages are no longer installed (deps trimmed — the Firebase AI
+// Logic build replaced this path); this file is dormant and kept only
+// so call sites still compile. Shapes are permissive on purpose.
+type ModelProgressUpdate = {
+  percentage?: number;
+  [key: string]: unknown;
+};
+
+type LoadModelOptions = {
+  onProgress?: (progress: ModelProgressUpdate) => void;
+  [key: string]: unknown;
+};
 
 /**
  * Lifecycle status of a loaded QVAC model.

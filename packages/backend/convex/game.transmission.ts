@@ -147,6 +147,48 @@ export function fallbackTransmission(
   };
 }
 
+// ── Length ladder ────────────────────────────────────────────────────────────
+// Economy is a day-30 register earned through relationship. On day 1 the voice
+// over-delivers: the user has filled out onboarding and received nothing back
+// yet, so the first transmission carries the value asymmetry instead of
+// exposing it. The ladder keys off `recentTransmissions.length` (history
+// BEFORE today), which is 0 exactly on first contact regardless of how streak
+// accounting increments.
+const SPARSE_CAST_MEMBERS: ReadonlySet<CastMember> = new Set([
+  "the_ghost",
+  "the_flatlined",
+  "the_ceiling",
+  "the_dissolver",
+]);
+
+function buildLengthInstruction(
+  historyCount: number,
+  castMember: CastMember,
+): string {
+  if (historyCount === 0) {
+    if (SPARSE_CAST_MEMBERS.has(castMember)) {
+      return "- Length: 80-120 words today. This voice is spare by nature, but on first contact it gives more than it ever will again.";
+    }
+    return "- Length: 130-180 words today — the voice's first message, and its fullest. Messages tighten from tomorrow on; do not anticipate that. Write today as if this one message is the whole product.";
+  }
+  if (historyCount <= 2) {
+    return "- Length: 90-130 words. The line is young; the voice is still earning its economy.";
+  }
+  return "- Length: 40-70 words. You two have history now; economy is intimacy. Speak as if leaving a voice message: conversational, direct, intimate. Do not narrate the system — no meta-commentary about streaks, divergence score, or the player's dominant pattern.\n- The Ghost and The Flatlined may break below 40 words. Sparse is their register, not an under-delivery. Five careful words from The Ghost land harder than a full paragraph.";
+}
+
+// ── First contact ────────────────────────────────────────────────────────────
+// The day-1 failure mode was thin, templated content: the voice echoing back
+// exactly what onboarding collected. This block makes first contact do the one
+// thing a form letter can't — an unprompted inference.
+const FIRST_CONTACT_BLOCK = `TODAY IS FIRST CONTACT — the first message this person has ever received from any voice on this line. No streak, no history, no earned trust. This single message is the entire product right now, so treat it like the opening of a great story:
+- Land like a voice message from one specific person who has clearly thought about them — not a narrator, not a welcome bot.
+- They gave you coordinates: their chapter, their arc, the thing they're avoiding, what's draining them. Cross at least two of them into one observation or one question they did NOT state themselves. An inference they didn't hand you is the moment the voice stops feeling like a form.
+- Their check-in word is the first thing they have ever said to this voice. Respond to its weight before anything else.
+- One real question is allowed and powerful. Ask it and genuinely wait — do not answer it for them.
+- Use their details; do not recite them. "The conversation you keep circling" lands. Quoting their inputs back verbatim does not.
+- Warmer than usual is correct today. Specific warm — never "I believe in you," never "your journey."`;
+
 export function buildPrompt(
   context: GenerationContext,
   castMember: CastMember,
@@ -204,7 +246,12 @@ export function buildPrompt(
   const voiceDistinctionInstruction = getVoiceDistinctionInstruction(castMember);
   const threadsBlock = buildThreadsBlock(context.openThreads);
 
-  return `Create today's futureself transmission as JSON only.
+  // Day-1 signal: history before today is empty regardless of streak counting.
+  const historyCount = context.recentTransmissions.length;
+  const firstContactBlock = historyCount === 0 ? FIRST_CONTACT_BLOCK : null;
+  const lengthInstruction = buildLengthInstruction(historyCount, castMember);
+
+  return `${firstContactBlock ? `${firstContactBlock}\n\n` : ""}Create today's futureself transmission as JSON only.
 
 Player profile:
 - Name: ${context.persona.name}
@@ -249,13 +296,11 @@ CRITICAL BEHAVIORAL REQUIREMENTS:
 - Use the player's ACTUAL context to generate the action. Reference their specific avoiding, draining, currentChapter, or afraidWontHappen. Do not give generic advice that could apply to anyone.
 - The check-in word is an emotional data point. If they said "exhausted," the transmission should register that weight. If they said "hopeful," notice the shift. Don't just repeat the word — respond to what it reveals.
 - The cliffhanger MUST reference what happens tomorrow based on whether they follow through. Create accountability: "If you do X tonight, tomorrow I can tell you Y" or "If you don't, tomorrow's signal will feel the gap."
-- 40-60 words. Speak as if leaving a voice message. Conversational, direct, intimate.
-  Economy is the point: one word in, one short voice out. Do not narrate the system —
-  no meta-commentary about streaks, divergence score, or the player's dominant pattern.
-- The Ghost and The Flatlined may break below 40 words. Sparse is their register, not
-  an under-delivery. Five careful words from The Ghost land harder than a full paragraph.
+- THE READ-BACK TEST: the text must contain at least one specific observation or question the player did not state themselves — something inferred by connecting two things they told you. If every detail could have been produced by templating their own words, start over.
 - Must feel like a specific person who knows you, not a fortune cookie.
 - Avoid therapy clichés, vague uplift, or generic self-help cadence.
+
+${lengthInstruction}
 
 Return exactly:
 {"title":"...","text":"...","actionPrompt":"one specific, observable behavior","cliffhanger":"accountability hook tied to tonight's action"}`;

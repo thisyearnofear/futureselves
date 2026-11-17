@@ -4,9 +4,11 @@ import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 import { useAvatarPreloading } from "@/hooks/use-avatar-preloading";
-import { useQVACPrewarm } from "@/hooks/use-qvac-prewarm";
-import { QVACPrewarmProvider, type QVACPrewarmState } from "@/lib/qvac-prewarm-context";
+import { useOnDeviceReadiness } from "@/hooks/use-ondevice-readiness";
+import { OnDeviceReadinessProvider, type OnDeviceReadinessState } from "@/lib/ondevice-readiness-context";
 import { configureRevenueCat, identifyRevenueCatUser, useCustomerInfo } from "@/lib/revenuecat";
 import { api } from "@/convex/_generated/api";
 
@@ -31,7 +33,7 @@ if (isNative) {
     configureRevenueCat();
 }
 
-const IDLE_PREWARM: QVACPrewarmState = {
+const IDLE_PREWARM: OnDeviceReadinessState = {
     llm: { status: "idle" },
     tts: { status: "idle" },
     stt: { status: "idle" },
@@ -67,13 +69,13 @@ function RevenueCatIdentifier() {
     return null;
 }
 
-function QVACPrewarmUpdater({ onState }: { onState: (state: QVACPrewarmState) => void }) {
+function OnDeviceReadinessUpdater({ onState }: { onState: (state: OnDeviceReadinessState) => void }) {
     const persona = useQuery(api.game.getState, { dateKey: new Date().toISOString().split("T")[0]! });
-    const prewarm = useQVACPrewarm({ personaId: persona?.persona?.id ?? null });
+    const prewarm = useOnDeviceReadiness({ personaId: persona?.persona?.id ?? null });
     // Bug fix: calling onState (a parent setState) during render caused an
     // infinite render loop because each render constructed a new object
     // reference. Push the publish into an effect, keyed on primitive status
-    // values so a fresh object reference from useQVACPrewarm doesn't refire.
+    // values so a fresh object reference from the readiness hook doesn't refire.
     useEffect(() => {
         onState({
             llm: prewarm.llm,
@@ -86,15 +88,28 @@ function QVACPrewarmUpdater({ onState }: { onState: (state: QVACPrewarmState) =>
 }
 
 export default function RootLayout() {
-    const [prewarmState, setPrewarmState] = useState<QVACPrewarmState>(IDLE_PREWARM);
+    const [prewarmState, setPrewarmState] = useState<OnDeviceReadinessState>(IDLE_PREWARM);
+
+    // Display family (Instrument Serif, SIL OFL). Loaded at the root so the
+    // serif is available before any screen paints; splash screen holds until
+    // ready so there's no font-swap flash. Family names must match
+    // TYPE.serif / TYPE.serifItalic in lib/design-tokens.ts.
+    const [fontsLoaded] = useFonts({
+        InstrumentSerif: require("@/assets/fonts/InstrumentSerif-Regular.ttf"),
+        "InstrumentSerif-Italic": require("@/assets/fonts/InstrumentSerif-Italic.ttf"),
+    });
+    useEffect(() => {
+        if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
+    }, [fontsLoaded]);
+    if (!fontsLoaded) return null;
 
     return (
         <ConvexAuthProvider client={convex} storage={isNative ? secureStorage : undefined}>
-            <QVACPrewarmProvider value={prewarmState}>
+            <OnDeviceReadinessProvider value={prewarmState}>
                 <RevenueCatIdentifier />
                 <Authenticated>
                     <AvatarPreloader />
-                    <QVACPrewarmUpdater onState={setPrewarmState} />
+                    <OnDeviceReadinessUpdater onState={setPrewarmState} />
                 </Authenticated>
                 <Stack>
                     <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -147,7 +162,7 @@ export default function RootLayout() {
                         }}
                     />
                 </Stack>
-            </QVACPrewarmProvider>
+            </OnDeviceReadinessProvider>
         </ConvexAuthProvider>
     );
 }

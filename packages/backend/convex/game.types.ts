@@ -115,6 +115,7 @@ export const transmissionReturnValidator = v.object({
     v.literal("ready"),
     v.literal("failed"),
   ),
+  inferenceSource: v.union(v.string(), v.null()),
   response: v.union(transmissionResponseReturnValidator, v.null()),
   continuity: transmissionContinuityReturnValidator,
   memory: transmissionMemoryReturnValidator,
@@ -326,6 +327,7 @@ export interface TransmissionReturn {
   cliffhanger: string;
   audioUrl: string | null;
   status: "generating" | "text_ready" | "ready" | "failed";
+  inferenceSource: string | null;
   response: TransmissionResponseReturn | null;
   continuity: TransmissionContinuityReturn | null;
   memory: TransmissionMemoryReturn | null;

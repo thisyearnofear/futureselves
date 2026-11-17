@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { castMemberValidator } from "./validators";
-import { authAction, authQuery } from "./functions";
+import { authAction, authMutation, authQuery } from "./functions";
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
@@ -73,6 +73,73 @@ export const getAvatarsForUser = query({
         generatedAt: avatar.generatedAt,
       })),
     );
+  },
+});
+
+// ─── Client-side generation path (Firebase AI Logic) ────────────────────────
+// In the firebase build, image inference happens on the client through AI
+// Logic (Nano Banana), not the Replicate action. These three functions give
+// that path a prompt, an upload slot, and a save — mirroring what
+// `generateAvatar` does server-side. Convex is persistence only here, not AI.
+
+export const getAvatarPrompt = authQuery({
+  args: { castMember: castMemberValidator },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args): Promise<string | null> => {
+    if (NO_IMAGE_CAST_MEMBERS.has(args.castMember)) return null;
+    const existing: { _id: Id<"castAvatars"> } | null = await ctx.runQuery(
+      internal.face.getExistingAvatar,
+      {
+        userId: ctx.user._id as unknown as string,
+        castMember: args.castMember,
+      },
+    );
+    if (existing) return null; // idempotent — skip if we already have one
+    const appearance: AvatarAppearance | null | undefined =
+      await ctx.runQuery(internal.face.getPersonaAppearance, {
+        userId: ctx.user._id,
+      });
+    return buildAvatarPrompt(
+      args.castMember,
+      appearance?.skinTone ? (appearance as AvatarAppearance) : undefined,
+    );
+  },
+});
+
+export const generateAvatarUploadUrl = authMutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const saveClientAvatar = authMutation({
+  args: {
+    castMember: castMemberValidator,
+    storageId: v.id("_storage"),
+    prompt: v.string(),
+  },
+  returns: v.union(v.literal("saved"), v.literal("skipped")),
+  handler: async (ctx, args): Promise<"saved" | "skipped"> => {
+    if (NO_IMAGE_CAST_MEMBERS.has(args.castMember)) return "skipped";
+    const existing = await ctx.db
+      .query("castAvatars")
+      .withIndex("by_user_and_cast", (q) =>
+        q.eq("userId", ctx.user._id as unknown as string).eq("castMember", args.castMember),
+      )
+      .unique();
+    if (existing) return "skipped";
+    await ctx.db.insert("castAvatars", {
+      userId: ctx.user._id as unknown as string,
+      castMember: args.castMember,
+      storageId: args.storageId,
+      prompt: args.prompt,
+      tier: "generated",
+      generatedAt: Date.now(),
+      createdAt: Date.now(),
+    });
+    return "saved";
   },
 });
 

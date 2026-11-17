@@ -18,18 +18,17 @@ config.resolver.nodeModulesPaths = [
     path.resolve(monorepoRoot, "node_modules"),
 ];
 
-// ─── QVAC SDK web stub ───────────────────────────────────────────────────────
-// The @qvac/sdk is native-only (on-device ML). Its dist code uses dynamic
-// `import(importPath)` calls that Metro's transformer cannot statically parse,
-// causing a SyntaxError during `expo export --platform web`. Every runtime
-// call site already platform-guards with `Platform.OS !== "web"`, so the SDK
-// is never executed on web — but Metro still parses it when it appears in the
-// dependency graph. These resolver rules redirect @qvac/* to no-op stubs on
-// web so the real native modules are never pulled into the web bundle.
+// ─── QVAC SDK stub ───────────────────────────────────────────────────────────
+// The @qvac/* packages are no longer installed (deps removed — the
+// Firebase AI Logic hybrid path replaced local mode; ~5.4 GB of native
+// runtimes trimmed). Dormant call sites still `await import("@qvac/sdk")`,
+// so every @qvac/* specifier resolves to a throwing stub on ALL
+// platforms — bundlers stay happy, and if a dormant path ever executes
+// the stub throws and the caller's existing fallback path runs.
 const stubsDir = path.resolve(projectRoot, "stubs");
 const originalResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-    if (platform === "web" && moduleName.startsWith("@qvac/")) {
+    if (moduleName.startsWith("@qvac/")) {
         const stubPath = path.join(stubsDir, moduleName) + ".js";
         return {
             filePath: stubPath,
